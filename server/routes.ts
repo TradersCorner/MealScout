@@ -83,6 +83,8 @@ import {
   events,
   hosts,
   eventSeries,
+  hostEarningsLedger,
+  hostPayoutRequests,
   insertImageUploadSchema,
   insertAwardHistorySchema,
   imageUploads,
@@ -9180,6 +9182,140 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.status(500).json({
           ok: false,
           message: error?.message || "Failed to send host reminder",
+        });
+      }
+    },
+  );
+
+  app.get(
+    "/api/admin/host-payout-requests",
+    isAuthenticated,
+    isAdmin,
+    async (_req, res) => {
+      try {
+        const rows = await db
+          .select({
+            id: hostPayoutRequests.id,
+            hostId: hostPayoutRequests.hostId,
+            userId: hostPayoutRequests.userId,
+            amountCents: hostPayoutRequests.amountCents,
+            status: hostPayoutRequests.status,
+            notes: hostPayoutRequests.notes,
+            reviewedByUserId: hostPayoutRequests.reviewedByUserId,
+            reviewedAt: hostPayoutRequests.reviewedAt,
+            paidAt: hostPayoutRequests.paidAt,
+            createdAt: hostPayoutRequests.createdAt,
+            updatedAt: hostPayoutRequests.updatedAt,
+            hostBusinessName: hosts.businessName,
+            hostAddress: hosts.address,
+            hostCity: hosts.city,
+            hostState: hosts.state,
+            requesterEmail: users.email,
+          })
+          .from(hostPayoutRequests)
+          .leftJoin(hosts, eq(hostPayoutRequests.hostId, hosts.id))
+          .leftJoin(users, eq(hostPayoutRequests.userId, users.id))
+          .orderBy(desc(hostPayoutRequests.createdAt));
+
+        const totals = {
+          pending: rows.filter((row: (typeof rows)[number]) => row.status === "pending")
+            .length,
+          approved: rows.filter(
+            (row: (typeof rows)[number]) => row.status === "approved",
+          ).length,
+          paid: rows.filter((row: (typeof rows)[number]) => row.status === "paid")
+            .length,
+          rejected: rows.filter(
+            (row: (typeof rows)[number]) => row.status === "rejected",
+          ).length,
+        };
+
+        res.json({ ok: true, totals, rows });
+      } catch (error: any) {
+        console.error("Failed to load host payout requests:", error);
+        res.status(500).json({
+          ok: false,
+          message: error?.message || "Failed to load host payout requests",
+        });
+      }
+    },
+  );
+
+  app.patch(
+    "/api/admin/host-payout-requests/:requestId",
+    isAuthenticated,
+    isAdmin,
+    async (req: any, res) => {
+      try {
+        const requestId = String(req.params.requestId || "").trim();
+        const nextStatus = String(req.body?.status || "").trim().toLowerCase();
+        const notes =
+          typeof req.body?.notes === "string" && req.body.notes.trim()
+            ? req.body.notes.trim()
+            : null;
+
+        if (!requestId) {
+          return res.status(400).json({ message: "Request ID is required" });
+        }
+
+        if (!["approved", "rejected", "paid", "cancelled"].includes(nextStatus)) {
+          return res.status(400).json({
+            message: "Status must be one of: approved, rejected, paid, cancelled",
+          });
+        }
+
+        const [existing] = await db
+          .select()
+          .from(hostPayoutRequests)
+          .where(eq(hostPayoutRequests.id, requestId))
+          .limit(1);
+
+        if (!existing) {
+          return res.status(404).json({ message: "Payout request not found" });
+        }
+
+        if (existing.status === "paid") {
+          return res.status(400).json({
+            message: "Paid requests cannot be modified",
+          });
+        }
+
+        const now = new Date();
+        const [updated] = await db
+          .update(hostPayoutRequests)
+          .set({
+            status: nextStatus,
+            notes: notes ?? existing.notes ?? null,
+            reviewedByUserId: req.user?.id || null,
+            reviewedAt: now,
+            paidAt: nextStatus === "paid" ? now : existing.paidAt,
+            updatedAt: now,
+          })
+          .where(eq(hostPayoutRequests.id, requestId))
+          .returning();
+
+        if (nextStatus === "paid") {
+          await db.insert(hostEarningsLedger).values({
+            hostId: existing.hostId,
+            bookingId: null,
+            stripePaymentIntentId: null,
+            entryType: "payout",
+            sourceType: "host_payout_request",
+            amountCents: -Math.abs(Number(existing.amountCents || 0)),
+            description: `Host payout processed (${existing.id})`,
+            createdAt: now,
+          });
+        }
+
+        const { getHostEarningsSummary } = await import("./hostEarningsService");
+        const summary = await getHostEarningsSummary(existing.hostId);
+
+        res.json({ ok: true, request: updated, summary });
+      } catch (error: any) {
+        console.error("Failed to update host payout request:", error);
+        res.status(500).json({
+          ok: false,
+          message: error?.message || "Failed to update host payout request",
         });
       }
     },

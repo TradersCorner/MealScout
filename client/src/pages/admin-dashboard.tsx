@@ -173,6 +173,36 @@ interface ParkingPassOnboardingQueueResponse {
   items: ParkingPassOnboardingQueueItem[];
 }
 
+interface HostPayoutRequestItem {
+  id: string;
+  hostId: string;
+  userId: string;
+  amountCents: number;
+  status: "pending" | "approved" | "paid" | "rejected" | "cancelled";
+  notes?: string | null;
+  reviewedByUserId?: string | null;
+  reviewedAt?: string | null;
+  paidAt?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+  hostBusinessName?: string | null;
+  hostAddress?: string | null;
+  hostCity?: string | null;
+  hostState?: string | null;
+  requesterEmail?: string | null;
+}
+
+interface HostPayoutRequestsResponse {
+  ok: boolean;
+  totals: {
+    pending: number;
+    approved: number;
+    paid: number;
+    rejected: number;
+  };
+  rows: HostPayoutRequestItem[];
+}
+
 const FOOT_TRAFFIC_OPTIONS = [
   { value: "50", label: "Low (1-50/day)", min: 1, max: 50 },
   { value: "200", label: "Medium (51-200/day)", min: 51, max: 200 },
@@ -2052,6 +2082,13 @@ export default function AdminDashboard() {
       staleTime: 30 * 1000,
     });
 
+  const { data: hostPayoutRequests, isLoading: payoutQueueLoading } =
+    useQuery<HostPayoutRequestsResponse>({
+      queryKey: ["/api/admin/host-payout-requests"],
+      enabled: !!adminUser && selectedTab === "overview",
+      staleTime: 30 * 1000,
+    });
+
   const [testEmailTo, setTestEmailTo] = useState("");
   const [testEmailCategory, setTestEmailCategory] = useState<
     "general" | "account"
@@ -2131,6 +2168,38 @@ export default function AdminDashboard() {
       toast({
         title: "Send failed",
         description: error?.message || "Unable to send host reminder.",
+        variant: "destructive",
+      });
+    },
+  });
+  const updateHostPayoutRequest = useMutation({
+    mutationFn: async ({
+      requestId,
+      status,
+    }: {
+      requestId: string;
+      status: "approved" | "rejected" | "paid" | "cancelled";
+    }) => {
+      const res = await apiRequest(
+        "PATCH",
+        `/api/admin/host-payout-requests/${requestId}`,
+        { status },
+      );
+      return await res.json();
+    },
+    onSuccess: async (_data: any, vars: any) => {
+      await queryClient.invalidateQueries({
+        queryKey: ["/api/admin/host-payout-requests"],
+      });
+      toast({
+        title: "Payout request updated",
+        description: `Request marked as ${vars?.status || "updated"}.`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Update failed",
+        description: error?.message || "Unable to update payout request.",
         variant: "destructive",
       });
     },
@@ -5150,6 +5219,142 @@ export default function AdminDashboard() {
                 ) : (
                   <div className="text-sm text-muted-foreground">
                     No hosts currently need onboarding reminders.
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Host Payout Requests</CardTitle>
+                <CardDescription>
+                  Review and process host cash-out requests.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  <div className="rounded-md border p-3">
+                    <div className="text-xs text-muted-foreground">Pending</div>
+                    <div className="text-xl font-semibold">
+                      {Number(hostPayoutRequests?.totals?.pending ?? 0)}
+                    </div>
+                  </div>
+                  <div className="rounded-md border p-3">
+                    <div className="text-xs text-muted-foreground">Approved</div>
+                    <div className="text-xl font-semibold">
+                      {Number(hostPayoutRequests?.totals?.approved ?? 0)}
+                    </div>
+                  </div>
+                  <div className="rounded-md border p-3">
+                    <div className="text-xs text-muted-foreground">Paid</div>
+                    <div className="text-xl font-semibold">
+                      {Number(hostPayoutRequests?.totals?.paid ?? 0)}
+                    </div>
+                  </div>
+                  <div className="rounded-md border p-3">
+                    <div className="text-xs text-muted-foreground">Rejected</div>
+                    <div className="text-xl font-semibold">
+                      {Number(hostPayoutRequests?.totals?.rejected ?? 0)}
+                    </div>
+                  </div>
+                </div>
+
+                {payoutQueueLoading ? (
+                  <div className="text-sm text-muted-foreground">
+                    Loading payout requests...
+                  </div>
+                ) : Array.isArray(hostPayoutRequests?.rows) &&
+                  hostPayoutRequests.rows.length > 0 ? (
+                  <div className="space-y-2">
+                    {hostPayoutRequests.rows.slice(0, 12).map((row) => {
+                      const canApprove = row.status === "pending";
+                      const canMarkPaid = row.status === "approved";
+                      return (
+                        <div
+                          key={row.id}
+                          className="rounded-md border px-3 py-2 text-sm flex flex-col gap-2"
+                        >
+                          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                            <div className="min-w-0">
+                              <div className="font-medium truncate">
+                                {row.hostBusinessName || "Unnamed host"}
+                              </div>
+                              <div className="text-xs text-muted-foreground truncate">
+                                {row.requesterEmail || "No requester email"}
+                                {row.hostAddress
+                                  ? ` • ${row.hostAddress}${row.hostCity ? `, ${row.hostCity}` : ""}${row.hostState ? `, ${row.hostState}` : ""}`
+                                  : ""}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline">{row.status}</Badge>
+                              <span className="font-semibold">
+                                ${(Number(row.amountCents || 0) / 100).toFixed(2)}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="flex flex-wrap gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled={
+                                updateHostPayoutRequest.isPending || !canApprove
+                              }
+                              onClick={() =>
+                                updateHostPayoutRequest.mutate({
+                                  requestId: row.id,
+                                  status: "approved",
+                                })
+                              }
+                            >
+                              Approve
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled={
+                                updateHostPayoutRequest.isPending || !canMarkPaid
+                              }
+                              onClick={() =>
+                                updateHostPayoutRequest.mutate({
+                                  requestId: row.id,
+                                  status: "paid",
+                                })
+                              }
+                            >
+                              Mark Paid
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              disabled={
+                                updateHostPayoutRequest.isPending ||
+                                row.status === "paid" ||
+                                row.status === "rejected"
+                              }
+                              onClick={() =>
+                                updateHostPayoutRequest.mutate({
+                                  requestId: row.id,
+                                  status: "rejected",
+                                })
+                              }
+                            >
+                              Reject
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {hostPayoutRequests.rows.length > 12 ? (
+                      <div className="text-xs text-muted-foreground">
+                        Showing first 12 of {hostPayoutRequests.rows.length} payout requests.
+                      </div>
+                    ) : null}
+                  </div>
+                ) : (
+                  <div className="text-sm text-muted-foreground">
+                    No host payout requests yet.
                   </div>
                 )}
               </CardContent>

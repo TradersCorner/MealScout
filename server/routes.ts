@@ -425,6 +425,21 @@ const isDealAlertsEnabled = (accountSettings: unknown) => {
   return typeof topics?.dealAlerts === "boolean" ? topics.dealAlerts : true;
 };
 
+const isNearbyEventsEnabled = (accountSettings: unknown) => {
+  const settings =
+    accountSettings && typeof accountSettings === "object"
+      ? (accountSettings as Record<string, any>)
+      : null;
+  const topics =
+    settings?.notifications?.topics &&
+    typeof settings.notifications.topics === "object"
+      ? (settings.notifications.topics as Record<string, any>)
+      : null;
+  return typeof topics?.nearbyEvents === "boolean"
+    ? topics.nearbyEvents
+    : true;
+};
+
 const getNearbyDealRadiusKm = (accountSettings: unknown) => {
   const settings =
     accountSettings && typeof accountSettings === "object"
@@ -505,6 +520,54 @@ async function notifyNearbyDealSubscribers(params: {
       "general",
     );
   }
+}
+
+async function notifyHostCapacityWarning(params: {
+  hostId: string;
+  eventId: string;
+  eventStartDate: Date | null;
+  confirmedCount: number;
+  maxTrucks: number;
+}) {
+  if (!isEmailConfigured()) return;
+
+  const [recipient] = await db
+    .select({
+      email: users.email,
+      accountSettings: users.accountSettings,
+      hostName: hosts.businessName,
+    })
+    .from(hosts)
+    .innerJoin(users, eq(users.id, hosts.userId))
+    .where(eq(hosts.id, params.hostId))
+    .limit(1);
+
+  if (!recipient?.email) return;
+  if (!isEmailChannelEnabled(recipient.accountSettings)) return;
+  if (!isNearbyEventsEnabled(recipient.accountSettings)) return;
+
+  const fillPercent = Math.round(
+    (params.confirmedCount / Math.max(1, params.maxTrucks)) * 100,
+  );
+  const isFull = params.confirmedCount >= params.maxTrucks;
+  const subject = isFull
+    ? `Parking Pass full: ${recipient.hostName || "Host listing"}`
+    : `Parking Pass nearing capacity: ${recipient.hostName || "Host listing"}`;
+  const eventDateText = params.eventStartDate
+    ? new Date(params.eventStartDate).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      })
+    : "Upcoming date";
+
+  await emailService.sendBasicEmail(
+    recipient.email,
+    subject,
+    `<p>Your parking pass date on <strong>${eventDateText}</strong> is now at <strong>${params.confirmedCount}/${params.maxTrucks}</strong> booked spots (${fillPercent}%).</p><p>Event ID: ${params.eventId}</p>`,
+    `Parking pass occupancy update: ${eventDateText} is ${params.confirmedCount}/${params.maxTrucks} booked (${fillPercent}%). Event ID: ${params.eventId}`,
+    "general",
+  );
 }
 
 const queueSocialPost = async (payload: {
@@ -6681,6 +6744,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
             const usesHolds = pendingHolds.length > 0;
             let bookingConfirmed = false;
+            const newlyConfirmedByEventId = new Map<string, number>();
+            const incrementNewlyConfirmed = (eventId: string) => {
+              newlyConfirmedByEventId.set(
+                eventId,
+                (newlyConfirmedByEventId.get(eventId) ?? 0) + 1,
+              );
+            };
             const earnedEntries: Array<{
               hostId: string;
               bookingId: string;
@@ -6772,6 +6842,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   })
                   .where(eq(eventBookings.id, update.id));
 
+                incrementNewlyConfirmed(update.eventId);
+
                 if (update.hostCents > 0) {
                   earnedEntries.push({
                     hostId: update.hostId,
@@ -6842,6 +6914,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   hostId: eventBookings.hostId,
                   hostPriceCents: eventBookings.hostPriceCents,
                 });
+
+              for (const row of filteredRows) {
+                incrementNewlyConfirmed(row.eventId);
+              }
 
               for (const row of insertedRows) {
                 if (Number(row.hostPriceCents || 0) > 0) {
@@ -6973,8 +7049,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
 
             const maxTrucksByEventId = new Map<string, number>();
+            const bookingEventsById = new Map<string, (typeof bookingEvents)[number]>();
             for (const row of bookingEvents) {
               maxTrucksByEventId.set(row.id, row.maxTrucks ?? 1);
+              bookingEventsById.set(row.id, row);
             }
 
             const countRows =
@@ -6998,7 +7076,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
             for (const eventId of affectedEventIds) {
               const confirmedCount = confirmedByEventId.get(eventId) ?? 0;
               const maxTrucks = maxTrucksByEventId.get(eventId) ?? 1;
+              const newlyConfirmed = newlyConfirmedByEventId.get(eventId) ?? 0;
+              const previousCount = Math.max(0, confirmedCount - newlyConfirmed);
+              const previousFillRate =
+                maxTrucks > 0 ? previousCount / maxTrucks : 0;
+              const currentFillRate = maxTrucks > 0 ? confirmedCount / maxTrucks : 0;
+              const crossedWarningThreshold =
+                previousFillRate < 0.8 && currentFillRate >= 0.8;
+              const crossedFullThreshold =
+                previousCount < maxTrucks && confirmedCount >= maxTrucks;
               const newStatus = confirmedCount >= maxTrucks ? "filled" : "open";
+
+              if (crossedWarningThreshold || crossedFullThreshold) {
+                const eventRowForNotify = bookingEventsById.get(eventId);
+                if (eventRowForNotify) {
+                  try {
+                    await notifyHostCapacityWarning({
+                      hostId: eventRowForNotify.hostId,
+                      eventId,
+                      eventStartDate: eventRowForNotify.date ?? null,
+                      confirmedCount,
+                      maxTrucks,
+                    });
+                  } catch (notifyError) {
+                    console.error(
+                      "[WEBHOOK] Error sending host capacity warning:",
+                      notifyError,
+                    );
+                  }
+                }
+              }
 
               await db
                 .update(events)

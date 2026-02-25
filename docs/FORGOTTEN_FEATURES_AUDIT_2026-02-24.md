@@ -31,7 +31,7 @@
 From phase audit docs, these trigger classes did not show clear server-side trigger handlers in current quick scan:
 
 - Nearby deals notification trigger ✅ Minimal implementation added (deal creation sends nearby email alerts to opted-in users based on default-address radius)
-- Host capacity warning trigger
+- Host capacity warning trigger ✅ Minimal implementation added (booking confirmation now emails host when occupancy crosses warning/full thresholds)
 - Coordinator update trigger ✅ Minimal implementation added (series cancellation now emails coordinator when email/topic prefs allow)
 - Parking pass reminder trigger (notification-specific, distinct from existing reminder campaign endpoints) ✅ Minimal implementation added (email reminders now respect user notifications channel opt-in)
 

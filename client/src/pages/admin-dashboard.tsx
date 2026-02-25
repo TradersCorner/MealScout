@@ -2233,6 +2233,20 @@ export default function AdminDashboard() {
       .map((row) => row.id);
   }, [hostPayoutRequests?.rows]);
 
+  const activePendingPayoutRow = useMemo(() => {
+    if (!activePendingPayoutRowId) {
+      return null;
+    }
+    const rows = Array.isArray(hostPayoutRequests?.rows)
+      ? hostPayoutRequests.rows
+      : [];
+    return (
+      rows.find(
+        (row) => row.id === activePendingPayoutRowId && row.status === "pending",
+      ) || null
+    );
+  }, [activePendingPayoutRowId, hostPayoutRequests?.rows]);
+
   useEffect(() => {
     if (
       activePendingPayoutRowId &&
@@ -2317,6 +2331,18 @@ export default function AdminDashboard() {
   };
 
   const handlePayoutCardKeyDown = (event: React.KeyboardEvent) => {
+    if (
+      event.key.toLowerCase() === "a" &&
+      !event.metaKey &&
+      !event.ctrlKey &&
+      !event.altKey &&
+      !isTypingTarget(event.target)
+    ) {
+      event.preventDefault();
+      approveCurrentPendingPayout();
+      return;
+    }
+
     if (
       event.key.toLowerCase() !== "n" ||
       event.metaKey ||
@@ -2450,6 +2476,21 @@ export default function AdminDashboard() {
       });
     },
   });
+
+  const approveCurrentPendingPayout = () => {
+    if (!activePendingPayoutRow) {
+      toast({
+        title: "No selected pending request",
+        description: "Use Next pending first, then approve the highlighted request.",
+      });
+      return;
+    }
+
+    updateHostPayoutRequest.mutate({
+      requestId: activePendingPayoutRow.id,
+      status: "approved",
+    });
+  };
 
   const exportHostPayoutRequestsCsv = async () => {
     if (payoutDateRangeError) {
@@ -5672,8 +5713,20 @@ export default function AdminDashboard() {
                     >
                       Next pending
                     </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={approveCurrentPendingPayout}
+                      disabled={
+                        updateHostPayoutRequest.isPending ||
+                        !activePendingPayoutRow
+                      }
+                      title="Shortcut: A"
+                    >
+                      Approve current
+                    </Button>
                     <span className="text-xs text-muted-foreground">
-                      N / Shift+N
+                      N / Shift+N / A
                     </span>
                     <Button
                       size="sm"

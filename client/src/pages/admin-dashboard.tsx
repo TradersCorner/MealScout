@@ -2017,6 +2017,15 @@ export default function AdminDashboard() {
     setPayoutToDate(formatDateInput(to));
   };
 
+  const payoutDateRangeError = useMemo(() => {
+    if (!payoutFromDate || !payoutToDate) {
+      return "";
+    }
+    return payoutFromDate > payoutToDate
+      ? "From date must be on or before To date."
+      : "";
+  }, [payoutFromDate, payoutToDate]);
+
   const handleLogout = async () => {
     try {
       await apiRequest("POST", "/api/auth/logout");
@@ -2155,7 +2164,8 @@ export default function AdminDashboard() {
         payoutPage,
         payoutPageSize,
       ],
-      enabled: !!adminUser && selectedTab === "overview",
+      enabled:
+        !!adminUser && selectedTab === "overview" && !payoutDateRangeError,
       staleTime: 30 * 1000,
       queryFn: async () => {
         const params = new URLSearchParams();
@@ -2304,6 +2314,15 @@ export default function AdminDashboard() {
   });
 
   const exportHostPayoutRequestsCsv = async () => {
+    if (payoutDateRangeError) {
+      toast({
+        title: "Invalid date range",
+        description: payoutDateRangeError,
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsExportingPayouts(true);
     try {
       const params = new URLSearchParams();
@@ -5390,7 +5409,8 @@ export default function AdminDashboard() {
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                  <div className="flex flex-col gap-2">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                     <select
                       className="w-full sm:w-40 px-3 py-2 border rounded-md text-sm"
                       value={payoutStatusFilter}
@@ -5461,6 +5481,12 @@ export default function AdminDashboard() {
                         Clear
                       </Button>
                     </div>
+                    </div>
+                    {payoutDateRangeError && (
+                      <div className="text-xs text-destructive">
+                        {payoutDateRangeError}
+                      </div>
+                    )}
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="text-xs text-muted-foreground">
@@ -5471,7 +5497,11 @@ export default function AdminDashboard() {
                       size="sm"
                       variant="outline"
                       onClick={exportHostPayoutRequestsCsv}
-                      disabled={isExportingPayouts || payoutQueueLoading}
+                      disabled={
+                        isExportingPayouts ||
+                        payoutQueueLoading ||
+                        Boolean(payoutDateRangeError)
+                      }
                     >
                       {isExportingPayouts ? "Exporting..." : "Export CSV"}
                     </Button>

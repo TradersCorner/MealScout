@@ -2251,6 +2251,34 @@ export default function AdminDashboard() {
     node.scrollIntoView({ behavior: "smooth", block: "center" });
   };
 
+  const isTypingTarget = (target: EventTarget | null) => {
+    if (!(target instanceof HTMLElement)) {
+      return false;
+    }
+    const tag = target.tagName;
+    return (
+      tag === "INPUT" ||
+      tag === "TEXTAREA" ||
+      tag === "SELECT" ||
+      target.isContentEditable
+    );
+  };
+
+  const handlePayoutCardKeyDown = (event: React.KeyboardEvent) => {
+    if (
+      event.key.toLowerCase() !== "n" ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.altKey ||
+      isTypingTarget(event.target)
+    ) {
+      return;
+    }
+
+    event.preventDefault();
+    jumpToNextPendingPayout();
+  };
+
   const [testEmailTo, setTestEmailTo] = useState("");
   const [testEmailCategory, setTestEmailCategory] = useState<
     "general" | "account"
@@ -5354,7 +5382,11 @@ export default function AdminDashboard() {
                   </Button>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-3">
+              <CardContent
+                className="space-y-3"
+                tabIndex={0}
+                onKeyDown={handlePayoutCardKeyDown}
+              >
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                   <div className="rounded-md border p-3">
                     <div className="text-xs text-muted-foreground">
@@ -5578,9 +5610,11 @@ export default function AdminDashboard() {
                       variant="outline"
                       onClick={jumpToNextPendingPayout}
                       disabled={payoutQueueLoading || !nextPendingPayoutRowId}
+                      title="Shortcut: N"
                     >
                       Next pending
                     </Button>
+                    <span className="text-xs text-muted-foreground">N</span>
                     <Button
                       size="sm"
                       variant="outline"

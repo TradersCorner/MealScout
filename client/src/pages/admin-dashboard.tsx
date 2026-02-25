@@ -5425,76 +5425,102 @@ export default function AdminDashboard() {
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex flex-col gap-2">
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                    <select
-                      className="w-full sm:w-40 px-3 py-2 border rounded-md text-sm"
-                      value={payoutStatusFilter}
-                      onChange={(e) =>
-                        setPayoutStatusFilter(
-                          e.target.value as
-                            | "all"
-                            | "pending"
-                            | "approved"
-                            | "paid"
-                            | "rejected"
-                            | "cancelled",
-                        )
-                      }
-                    >
-                      <option value="all">All statuses</option>
-                      <option value="pending">Pending</option>
-                      <option value="approved">Approved</option>
-                      <option value="paid">Paid</option>
-                      <option value="rejected">Rejected</option>
-                      <option value="cancelled">Cancelled</option>
-                    </select>
-                    <input
-                      className="w-full sm:w-64 px-3 py-2 border rounded-md text-sm"
-                      placeholder="Search host/email/address"
-                      value={payoutSearch}
-                      onChange={(e) => setPayoutSearch(e.target.value)}
-                    />
-                    <input
-                      type="date"
-                      className="w-full sm:w-40 px-3 py-2 border rounded-md text-sm"
-                      value={payoutFromDate}
-                      onChange={(e) => handlePayoutFromDateChange(e.target.value)}
-                    />
-                    <input
-                      type="date"
-                      className="w-full sm:w-40 px-3 py-2 border rounded-md text-sm"
-                      value={payoutToDate}
-                      onChange={(e) => handlePayoutToDateChange(e.target.value)}
-                    />
-                    <div className="flex flex-wrap gap-1">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => applyPayoutDatePreset("last7")}
+                      <select
+                        className="w-full sm:w-40 px-3 py-2 border rounded-md text-sm"
+                        value={payoutStatusFilter}
+                        onChange={(e) =>
+                          setPayoutStatusFilter(
+                            e.target.value as
+                              | "all"
+                              | "pending"
+                              | "approved"
+                              | "paid"
+                              | "rejected"
+                              | "cancelled",
+                          )
+                        }
                       >
-                        Last 7 Days
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => applyPayoutDatePreset("thisMonth")}
-                      >
-                        This Month
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => applyPayoutDatePreset("lastMonth")}
-                      >
-                        Last Month
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => applyPayoutDatePreset("clear")}
-                      >
-                        Clear
-                      </Button>
-                    </div>
+                        <option value="all">All statuses</option>
+                        <option value="pending">Pending</option>
+                        <option value="approved">Approved</option>
+                        <option value="paid">Paid</option>
+                        <option value="rejected">Rejected</option>
+                        <option value="cancelled">Cancelled</option>
+                      </select>
+                      <div className="flex gap-1">
+                        <Button
+                          size="sm"
+                          variant={
+                            payoutStatusFilter === "pending"
+                              ? "default"
+                              : "outline"
+                          }
+                          onClick={() => setPayoutStatusFilter("pending")}
+                        >
+                          Pending only
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant={
+                            payoutStatusFilter === "all" ? "default" : "outline"
+                          }
+                          onClick={() => setPayoutStatusFilter("all")}
+                        >
+                          All
+                        </Button>
+                      </div>
+                      <input
+                        className="w-full sm:w-64 px-3 py-2 border rounded-md text-sm"
+                        placeholder="Search host/email/address"
+                        value={payoutSearch}
+                        onChange={(e) => setPayoutSearch(e.target.value)}
+                      />
+                      <input
+                        type="date"
+                        className="w-full sm:w-40 px-3 py-2 border rounded-md text-sm"
+                        value={payoutFromDate}
+                        onChange={(e) =>
+                          handlePayoutFromDateChange(e.target.value)
+                        }
+                      />
+                      <input
+                        type="date"
+                        className="w-full sm:w-40 px-3 py-2 border rounded-md text-sm"
+                        value={payoutToDate}
+                        onChange={(e) =>
+                          handlePayoutToDateChange(e.target.value)
+                        }
+                      />
+                      <div className="flex flex-wrap gap-1">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => applyPayoutDatePreset("last7")}
+                        >
+                          Last 7 Days
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => applyPayoutDatePreset("thisMonth")}
+                        >
+                          This Month
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => applyPayoutDatePreset("lastMonth")}
+                        >
+                          Last Month
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => applyPayoutDatePreset("clear")}
+                        >
+                          Clear
+                        </Button>
+                      </div>
                     </div>
                     {payoutDateRangeError && (
                       <div className="text-xs text-destructive">

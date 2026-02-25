@@ -1977,6 +1977,46 @@ export default function AdminDashboard() {
     contactPhone: "",
     notes: "",
   });
+
+  const formatDateInput = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
+  const applyPayoutDatePreset = (
+    preset: "last7" | "thisMonth" | "lastMonth" | "clear",
+  ) => {
+    const today = new Date();
+
+    if (preset === "clear") {
+      setPayoutFromDate("");
+      setPayoutToDate("");
+      return;
+    }
+
+    if (preset === "last7") {
+      const from = new Date(today);
+      from.setDate(from.getDate() - 6);
+      setPayoutFromDate(formatDateInput(from));
+      setPayoutToDate(formatDateInput(today));
+      return;
+    }
+
+    if (preset === "thisMonth") {
+      const from = new Date(today.getFullYear(), today.getMonth(), 1);
+      setPayoutFromDate(formatDateInput(from));
+      setPayoutToDate(formatDateInput(today));
+      return;
+    }
+
+    const from = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+    const to = new Date(today.getFullYear(), today.getMonth(), 0);
+    setPayoutFromDate(formatDateInput(from));
+    setPayoutToDate(formatDateInput(to));
+  };
+
   const handleLogout = async () => {
     try {
       await apiRequest("POST", "/api/auth/logout");
@@ -5391,11 +5431,41 @@ export default function AdminDashboard() {
                       value={payoutToDate}
                       onChange={(e) => setPayoutToDate(e.target.value)}
                     />
+                    <div className="flex flex-wrap gap-1">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => applyPayoutDatePreset("last7")}
+                      >
+                        Last 7 Days
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => applyPayoutDatePreset("thisMonth")}
+                      >
+                        This Month
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => applyPayoutDatePreset("lastMonth")}
+                      >
+                        Last Month
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => applyPayoutDatePreset("clear")}
+                      >
+                        Clear
+                      </Button>
+                    </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="text-xs text-muted-foreground">
-                      {Number(hostPayoutRequests?.pagination?.total ?? 0)} matching
-                      request(s)
+                      {Number(hostPayoutRequests?.pagination?.total ?? 0)}{" "}
+                      matching request(s)
                     </div>
                     <Button
                       size="sm"
@@ -5416,7 +5486,9 @@ export default function AdminDashboard() {
                     </div>
                   </div>
                   <div className="rounded-md border p-3">
-                    <div className="text-xs text-muted-foreground">Approved</div>
+                    <div className="text-xs text-muted-foreground">
+                      Approved
+                    </div>
                     <div className="text-xl font-semibold">
                       {Number(hostPayoutRequests?.totals?.approved ?? 0)}
                     </div>
@@ -5428,7 +5500,9 @@ export default function AdminDashboard() {
                     </div>
                   </div>
                   <div className="rounded-md border p-3">
-                    <div className="text-xs text-muted-foreground">Rejected</div>
+                    <div className="text-xs text-muted-foreground">
+                      Rejected
+                    </div>
                     <div className="text-xl font-semibold">
                       {Number(hostPayoutRequests?.totals?.rejected ?? 0)}
                     </div>
@@ -5462,7 +5536,8 @@ export default function AdminDashboard() {
                                   : ""}
                               </div>
                               <div className="text-xs text-muted-foreground truncate">
-                                Requested: {row.createdAt
+                                Requested:{" "}
+                                {row.createdAt
                                   ? new Date(row.createdAt).toLocaleString()
                                   : "-"}
                                 {row.reviewedAt
@@ -5478,7 +5553,10 @@ export default function AdminDashboard() {
                             <div className="flex items-center gap-2">
                               <Badge variant="outline">{row.status}</Badge>
                               <span className="font-semibold">
-                                ${(Number(row.amountCents || 0) / 100).toFixed(2)}
+                                $
+                                {(Number(row.amountCents || 0) / 100).toFixed(
+                                  2,
+                                )}
                               </span>
                             </div>
                           </div>
@@ -5503,7 +5581,8 @@ export default function AdminDashboard() {
                               size="sm"
                               variant="outline"
                               disabled={
-                                updateHostPayoutRequest.isPending || !canMarkPaid
+                                updateHostPayoutRequest.isPending ||
+                                !canMarkPaid
                               }
                               onClick={() =>
                                 updateHostPayoutRequest.mutate({
@@ -5537,8 +5616,11 @@ export default function AdminDashboard() {
                     })}
                     <div className="flex items-center justify-between pt-2">
                       <div className="text-xs text-muted-foreground">
-                        Page {Number(hostPayoutRequests?.pagination?.page ?? 1)} of{" "}
-                        {Number(hostPayoutRequests?.pagination?.totalPages ?? 1)}
+                        Page {Number(hostPayoutRequests?.pagination?.page ?? 1)}{" "}
+                        of{" "}
+                        {Number(
+                          hostPayoutRequests?.pagination?.totalPages ?? 1,
+                        )}
                       </div>
                       <div className="flex gap-2">
                         <Button
@@ -5548,7 +5630,9 @@ export default function AdminDashboard() {
                             payoutQueueLoading ||
                             !hostPayoutRequests?.pagination?.hasPrev
                           }
-                          onClick={() => setPayoutPage((prev) => Math.max(1, prev - 1))}
+                          onClick={() =>
+                            setPayoutPage((prev) => Math.max(1, prev - 1))
+                          }
                         >
                           Previous
                         </Button>

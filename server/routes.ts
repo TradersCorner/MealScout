@@ -52,7 +52,7 @@ import {
   isStaffOrAdmin,
   verifyResourceOwnership,
 } from "./unifiedAuth";
-import { emailService } from "./emailService";
+import { emailService, isEmailConfigured } from "./emailService";
 import {
   insertRestaurantSchema,
   insertDealSchema,
@@ -373,6 +373,139 @@ const postToFacebookPage = async (message: string, link?: string | null) => {
   }
   return { ok: true, postId: data?.id };
 };
+
+const haversineKm = (
+  lat1: number,
+  lng1: number,
+  lat2: number,
+  lng2: number,
+) => {
+  const toRad = (value: number) => (value * Math.PI) / 180;
+  const earthRadiusKm = 6371;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(lat1)) *
+      Math.cos(toRad(lat2)) *
+      Math.sin(dLng / 2) *
+      Math.sin(dLng / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return earthRadiusKm * c;
+};
+
+const toNumeric = (value: unknown) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const isEmailChannelEnabled = (accountSettings: unknown) => {
+  const settings =
+    accountSettings && typeof accountSettings === "object"
+      ? (accountSettings as Record<string, any>)
+      : null;
+  const channels =
+    settings?.notifications?.channels &&
+    typeof settings.notifications.channels === "object"
+      ? (settings.notifications.channels as Record<string, any>)
+      : null;
+  return typeof channels?.email === "boolean" ? channels.email : true;
+};
+
+const isDealAlertsEnabled = (accountSettings: unknown) => {
+  const settings =
+    accountSettings && typeof accountSettings === "object"
+      ? (accountSettings as Record<string, any>)
+      : null;
+  const topics =
+    settings?.notifications?.topics &&
+    typeof settings.notifications.topics === "object"
+      ? (settings.notifications.topics as Record<string, any>)
+      : null;
+  return typeof topics?.dealAlerts === "boolean" ? topics.dealAlerts : true;
+};
+
+const getNearbyDealRadiusKm = (accountSettings: unknown) => {
+  const settings =
+    accountSettings && typeof accountSettings === "object"
+      ? (accountSettings as Record<string, any>)
+      : null;
+  const location =
+    settings?.notifications?.location &&
+    typeof settings.notifications.location === "object"
+      ? (settings.notifications.location as Record<string, any>)
+      : null;
+
+  if (location && typeof location.enabled === "boolean" && !location.enabled) {
+    return null;
+  }
+
+  const radius = Number(location?.radiusKm);
+  if (Number.isFinite(radius) && radius > 0) {
+    return radius;
+  }
+  return 8; // ~5 miles default
+};
+
+async function notifyNearbyDealSubscribers(params: {
+  creatorUserId: string;
+  dealId: string;
+  dealTitle: string;
+  restaurantName: string;
+  lat: number;
+  lng: number;
+}) {
+  if (!isEmailConfigured()) return;
+
+  const baseUrl = process.env.PUBLIC_BASE_URL || "http://localhost:5000";
+  const dealUrl = `${baseUrl.replace(/\/+$/, "")}/deals/${params.dealId}`;
+
+  const candidates = await db
+    .select({
+      userId: users.id,
+      email: users.email,
+      accountSettings: users.accountSettings,
+      latitude: userAddresses.latitude,
+      longitude: userAddresses.longitude,
+    })
+    .from(users)
+    .innerJoin(
+      userAddresses,
+      and(eq(userAddresses.userId, users.id), eq(userAddresses.isDefault, true)),
+    )
+    .where(
+      and(
+        or(eq(users.isDisabled, false), isNull(users.isDisabled)),
+        isNotNull(users.email),
+        isNotNull(userAddresses.latitude),
+        isNotNull(userAddresses.longitude),
+      ),
+    );
+
+  for (const candidate of candidates) {
+    if (!candidate.email || candidate.userId === params.creatorUserId) continue;
+    if (!isEmailChannelEnabled(candidate.accountSettings)) continue;
+    if (!isDealAlertsEnabled(candidate.accountSettings)) continue;
+
+    const radiusKm = getNearbyDealRadiusKm(candidate.accountSettings);
+    if (!radiusKm) continue;
+
+    const userLat = toNumeric(candidate.latitude);
+    const userLng = toNumeric(candidate.longitude);
+    if (userLat == null || userLng == null) continue;
+
+    const distanceKm = haversineKm(params.lat, params.lng, userLat, userLng);
+    if (distanceKm > radiusKm) continue;
+
+    await emailService.sendBasicEmail(
+      candidate.email,
+      `New deal near you: ${params.restaurantName}`,
+      `<p>A new deal was just posted near your location.</p><p><strong>${params.dealTitle}</strong> at <strong>${params.restaurantName}</strong>.</p><p><a href="${dealUrl}">View deal</a></p>`,
+      `New deal near you: ${params.dealTitle} at ${params.restaurantName}. View: ${dealUrl}`,
+      "general",
+    );
+  }
+}
 
 const queueSocialPost = async (payload: {
   platform: string;
@@ -5297,6 +5430,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         restaurantId: deal.restaurantId,
         title: deal.title,
       });
+
+      const restaurantLat = toNumeric((restaurant as any)?.latitude);
+      const restaurantLng = toNumeric((restaurant as any)?.longitude);
+      if (restaurantLat != null && restaurantLng != null) {
+        void notifyNearbyDealSubscribers({
+          creatorUserId: userId,
+          dealId: deal.id,
+          dealTitle: deal.title,
+          restaurantName: restaurant.name,
+          lat: restaurantLat,
+          lng: restaurantLng,
+        }).catch((err) => {
+          console.error("Failed to send nearby deal notifications:", err);
+        });
+      }
+
       res.json(deal);
     } catch (error: any) {
       console.error("❌ Error creating deal:", error?.message || error);

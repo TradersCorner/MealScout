@@ -1937,6 +1937,7 @@ export default function AdminDashboard() {
   >("all");
   const [payoutSearch, setPayoutSearch] = useState("");
   const [payoutPage, setPayoutPage] = useState(1);
+  const [isExportingPayouts, setIsExportingPayouts] = useState(false);
   const payoutPageSize = 12;
   const [extendDays, setExtendDays] = useState(7);
   const [userEdits, setUserEdits] = useState<any>(null);
@@ -2251,6 +2252,55 @@ export default function AdminDashboard() {
       });
     },
   });
+
+  const exportHostPayoutRequestsCsv = async () => {
+    setIsExportingPayouts(true);
+    try {
+      const params = new URLSearchParams();
+      params.set("status", payoutStatusFilter);
+      if (payoutSearch.trim()) {
+        params.set("q", payoutSearch.trim());
+      }
+
+      const response = await fetch(
+        `/api/admin/host-payout-requests/export.csv?${params.toString()}`,
+        {
+          credentials: "include",
+        },
+      );
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        throw new Error(
+          data?.message || "Failed to export host payout requests.",
+        );
+      }
+
+      const blob = await response.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      const dateStamp = new Date().toISOString().slice(0, 10);
+      anchor.href = downloadUrl;
+      anchor.download = `host-payout-requests-${payoutStatusFilter}-${dateStamp}.csv`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.URL.revokeObjectURL(downloadUrl);
+
+      toast({
+        title: "Export ready",
+        description: "Downloaded payout requests CSV.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Export failed",
+        description: error?.message || "Unable to export payout requests.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsExportingPayouts(false);
+    }
+  };
   const clearMapCaches = useMutation({
     mutationFn: async () => {
       await apiRequest("POST", "/api/admin/map/locations-cache/clear");
@@ -5314,9 +5364,19 @@ export default function AdminDashboard() {
                       onChange={(e) => setPayoutSearch(e.target.value)}
                     />
                   </div>
-                  <div className="text-xs text-muted-foreground">
-                    {Number(hostPayoutRequests?.pagination?.total ?? 0)} matching
-                    request(s)
+                  <div className="flex items-center gap-2">
+                    <div className="text-xs text-muted-foreground">
+                      {Number(hostPayoutRequests?.pagination?.total ?? 0)} matching
+                      request(s)
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={exportHostPayoutRequestsCsv}
+                      disabled={isExportingPayouts || payoutQueueLoading}
+                    >
+                      {isExportingPayouts ? "Exporting..." : "Export CSV"}
+                    </Button>
                   </div>
                 </div>
 

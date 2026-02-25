@@ -2211,6 +2211,46 @@ export default function AdminDashboard() {
       },
     });
 
+  const nextPendingPayoutRowId = useMemo(() => {
+    const rows = Array.isArray(hostPayoutRequests?.rows)
+      ? hostPayoutRequests.rows
+      : [];
+    const pendingRows = rows.filter((row) => row.status === "pending");
+    if (pendingRows.length === 0) {
+      return null;
+    }
+
+    return pendingRows
+      .slice()
+      .sort((a, b) => {
+        const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return aTime - bTime;
+      })[0]?.id;
+  }, [hostPayoutRequests?.rows]);
+
+  const jumpToNextPendingPayout = () => {
+    if (!nextPendingPayoutRowId) {
+      toast({
+        title: "No pending requests",
+        description: "There are no pending payout requests in the current view.",
+      });
+      return;
+    }
+
+    const node = document.getElementById(`payout-row-${nextPendingPayoutRowId}`);
+    if (!node) {
+      toast({
+        title: "Row not found",
+        description: "Refresh the queue and try again.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    node.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
+
   const [testEmailTo, setTestEmailTo] = useState("");
   const [testEmailCategory, setTestEmailCategory] = useState<
     "general" | "account"
@@ -5536,6 +5576,14 @@ export default function AdminDashboard() {
                     <Button
                       size="sm"
                       variant="outline"
+                      onClick={jumpToNextPendingPayout}
+                      disabled={payoutQueueLoading || !nextPendingPayoutRowId}
+                    >
+                      Next pending
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
                       onClick={exportHostPayoutRequestsCsv}
                       disabled={
                         isExportingPayouts ||
@@ -5592,6 +5640,7 @@ export default function AdminDashboard() {
                       return (
                         <div
                           key={row.id}
+                          id={`payout-row-${row.id}`}
                           className="rounded-md border px-3 py-2 text-sm flex flex-col gap-2"
                         >
                           <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">

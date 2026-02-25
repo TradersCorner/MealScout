@@ -3,6 +3,26 @@ import { db } from "./db";
 import { events, hosts, users } from "@shared/schema";
 import { emailService, isEmailConfigured } from "./emailService";
 
+const isEmailNotificationsEnabled = (accountSettings: unknown) => {
+  const settings =
+    accountSettings && typeof accountSettings === "object"
+      ? (accountSettings as Record<string, any>)
+      : null;
+  const notifications =
+    settings?.notifications && typeof settings.notifications === "object"
+      ? (settings.notifications as Record<string, any>)
+      : null;
+  const channels =
+    notifications?.channels && typeof notifications.channels === "object"
+      ? (notifications.channels as Record<string, any>)
+      : null;
+
+  if (channels && typeof channels.email === "boolean") {
+    return channels.email;
+  }
+  return true;
+};
+
 const hasPricing = (row: {
   breakfastPriceCents: number | null;
   lunchPriceCents: number | null;
@@ -24,6 +44,7 @@ export type ParkingPassOnboardingQueueItem = {
   businessName: string | null;
   address: string | null;
   email: string | null;
+  emailNotificationsEnabled: boolean;
   locationType: string | null;
   pricingReady: boolean;
   stripeReady: boolean;
@@ -56,6 +77,7 @@ async function buildOnboardingQueueInternal() {
       stripeOnboardingCompleted: hosts.stripeOnboardingCompleted,
       email: users.email,
       userType: users.userType,
+      accountSettings: users.accountSettings,
     })
     .from(hosts)
     .innerJoin(users, eq(hosts.userId, users.id))
@@ -100,6 +122,9 @@ async function buildOnboardingQueueInternal() {
       businessName: host.businessName,
       address: host.address,
       email: host.email,
+      emailNotificationsEnabled: isEmailNotificationsEnabled(
+        host.accountSettings,
+      ),
       locationType: host.locationType,
       pricingReady,
       stripeReady,
@@ -165,6 +190,14 @@ export async function sendParkingPassReminderForHost(hostId: string) {
     };
   }
 
+  if (!item.emailNotificationsEnabled) {
+    return {
+      ok: false,
+      code: "notifications_opted_out",
+      message: "Host owner has email notifications turned off",
+    };
+  }
+
   const sent = await emailService.sendParkingPassCompletionReminder({
     email: item.email,
     businessName: item.businessName || "Your location",
@@ -218,7 +251,7 @@ export async function remindIncompleteParkingPassHosts() {
   const stripeIncomplete = queue.filter((item) => item.needsStripe).length;
 
   for (const item of queue) {
-    if (!item.email) {
+    if (!item.email || !item.emailNotificationsEnabled) {
       skipped += 1;
       continue;
     }

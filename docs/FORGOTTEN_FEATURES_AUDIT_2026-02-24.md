@@ -33,7 +33,7 @@ From phase audit docs, these trigger classes did not show clear server-side trig
 - Nearby deals notification trigger
 - Host capacity warning trigger
 - Coordinator update trigger
-- Parking pass reminder trigger (notification-specific, distinct from existing reminder campaign endpoints)
+- Parking pass reminder trigger (notification-specific, distinct from existing reminder campaign endpoints) ✅ Minimal implementation added (email reminders now respect user notifications channel opt-in)
 
 ## Recommended Minimal Next Actions
 

@@ -10,6 +10,38 @@ import { assertMaxSpan180Days, generateOccurrences, filterFutureOccurrences } fr
 import { eq } from "drizzle-orm";
 import { isParkingPassPublicReady } from "../services/parkingPassQuality";
 
+const isEmailChannelEnabled = (accountSettings: unknown) => {
+  const settings =
+    accountSettings && typeof accountSettings === "object"
+      ? (accountSettings as Record<string, any>)
+      : null;
+  const notifications =
+    settings?.notifications && typeof settings.notifications === "object"
+      ? (settings.notifications as Record<string, any>)
+      : null;
+  const channels =
+    notifications?.channels && typeof notifications.channels === "object"
+      ? (notifications.channels as Record<string, any>)
+      : null;
+  return typeof channels?.email === "boolean" ? channels.email : true;
+};
+
+const isCoordinatorUpdatesTopicEnabled = (accountSettings: unknown) => {
+  const settings =
+    accountSettings && typeof accountSettings === "object"
+      ? (accountSettings as Record<string, any>)
+      : null;
+  const notifications =
+    settings?.notifications && typeof settings.notifications === "object"
+      ? (settings.notifications as Record<string, any>)
+      : null;
+  const topics =
+    notifications?.topics && typeof notifications.topics === "object"
+      ? (notifications.topics as Record<string, any>)
+      : null;
+  return typeof topics?.nearbyEvents === "boolean" ? topics.nearbyEvents : true;
+};
+
 export function registerOpenCallSeriesRoutes(app: Express) {
   // EVENT SERIES (OPEN CALLS) ENDPOINTS
 
@@ -280,6 +312,26 @@ export function registerOpenCallSeriesRoutes(app: Express) {
                   dates
                 );
               }
+            }
+          }
+
+          if (series.coordinatorUserId) {
+            const coordinator = await storage.getUser(series.coordinatorUserId);
+            if (
+              coordinator?.email &&
+              isEmailChannelEnabled((coordinator as any).accountSettings) &&
+              isCoordinatorUpdatesTopicEnabled(
+                (coordinator as any).accountSettings,
+              )
+            ) {
+              const occurrenceCount = futureOccurrences.length;
+              await emailService.sendBasicEmail(
+                coordinator.email,
+                `Series update: ${series.name} was cancelled`,
+                `<p>Your event series <strong>${series.name}</strong> was cancelled.</p><p>${occurrenceCount} future occurrence(s) were closed.</p>`,
+                `Your event series "${series.name}" was cancelled. ${occurrenceCount} future occurrence(s) were closed.`,
+                "general",
+              );
             }
           }
         } catch (err) {

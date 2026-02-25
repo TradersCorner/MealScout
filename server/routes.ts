@@ -216,6 +216,7 @@ import {
   or,
 } from "drizzle-orm";
 import { registerStoryCronJobs } from "./storiesCronJobs";
+import { registerFeaturedVideoCronJobs } from "./featuredVideoCron";
 import {
   getMapEndpointWatchdogSnapshot,
   runMapEndpointWatchdog,
@@ -9093,6 +9094,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Register story cron jobs (cleanup and level recalculation)
   registerStoryCronJobs(app);
+
+  // Register featured video cron endpoint
+  await registerFeaturedVideoCronJobs(app);
 
   // Schedule Weekly Digest (Monday 8:00 AM)
   cron.schedule("0 8 * * 1", async () => {

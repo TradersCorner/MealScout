@@ -181,6 +181,7 @@ interface HostPayoutRequestItem {
   status: "pending" | "approved" | "paid" | "rejected" | "cancelled";
   notes?: string | null;
   reviewedByUserId?: string | null;
+  reviewedByEmail?: string | null;
   reviewedAt?: string | null;
   paidAt?: string | null;
   createdAt?: string | null;
@@ -5284,6 +5285,19 @@ export default function AdminDashboard() {
                                 {row.hostAddress
                                   ? ` • ${row.hostAddress}${row.hostCity ? `, ${row.hostCity}` : ""}${row.hostState ? `, ${row.hostState}` : ""}`
                                   : ""}
+                              </div>
+                              <div className="text-xs text-muted-foreground truncate">
+                                Requested: {row.createdAt
+                                  ? new Date(row.createdAt).toLocaleString()
+                                  : "-"}
+                                {row.reviewedAt
+                                  ? ` • Reviewed: ${new Date(row.reviewedAt).toLocaleString()}`
+                                  : ""}
+                                {row.reviewedByEmail
+                                  ? ` • By: ${row.reviewedByEmail}`
+                                  : row.reviewedByUserId
+                                    ? ` • By: ${row.reviewedByUserId}`
+                                    : ""}
                               </div>
                             </div>
                             <div className="flex items-center gap-2">

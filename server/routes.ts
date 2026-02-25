@@ -9202,6 +9202,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             status: hostPayoutRequests.status,
             notes: hostPayoutRequests.notes,
             reviewedByUserId: hostPayoutRequests.reviewedByUserId,
+            reviewedByEmail:
+              sql<string>`(select u.email from users u where u.id = ${hostPayoutRequests.reviewedByUserId} limit 1)`,
             reviewedAt: hostPayoutRequests.reviewedAt,
             paidAt: hostPayoutRequests.paidAt,
             createdAt: hostPayoutRequests.createdAt,
@@ -9277,6 +9279,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (existing.status === "paid") {
           return res.status(400).json({
             message: "Paid requests cannot be modified",
+          });
+        }
+
+        if (nextStatus === "approved" && existing.status !== "pending") {
+          return res.status(400).json({
+            message: "Only pending requests can be approved",
+          });
+        }
+
+        if (nextStatus === "paid" && existing.status !== "approved") {
+          return res.status(400).json({
+            message: "Only approved requests can be marked paid",
+          });
+        }
+
+        if (
+          nextStatus === "rejected" &&
+          !["pending", "approved"].includes(String(existing.status || ""))
+        ) {
+          return res.status(400).json({
+            message: "Only pending or approved requests can be rejected",
+          });
+        }
+
+        if (
+          nextStatus === "cancelled" &&
+          !["pending", "approved"].includes(String(existing.status || ""))
+        ) {
+          return res.status(400).json({
+            message: "Only pending or approved requests can be cancelled",
           });
         }
 

@@ -1985,36 +1985,50 @@ export default function AdminDashboard() {
     return `${year}-${month}-${day}`;
   };
 
+  const setPayoutDateRange = (from: string, to: string) => {
+    if (from && to && from > to) {
+      setPayoutFromDate(to);
+      setPayoutToDate(from);
+      return;
+    }
+    setPayoutFromDate(from);
+    setPayoutToDate(to);
+  };
+
+  const handlePayoutFromDateChange = (value: string) => {
+    setPayoutDateRange(value, payoutToDate);
+  };
+
+  const handlePayoutToDateChange = (value: string) => {
+    setPayoutDateRange(payoutFromDate, value);
+  };
+
   const applyPayoutDatePreset = (
     preset: "last7" | "thisMonth" | "lastMonth" | "clear",
   ) => {
     const today = new Date();
 
     if (preset === "clear") {
-      setPayoutFromDate("");
-      setPayoutToDate("");
+      setPayoutDateRange("", "");
       return;
     }
 
     if (preset === "last7") {
       const from = new Date(today);
       from.setDate(from.getDate() - 6);
-      setPayoutFromDate(formatDateInput(from));
-      setPayoutToDate(formatDateInput(today));
+      setPayoutDateRange(formatDateInput(from), formatDateInput(today));
       return;
     }
 
     if (preset === "thisMonth") {
       const from = new Date(today.getFullYear(), today.getMonth(), 1);
-      setPayoutFromDate(formatDateInput(from));
-      setPayoutToDate(formatDateInput(today));
+      setPayoutDateRange(formatDateInput(from), formatDateInput(today));
       return;
     }
 
     const from = new Date(today.getFullYear(), today.getMonth() - 1, 1);
     const to = new Date(today.getFullYear(), today.getMonth(), 0);
-    setPayoutFromDate(formatDateInput(from));
-    setPayoutToDate(formatDateInput(to));
+    setPayoutDateRange(formatDateInput(from), formatDateInput(to));
   };
 
   const payoutDateRangeError = useMemo(() => {
@@ -5443,13 +5457,13 @@ export default function AdminDashboard() {
                       type="date"
                       className="w-full sm:w-40 px-3 py-2 border rounded-md text-sm"
                       value={payoutFromDate}
-                      onChange={(e) => setPayoutFromDate(e.target.value)}
+                      onChange={(e) => handlePayoutFromDateChange(e.target.value)}
                     />
                     <input
                       type="date"
                       className="w-full sm:w-40 px-3 py-2 border rounded-md text-sm"
                       value={payoutToDate}
-                      onChange={(e) => setPayoutToDate(e.target.value)}
+                      onChange={(e) => handlePayoutToDateChange(e.target.value)}
                     />
                     <div className="flex flex-wrap gap-1">
                       <Button

@@ -12,10 +12,11 @@
    - `server/incidentManager.ts` logs warning: Twilio/SMS path requested but no SMS sent.
    - Impact: SEV1 incidents do not send SMS even when SMS config is enabled.
 
-3. **Legacy/deferred auth module still present but inactive**
+3. **Legacy/deferred auth module still present but inactive** ✅ Decision locked
    - `server/facebookAuth.ts` file exists.
    - Runtime auth moved to `server/unifiedAuth.ts`; no active imports of `facebookAuth.ts` found.
    - Impact: potential confusion/drift (not a runtime bug unless someone expects it active).
+   - Resolution: kept current Facebook auth intact in `unifiedAuth`, and annotated `facebookAuth.ts` as legacy reference-only.
 
 ## Confirmed Implemented (docs are stale)
 
@@ -36,8 +37,7 @@ From phase audit docs, these trigger classes did not show clear server-side trig
 
 ## Recommended Minimal Next Actions
 
-1. Update stale docs that still mark weekly digest trigger as unimplemented.
-2. Decide one of:
+1. Decide one of:
    - Implement Twilio SMS incident path, or
    - Explicitly disable/remove SMS config knobs to avoid false expectation.
 

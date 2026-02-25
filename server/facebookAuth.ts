@@ -1,3 +1,7 @@
+// Legacy module retained for reference only.
+// Active Facebook OAuth is configured in `server/unifiedAuth.ts` via `setupUnifiedAuth`.
+// Do not wire this module into runtime routes unless intentionally migrating auth architecture.
+
 import passport from "passport";
 import { Strategy as FacebookStrategy } from "passport-facebook";
 import session from "express-session";

@@ -202,6 +202,18 @@ interface HostPayoutRequestsResponse {
     rejected: number;
   };
   rows: HostPayoutRequestItem[];
+  pagination?: {
+    page: number;
+    pageSize: number;
+    total: number;
+    totalPages: number;
+    hasNext: boolean;
+    hasPrev: boolean;
+  };
+  filters?: {
+    status: string;
+    q: string;
+  };
 }
 
 const FOOT_TRAFFIC_OPTIONS = [
@@ -1920,6 +1932,12 @@ export default function AdminDashboard() {
   const [userTypeFilter, setUserTypeFilter] = useState("all");
   const [selectedDeal, setSelectedDeal] = useState<any>(null);
   const [dealDetailsOpen, setDealDetailsOpen] = useState(false);
+  const [payoutStatusFilter, setPayoutStatusFilter] = useState<
+    "all" | "pending" | "approved" | "paid" | "rejected" | "cancelled"
+  >("all");
+  const [payoutSearch, setPayoutSearch] = useState("");
+  const [payoutPage, setPayoutPage] = useState(1);
+  const payoutPageSize = 12;
   const [extendDays, setExtendDays] = useState(7);
   const [userEdits, setUserEdits] = useState<any>(null);
   const [parkingPassEdits, setParkingPassEdits] = useState<Record<string, any>>(
@@ -2085,9 +2103,37 @@ export default function AdminDashboard() {
 
   const { data: hostPayoutRequests, isLoading: payoutQueueLoading } =
     useQuery<HostPayoutRequestsResponse>({
-      queryKey: ["/api/admin/host-payout-requests"],
+      queryKey: [
+        "/api/admin/host-payout-requests",
+        payoutStatusFilter,
+        payoutSearch,
+        payoutPage,
+        payoutPageSize,
+      ],
       enabled: !!adminUser && selectedTab === "overview",
       staleTime: 30 * 1000,
+      queryFn: async () => {
+        const params = new URLSearchParams();
+        params.set("status", payoutStatusFilter);
+        params.set("page", String(payoutPage));
+        params.set("pageSize", String(payoutPageSize));
+        if (payoutSearch.trim()) {
+          params.set("q", payoutSearch.trim());
+        }
+        const res = await fetch(
+          `/api/admin/host-payout-requests?${params.toString()}`,
+          {
+            credentials: "include",
+          },
+        );
+        const data = await res.json().catch(() => null);
+        if (!res.ok) {
+          throw new Error(
+            data?.message || "Failed to load host payout requests.",
+          );
+        }
+        return data as HostPayoutRequestsResponse;
+      },
     });
 
   const [testEmailTo, setTestEmailTo] = useState("");
@@ -3441,6 +3487,10 @@ export default function AdminDashboard() {
       userType: selectedUser.userType || "customer",
     });
   }, [selectedUser]);
+
+  useEffect(() => {
+    setPayoutPage(1);
+  }, [payoutStatusFilter, payoutSearch]);
 
   useEffect(() => {
     if (!parkingPasses.length) {
@@ -5233,6 +5283,43 @@ export default function AdminDashboard() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                    <select
+                      className="w-full sm:w-40 px-3 py-2 border rounded-md text-sm"
+                      value={payoutStatusFilter}
+                      onChange={(e) =>
+                        setPayoutStatusFilter(
+                          e.target.value as
+                            | "all"
+                            | "pending"
+                            | "approved"
+                            | "paid"
+                            | "rejected"
+                            | "cancelled",
+                        )
+                      }
+                    >
+                      <option value="all">All statuses</option>
+                      <option value="pending">Pending</option>
+                      <option value="approved">Approved</option>
+                      <option value="paid">Paid</option>
+                      <option value="rejected">Rejected</option>
+                      <option value="cancelled">Cancelled</option>
+                    </select>
+                    <input
+                      className="w-full sm:w-64 px-3 py-2 border rounded-md text-sm"
+                      placeholder="Search host/email/address"
+                      value={payoutSearch}
+                      onChange={(e) => setPayoutSearch(e.target.value)}
+                    />
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {Number(hostPayoutRequests?.pagination?.total ?? 0)} matching
+                    request(s)
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                   <div className="rounded-md border p-3">
                     <div className="text-xs text-muted-foreground">Pending</div>
@@ -5267,7 +5354,7 @@ export default function AdminDashboard() {
                 ) : Array.isArray(hostPayoutRequests?.rows) &&
                   hostPayoutRequests.rows.length > 0 ? (
                   <div className="space-y-2">
-                    {hostPayoutRequests.rows.slice(0, 12).map((row) => {
+                    {hostPayoutRequests.rows.map((row) => {
                       const canApprove = row.status === "pending";
                       const canMarkPaid = row.status === "approved";
                       return (
@@ -5360,11 +5447,36 @@ export default function AdminDashboard() {
                         </div>
                       );
                     })}
-                    {hostPayoutRequests.rows.length > 12 ? (
+                    <div className="flex items-center justify-between pt-2">
                       <div className="text-xs text-muted-foreground">
-                        Showing first 12 of {hostPayoutRequests.rows.length} payout requests.
+                        Page {Number(hostPayoutRequests?.pagination?.page ?? 1)} of{" "}
+                        {Number(hostPayoutRequests?.pagination?.totalPages ?? 1)}
                       </div>
-                    ) : null}
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={
+                            payoutQueueLoading ||
+                            !hostPayoutRequests?.pagination?.hasPrev
+                          }
+                          onClick={() => setPayoutPage((prev) => Math.max(1, prev - 1))}
+                        >
+                          Previous
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={
+                            payoutQueueLoading ||
+                            !hostPayoutRequests?.pagination?.hasNext
+                          }
+                          onClick={() => setPayoutPage((prev) => prev + 1)}
+                        >
+                          Next
+                        </Button>
+                      </div>
+                    </div>
                   </div>
                 ) : (
                   <div className="text-sm text-muted-foreground">

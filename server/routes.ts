@@ -9191,9 +9191,75 @@ export async function registerRoutes(app: Express): Promise<Server> {
     "/api/admin/host-payout-requests",
     isAuthenticated,
     isAdmin,
-    async (_req, res) => {
+    async (req, res) => {
       try {
-        const rows = await db
+        const pageRaw = Number((req as any)?.query?.page ?? 1);
+        const pageSizeRaw = Number((req as any)?.query?.pageSize ?? 20);
+        const page = Number.isFinite(pageRaw)
+          ? Math.max(1, Math.floor(pageRaw))
+          : 1;
+        const pageSize = Number.isFinite(pageSizeRaw)
+          ? Math.min(100, Math.max(1, Math.floor(pageSizeRaw)))
+          : 20;
+        const statusFilterRaw = String((req as any)?.query?.status || "all")
+          .trim()
+          .toLowerCase();
+        const statusFilter = [
+          "all",
+          "pending",
+          "approved",
+          "paid",
+          "rejected",
+          "cancelled",
+        ].includes(statusFilterRaw)
+          ? statusFilterRaw
+          : "all";
+        const searchTerm = String((req as any)?.query?.q || "").trim();
+
+        const filters: any[] = [];
+        if (statusFilter !== "all") {
+          filters.push(eq(hostPayoutRequests.status, statusFilter));
+        }
+        if (searchTerm.length > 0) {
+          const likePattern = `%${searchTerm}%`;
+          filters.push(
+            or(
+              like(hosts.businessName, likePattern),
+              like(users.email, likePattern),
+              like(hosts.address, likePattern),
+            ),
+          );
+        }
+        const whereClause =
+          filters.length > 0 ? and(...(filters as [any, ...any[]])) : undefined;
+
+        const [totalsRow] = await db
+          .select({
+            pending:
+              sql<number>`coalesce(sum(case when ${hostPayoutRequests.status} = 'pending' then 1 else 0 end), 0)`,
+            approved:
+              sql<number>`coalesce(sum(case when ${hostPayoutRequests.status} = 'approved' then 1 else 0 end), 0)`,
+            paid:
+              sql<number>`coalesce(sum(case when ${hostPayoutRequests.status} = 'paid' then 1 else 0 end), 0)`,
+            rejected:
+              sql<number>`coalesce(sum(case when ${hostPayoutRequests.status} = 'rejected' then 1 else 0 end), 0)`,
+          })
+          .from(hostPayoutRequests);
+
+        const countQuery = db
+          .select({ count: sql<number>`count(*)` })
+          .from(hostPayoutRequests)
+          .leftJoin(hosts, eq(hostPayoutRequests.hostId, hosts.id))
+          .leftJoin(users, eq(hostPayoutRequests.userId, users.id));
+
+        if (whereClause) {
+          countQuery.where(whereClause as any);
+        }
+
+        const [countRow] = await countQuery;
+        const filteredTotal = Number(countRow?.count || 0);
+
+        const rowsQuery = db
           .select({
             id: hostPayoutRequests.id,
             hostId: hostPayoutRequests.hostId,
@@ -9217,22 +9283,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .from(hostPayoutRequests)
           .leftJoin(hosts, eq(hostPayoutRequests.hostId, hosts.id))
           .leftJoin(users, eq(hostPayoutRequests.userId, users.id))
-          .orderBy(desc(hostPayoutRequests.createdAt));
+          .orderBy(desc(hostPayoutRequests.createdAt))
+          .limit(pageSize)
+          .offset((page - 1) * pageSize);
+
+        if (whereClause) {
+          rowsQuery.where(whereClause as any);
+        }
+
+        const rows = await rowsQuery;
 
         const totals = {
-          pending: rows.filter((row: (typeof rows)[number]) => row.status === "pending")
-            .length,
-          approved: rows.filter(
-            (row: (typeof rows)[number]) => row.status === "approved",
-          ).length,
-          paid: rows.filter((row: (typeof rows)[number]) => row.status === "paid")
-            .length,
-          rejected: rows.filter(
-            (row: (typeof rows)[number]) => row.status === "rejected",
-          ).length,
+          pending: Number(totalsRow?.pending || 0),
+          approved: Number(totalsRow?.approved || 0),
+          paid: Number(totalsRow?.paid || 0),
+          rejected: Number(totalsRow?.rejected || 0),
         };
 
-        res.json({ ok: true, totals, rows });
+        res.json({
+          ok: true,
+          totals,
+          rows,
+          pagination: {
+            page,
+            pageSize,
+            total: filteredTotal,
+            totalPages: Math.max(1, Math.ceil(filteredTotal / pageSize)),
+            hasNext: page * pageSize < filteredTotal,
+            hasPrev: page > 1,
+          },
+          filters: {
+            status: statusFilter,
+            q: searchTerm,
+          },
+        });
       } catch (error: any) {
         console.error("Failed to load host payout requests:", error);
         res.status(500).json({

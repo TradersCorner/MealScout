@@ -27,6 +27,7 @@
 ## Likely Missing Trigger Logic (not found in current scan)
 
 From phase audit docs, these trigger classes did not show clear server-side trigger handlers in current quick scan:
+
 - Nearby deals notification trigger
 - Host capacity warning trigger
 - Coordinator update trigger

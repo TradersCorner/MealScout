@@ -47,11 +47,11 @@ From phase audit docs, these trigger classes did not show clear server-side trig
 - Result: expected fail-fast due to missing required incident env (`BREVO_API_KEY`, `INCIDENT_EMAIL_RECIPIENTS`).
 - Additional optional channels also not configured locally (`SLACK_WEBHOOK_URL`, `INCIDENT_SMS_RECIPIENTS`), so full tri-channel validation is currently blocked in local.
 - Next execution target: staging/prod-like env with the following set:
-   - `BREVO_API_KEY`
-   - `INCIDENT_EMAIL_RECIPIENTS`
-   - `INCIDENT_SMS_RECIPIENTS`
-   - `SLACK_WEBHOOK_URL`
-   - `INCIDENT_SIGNATURE_SECRET`
+  - `BREVO_API_KEY`
+  - `INCIDENT_EMAIL_RECIPIENTS`
+  - `INCIDENT_SMS_RECIPIENTS`
+  - `SLACK_WEBHOOK_URL`
+  - `INCIDENT_SIGNATURE_SECRET`
 
 ## Config Validator Snapshot (2026-02-25)
 
@@ -77,7 +77,33 @@ From phase audit docs, these trigger classes did not show clear server-side trig
 
 - Verified `HostLocationManager` in staff UI is wired with editable mode via `canEditHostLocations` for `staff`/`admin`/`super_admin`.
 - Verified admin pricing update endpoints remain staff-accessible and are not short-circuited by `denyStaffEdits`:
-   - `PATCH /api/admin/parking-pass/:id`
-   - `PATCH /api/admin/hosts/:id`
+  - `PATCH /api/admin/parking-pass/:id`
+  - `PATCH /api/admin/hosts/:id`
 - Verified host-route role helper still recognizes `staff`/`admin`/`super_admin` in role checks used by host management flows.
 - Remaining validation gap is runtime-only (staging execution with full incident notification env).
+
+## Staging Tri-Channel Validation Runbook (Ready)
+
+1. **Set required incident env in staging**
+   - `BREVO_API_KEY`
+   - `INCIDENT_EMAIL_RECIPIENTS`
+   - `INCIDENT_SMS_RECIPIENTS`
+   - `SLACK_WEBHOOK_URL`
+   - `INCIDENT_SIGNATURE_SECRET`
+
+2. **Run config and incident harness in staging shell**
+   - `npm run validate:config`
+   - `npm run test:incidents`
+
+3. **Expected pass criteria**
+   - `validate:config` shows email/slack/sms configured and no default incident secret warning.
+   - `test:incidents` completes without fail-fast errors.
+   - Critical incident test emits notifications on all three channels:
+      - Email received by `INCIDENT_EMAIL_RECIPIENTS`
+      - Slack message appears on incident webhook channel
+      - SMS received by `INCIDENT_SMS_RECIPIENTS`
+
+4. **Evidence to capture for closure**
+   - Command output snippets for both scripts
+   - One timestamped sample per channel (email/slack/sms)
+   - Incident ID from test output tied to channel artifacts

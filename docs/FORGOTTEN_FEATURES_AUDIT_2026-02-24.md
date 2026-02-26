@@ -45,3 +45,11 @@ From phase audit docs, these trigger classes did not show clear server-side trig
 
 - `storage.deleteUser` now always performs soft-delete/anonymization (disable account + scrub PII) and no longer hard-deletes from `users`.
 - This prevents accidental loss of non-deleted user records while still honoring deletion requests.
+
+## Pricing Role Access Verification (2026-02-25)
+
+- Admin pricing edit APIs already accept both admin and staff roles (`isStaffOrAdmin`) for:
+   - `PATCH /api/admin/parking-pass/:id`
+   - `PATCH /api/admin/hosts/:id`
+- Staff dashboard host location manager edit gate has been aligned to permit `staff` and `super_admin` alongside `admin`.
+- Result: manual pricing/location edits are now available to both admin and staff in dashboard workflows.

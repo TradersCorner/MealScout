@@ -35,15 +35,24 @@ const coerceCents = (value: unknown) => {
 
 const applySlotSumToDailyIfAuto = (prev: any, nextSlotSumCents: number) => {
   if (prev?._dailyOnlySelected) return prev;
-  if (prev?._dailyManuallyEdited) return prev;
-  const nextDaily = Math.max(0, Math.round(nextSlotSumCents));
-  if (nextDaily <= 0) return prev;
+  const derivedSlotSum = Math.max(0, Math.round(nextSlotSumCents));
+  if (derivedSlotSum <= 0) return prev;
+
+  const nextDaily = prev?._dailyManuallyEdited
+    ? coerceCents(prev?.parkingPassDailyPriceCents)
+    : derivedSlotSum;
+  const nextWeekly = prev?._weeklyManuallyEdited
+    ? coerceCents(prev?.parkingPassWeeklyPriceCents)
+    : nextDaily * 7;
+  const nextMonthly = prev?._monthlyManuallyEdited
+    ? coerceCents(prev?.parkingPassMonthlyPriceCents)
+    : nextDaily * 30;
 
   return {
     ...prev,
     parkingPassDailyPriceCents: nextDaily,
-    parkingPassWeeklyPriceCents: nextDaily * 7,
-    parkingPassMonthlyPriceCents: nextDaily * 30,
+    parkingPassWeeklyPriceCents: nextWeekly,
+    parkingPassMonthlyPriceCents: nextMonthly,
   };
 };
 
@@ -275,8 +284,13 @@ export default function HostLocationManager({
                     const lunch = coerceCents(host.parkingPassLunchPriceCents);
                     const dinner = coerceCents(host.parkingPassDinnerPriceCents);
                     const slotSum = breakfast + lunch + dinner;
-                    const initialDaily = slotSum > 0 ? slotSum : coerceCents(host.parkingPassDailyPriceCents);
+                    const savedDaily = coerceCents(host.parkingPassDailyPriceCents);
+                    const initialDaily = savedDaily > 0 ? savedDaily : slotSum;
                     const dailyOnlySelected = slotSum === 0 && initialDaily > 0;
+                    const savedWeekly = coerceCents(host.parkingPassWeeklyPriceCents);
+                    const savedMonthly = coerceCents(host.parkingPassMonthlyPriceCents);
+                    const derivedWeekly = initialDaily > 0 ? initialDaily * 7 : 0;
+                    const derivedMonthly = initialDaily > 0 ? initialDaily * 30 : 0;
                     setPricingEdits({
                       parkingPassStartTime: host.parkingPassStartTime || "",
                       parkingPassEndTime: host.parkingPassEndTime || "",
@@ -288,14 +302,19 @@ export default function HostLocationManager({
                       parkingPassDinnerPriceCents: dinner,
                       parkingPassDailyPriceCents: initialDaily,
                       parkingPassWeeklyPriceCents:
-                        initialDaily > 0
-                          ? initialDaily * 7
-                          : coerceCents(host.parkingPassWeeklyPriceCents),
+                        savedWeekly > 0 ? savedWeekly : derivedWeekly,
                       parkingPassMonthlyPriceCents:
-                        initialDaily > 0
-                          ? initialDaily * 30
-                          : coerceCents(host.parkingPassMonthlyPriceCents),
-                      _dailyManuallyEdited: false,
+                        savedMonthly > 0 ? savedMonthly : derivedMonthly,
+                      _dailyManuallyEdited:
+                        savedDaily > 0 && slotSum > 0 ? savedDaily !== slotSum : false,
+                      _weeklyManuallyEdited:
+                        savedWeekly > 0 && derivedWeekly > 0
+                          ? savedWeekly !== derivedWeekly
+                          : false,
+                      _monthlyManuallyEdited:
+                        savedMonthly > 0 && derivedMonthly > 0
+                          ? savedMonthly !== derivedMonthly
+                          : false,
                       _dailyOnlySelected: dailyOnlySelected,
                     });
                   }}
@@ -519,11 +538,17 @@ export default function HostLocationManager({
                       value={toDollars(pricingEdits.parkingPassDailyPriceCents)}
                       onChange={(e) => {
                         const cents = toCents(e.target.value);
+                        const nextWeekly = pricingEdits._weeklyManuallyEdited
+                          ? coerceCents(pricingEdits.parkingPassWeeklyPriceCents)
+                          : cents * 7;
+                        const nextMonthly = pricingEdits._monthlyManuallyEdited
+                          ? coerceCents(pricingEdits.parkingPassMonthlyPriceCents)
+                          : cents * 30;
                         setPricingEdits({
                           ...pricingEdits,
                           parkingPassDailyPriceCents: cents,
-                          parkingPassWeeklyPriceCents: cents * 7,
-                          parkingPassMonthlyPriceCents: cents * 30,
+                          parkingPassWeeklyPriceCents: nextWeekly,
+                          parkingPassMonthlyPriceCents: nextMonthly,
                           _dailyManuallyEdited: cents > 0,
                         });
                       }}
@@ -534,40 +559,36 @@ export default function HostLocationManager({
                     <div className="text-[11px] text-muted-foreground">Weekly ($)</div>
                     <input
                       type="number"
-                      value={
-                        Number(pricingEdits.parkingPassDailyPriceCents || 0)
-                          ? String(
-                              (
-                                (Number(pricingEdits.parkingPassDailyPriceCents || 0) *
-                                  7) /
-                                100
-                              ).toFixed(0),
-                            )
-                          : toDollars(pricingEdits.parkingPassWeeklyPriceCents)
-                      }
-                      readOnly
-                      disabled
-                      className="px-2 py-1 border rounded text-sm w-full bg-muted/30"
+                      min={0}
+                      step={1}
+                      value={toDollars(pricingEdits.parkingPassWeeklyPriceCents)}
+                      onChange={(e) => {
+                        const cents = toCents(e.target.value);
+                        setPricingEdits({
+                          ...pricingEdits,
+                          parkingPassWeeklyPriceCents: cents,
+                          _weeklyManuallyEdited: cents > 0,
+                        });
+                      }}
+                      className="px-2 py-1 border rounded text-sm w-full"
                     />
                   </div>
                   <div className="space-y-1">
                     <div className="text-[11px] text-muted-foreground">Monthly ($)</div>
                     <input
                       type="number"
-                      value={
-                        Number(pricingEdits.parkingPassDailyPriceCents || 0)
-                          ? String(
-                              (
-                                (Number(pricingEdits.parkingPassDailyPriceCents || 0) *
-                                  30) /
-                                100
-                              ).toFixed(0),
-                            )
-                          : toDollars(pricingEdits.parkingPassMonthlyPriceCents)
-                      }
-                      readOnly
-                      disabled
-                      className="px-2 py-1 border rounded text-sm w-full bg-muted/30"
+                      min={0}
+                      step={1}
+                      value={toDollars(pricingEdits.parkingPassMonthlyPriceCents)}
+                      onChange={(e) => {
+                        const cents = toCents(e.target.value);
+                        setPricingEdits({
+                          ...pricingEdits,
+                          parkingPassMonthlyPriceCents: cents,
+                          _monthlyManuallyEdited: cents > 0,
+                        });
+                      }}
+                      className="px-2 py-1 border rounded text-sm w-full"
                     />
                   </div>
                 </div>

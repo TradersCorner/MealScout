@@ -4853,8 +4853,12 @@ export function registerAdminManagementRoutes(app: Express) {
               });
             }
             derivedDailyCents = daily;
-            derivedWeeklyCents = daily * 7;
-            derivedMonthlyCents = daily * 30;
+            if (req.body?.parkingPassWeeklyPriceCents === undefined) {
+              derivedWeeklyCents = daily * 7;
+            }
+            if (req.body?.parkingPassMonthlyPriceCents === undefined) {
+              derivedMonthlyCents = daily * 30;
+            }
           } else {
             if (filledSlots > 0 && filledSlots < 3) {
               return res.status(400).json({
@@ -4873,8 +4877,12 @@ export function registerAdminManagementRoutes(app: Express) {
             if (filledSlots === 3) {
               const effectiveDaily = daily > 0 ? daily : slotSum;
               derivedDailyCents = effectiveDaily;
-              derivedWeeklyCents = effectiveDaily * 7;
-              derivedMonthlyCents = effectiveDaily * 30;
+              if (req.body?.parkingPassWeeklyPriceCents === undefined) {
+                derivedWeeklyCents = effectiveDaily * 7;
+              }
+              if (req.body?.parkingPassMonthlyPriceCents === undefined) {
+                derivedMonthlyCents = effectiveDaily * 30;
+              }
             }
           }
         }

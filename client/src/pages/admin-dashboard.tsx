@@ -3288,13 +3288,19 @@ export default function AdminDashboard() {
                         value={toDollars(edits.parkingPassDailyPriceCents)}
                         onChange={(e) => {
                           const cents = toCents(e.target.value);
+                          const nextWeekly = edits._parkingPassWeeklyManuallyEdited
+                            ? Number(edits.parkingPassWeeklyPriceCents || 0)
+                            : cents * 7;
+                          const nextMonthly = edits._parkingPassMonthlyManuallyEdited
+                            ? Number(edits.parkingPassMonthlyPriceCents || 0)
+                            : cents * 30;
                           setHostEdits({
                             ...hostEdits,
                             [host.id]: {
                               ...edits,
                               parkingPassDailyPriceCents: cents,
-                              parkingPassWeeklyPriceCents: cents * 7,
-                              parkingPassMonthlyPriceCents: cents * 30,
+                              parkingPassWeeklyPriceCents: nextWeekly,
+                              parkingPassMonthlyPriceCents: nextMonthly,
                               _parkingPassDailyManuallyEdited: true,
                             },
                           });
@@ -3310,16 +3316,20 @@ export default function AdminDashboard() {
                         min={0}
                         step={1}
                         className="w-full px-2 py-1 border rounded-md text-sm"
-                        value={
-                          Number(edits.parkingPassDailyPriceCents || 0)
-                            ? toDollars(
-                                Number(edits.parkingPassDailyPriceCents || 0) *
-                                  7,
-                              )
-                            : toDollars(edits.parkingPassWeeklyPriceCents)
+                        value={toDollars(edits.parkingPassWeeklyPriceCents)}
+                        onChange={(e) =>
+                          setHostEdits({
+                            ...hostEdits,
+                            [host.id]: {
+                              ...edits,
+                              parkingPassWeeklyPriceCents: toCents(
+                                e.target.value,
+                              ),
+                              _parkingPassWeeklyManuallyEdited:
+                                toCents(e.target.value) > 0,
+                            },
+                          })
                         }
-                        readOnly
-                        disabled
                       />
                     </div>
                     <div className="space-y-1">
@@ -3331,16 +3341,20 @@ export default function AdminDashboard() {
                         min={0}
                         step={1}
                         className="w-full px-2 py-1 border rounded-md text-sm"
-                        value={
-                          Number(edits.parkingPassDailyPriceCents || 0)
-                            ? toDollars(
-                                Number(edits.parkingPassDailyPriceCents || 0) *
-                                  30,
-                              )
-                            : toDollars(edits.parkingPassMonthlyPriceCents)
+                        value={toDollars(edits.parkingPassMonthlyPriceCents)}
+                        onChange={(e) =>
+                          setHostEdits({
+                            ...hostEdits,
+                            [host.id]: {
+                              ...edits,
+                              parkingPassMonthlyPriceCents: toCents(
+                                e.target.value,
+                              ),
+                              _parkingPassMonthlyManuallyEdited:
+                                toCents(e.target.value) > 0,
+                            },
+                          })
                         }
-                        readOnly
-                        disabled
                       />
                     </div>
                   </div>
@@ -3520,9 +3534,12 @@ export default function AdminDashboard() {
                                 [pass.id]: {
                                   ...passEdits,
                                   dailyPriceCents: toCents(e.target.value),
-                                  weeklyPriceCents: toCents(e.target.value) * 7,
-                                  monthlyPriceCents:
-                                    toCents(e.target.value) * 30,
+                                  weeklyPriceCents: passEdits._weeklyManuallyEdited
+                                    ? Number(passEdits.weeklyPriceCents || 0)
+                                    : toCents(e.target.value) * 7,
+                                  monthlyPriceCents: passEdits._monthlyManuallyEdited
+                                    ? Number(passEdits.monthlyPriceCents || 0)
+                                    : toCents(e.target.value) * 30,
                                   _dailyManuallyEdited: true,
                                 },
                               })
@@ -3538,15 +3555,18 @@ export default function AdminDashboard() {
                             min={0}
                             step={1}
                             className="w-full px-2 py-1 border rounded-md text-sm"
-                            value={
-                              Number(passEdits.dailyPriceCents || 0)
-                                ? toDollars(
-                                    Number(passEdits.dailyPriceCents || 0) * 7,
-                                  )
-                                : toDollars(passEdits.weeklyPriceCents)
+                            value={toDollars(passEdits.weeklyPriceCents)}
+                            onChange={(e) =>
+                              setParkingPassEdits({
+                                ...parkingPassEdits,
+                                [pass.id]: {
+                                  ...passEdits,
+                                  weeklyPriceCents: toCents(e.target.value),
+                                  _weeklyManuallyEdited:
+                                    toCents(e.target.value) > 0,
+                                },
+                              })
                             }
-                            readOnly
-                            disabled
                           />
                         </div>
                         <div className="space-y-1">
@@ -3558,15 +3578,18 @@ export default function AdminDashboard() {
                             min={0}
                             step={1}
                             className="w-full px-2 py-1 border rounded-md text-sm"
-                            value={
-                              Number(passEdits.dailyPriceCents || 0)
-                                ? toDollars(
-                                    Number(passEdits.dailyPriceCents || 0) * 30,
-                                  )
-                                : toDollars(passEdits.monthlyPriceCents)
+                            value={toDollars(passEdits.monthlyPriceCents)}
+                            onChange={(e) =>
+                              setParkingPassEdits({
+                                ...parkingPassEdits,
+                                [pass.id]: {
+                                  ...passEdits,
+                                  monthlyPriceCents: toCents(e.target.value),
+                                  _monthlyManuallyEdited:
+                                    toCents(e.target.value) > 0,
+                                },
+                              })
                             }
-                            readOnly
-                            disabled
                           />
                         </div>
                       </div>
@@ -3816,6 +3839,11 @@ export default function AdminDashboard() {
       const dinner = Number(pass.dinnerPriceCents ?? 0) || 0;
       const slotSum = breakfast + lunch + dinner;
       const daily = Number(pass.dailyPriceCents ?? 0) || 0;
+      const weekly = Number(pass.weeklyPriceCents ?? 0) || 0;
+      const monthly = Number(pass.monthlyPriceCents ?? 0) || 0;
+      const baseDaily = daily > 0 ? daily : slotSum;
+      const derivedWeekly = baseDaily > 0 ? baseDaily * 7 : 0;
+      const derivedMonthly = baseDaily > 0 ? baseDaily * 30 : 0;
       nextEdits[pass.id] = {
         startTime: pass.startTime || "",
         endTime: pass.endTime || "",
@@ -3824,11 +3852,17 @@ export default function AdminDashboard() {
         breakfastPriceCents: pass.breakfastPriceCents ?? 0,
         lunchPriceCents: pass.lunchPriceCents ?? 0,
         dinnerPriceCents: pass.dinnerPriceCents ?? 0,
-        dailyPriceCents: daily > 0 ? daily : slotSum,
-        weeklyPriceCents: pass.weeklyPriceCents ?? 0,
-        monthlyPriceCents: pass.monthlyPriceCents ?? 0,
+        dailyPriceCents: baseDaily,
+        weeklyPriceCents: weekly > 0 ? weekly : derivedWeekly,
+        monthlyPriceCents: monthly > 0 ? monthly : derivedMonthly,
         _dailyManuallyEdited:
           daily > 0 && slotSum > 0 ? daily !== slotSum : false,
+        _weeklyManuallyEdited:
+          weekly > 0 && derivedWeekly > 0 ? weekly !== derivedWeekly : false,
+        _monthlyManuallyEdited:
+          monthly > 0 && derivedMonthly > 0
+            ? monthly !== derivedMonthly
+            : false,
       };
     });
     setParkingPassEdits(nextEdits);
@@ -3870,6 +3904,11 @@ export default function AdminDashboard() {
       const dinner = Number(host.parkingPassDinnerPriceCents ?? 0) || 0;
       const slotSum = breakfast + lunch + dinner;
       const daily = Number(host.parkingPassDailyPriceCents ?? 0) || 0;
+      const weekly = Number(host.parkingPassWeeklyPriceCents ?? 0) || 0;
+      const monthly = Number(host.parkingPassMonthlyPriceCents ?? 0) || 0;
+      const baseDaily = daily > 0 ? daily : slotSum;
+      const derivedWeekly = baseDaily > 0 ? baseDaily * 7 : 0;
+      const derivedMonthly = baseDaily > 0 ? baseDaily * 30 : 0;
       nextEdits[host.id] = {
         businessName: host.businessName || "",
         address: host.address || "",
@@ -3896,11 +3935,17 @@ export default function AdminDashboard() {
           host.parkingPassBreakfastPriceCents ?? 0,
         parkingPassLunchPriceCents: host.parkingPassLunchPriceCents ?? 0,
         parkingPassDinnerPriceCents: host.parkingPassDinnerPriceCents ?? 0,
-        parkingPassDailyPriceCents: daily > 0 ? daily : slotSum,
-        parkingPassWeeklyPriceCents: host.parkingPassWeeklyPriceCents ?? 0,
-        parkingPassMonthlyPriceCents: host.parkingPassMonthlyPriceCents ?? 0,
+        parkingPassDailyPriceCents: baseDaily,
+        parkingPassWeeklyPriceCents: weekly > 0 ? weekly : derivedWeekly,
+        parkingPassMonthlyPriceCents: monthly > 0 ? monthly : derivedMonthly,
         _parkingPassDailyManuallyEdited:
           daily > 0 && slotSum > 0 ? daily !== slotSum : false,
+        _parkingPassWeeklyManuallyEdited:
+          weekly > 0 && derivedWeekly > 0 ? weekly !== derivedWeekly : false,
+        _parkingPassMonthlyManuallyEdited:
+          monthly > 0 && derivedMonthly > 0
+            ? monthly !== derivedMonthly
+            : false,
       };
     });
     setHostEdits(nextEdits);
@@ -4843,32 +4888,48 @@ export default function AdminDashboard() {
   };
 
   const applyHostDailyAutoIfAllowed = (edits: any) => {
-    if (edits?._parkingPassDailyManuallyEdited) return edits;
     const slotSum =
       (Number(edits?.parkingPassBreakfastPriceCents ?? 0) || 0) +
       (Number(edits?.parkingPassLunchPriceCents ?? 0) || 0) +
       (Number(edits?.parkingPassDinnerPriceCents ?? 0) || 0);
     if (slotSum <= 0) return edits;
+    const nextDaily = edits?._parkingPassDailyManuallyEdited
+      ? Number(edits?.parkingPassDailyPriceCents ?? 0) || 0
+      : slotSum;
+    const nextWeekly = edits?._parkingPassWeeklyManuallyEdited
+      ? Number(edits?.parkingPassWeeklyPriceCents ?? 0) || 0
+      : nextDaily * 7;
+    const nextMonthly = edits?._parkingPassMonthlyManuallyEdited
+      ? Number(edits?.parkingPassMonthlyPriceCents ?? 0) || 0
+      : nextDaily * 30;
     return {
       ...edits,
-      parkingPassDailyPriceCents: slotSum,
-      parkingPassWeeklyPriceCents: slotSum * 7,
-      parkingPassMonthlyPriceCents: slotSum * 30,
+      parkingPassDailyPriceCents: nextDaily,
+      parkingPassWeeklyPriceCents: nextWeekly,
+      parkingPassMonthlyPriceCents: nextMonthly,
     };
   };
 
   const applyListingDailyAutoIfAllowed = (edits: any) => {
-    if (edits?._dailyManuallyEdited) return edits;
     const slotSum =
       (Number(edits?.breakfastPriceCents ?? 0) || 0) +
       (Number(edits?.lunchPriceCents ?? 0) || 0) +
       (Number(edits?.dinnerPriceCents ?? 0) || 0);
     if (slotSum <= 0) return edits;
+    const nextDaily = edits?._dailyManuallyEdited
+      ? Number(edits?.dailyPriceCents ?? 0) || 0
+      : slotSum;
+    const nextWeekly = edits?._weeklyManuallyEdited
+      ? Number(edits?.weeklyPriceCents ?? 0) || 0
+      : nextDaily * 7;
+    const nextMonthly = edits?._monthlyManuallyEdited
+      ? Number(edits?.monthlyPriceCents ?? 0) || 0
+      : nextDaily * 30;
     return {
       ...edits,
-      dailyPriceCents: slotSum,
-      weeklyPriceCents: slotSum * 7,
-      monthlyPriceCents: slotSum * 30,
+      dailyPriceCents: nextDaily,
+      weeklyPriceCents: nextWeekly,
+      monthlyPriceCents: nextMonthly,
     };
   };
 
@@ -8107,10 +8168,12 @@ export default function AdminDashboard() {
                                     [pass.id]: {
                                       ...edits,
                                       dailyPriceCents: toCents(e.target.value),
-                                      weeklyPriceCents:
-                                        toCents(e.target.value) * 7,
-                                      monthlyPriceCents:
-                                        toCents(e.target.value) * 30,
+                                      weeklyPriceCents: edits._weeklyManuallyEdited
+                                        ? Number(edits.weeklyPriceCents || 0)
+                                        : toCents(e.target.value) * 7,
+                                      monthlyPriceCents: edits._monthlyManuallyEdited
+                                        ? Number(edits.monthlyPriceCents || 0)
+                                        : toCents(e.target.value) * 30,
                                       _dailyManuallyEdited: true,
                                     },
                                   })
@@ -8126,15 +8189,18 @@ export default function AdminDashboard() {
                                 min={0}
                                 step={1}
                                 className="w-full px-2 py-1 border rounded-md text-sm"
-                                value={
-                                  Number(edits.dailyPriceCents || 0)
-                                    ? toDollars(
-                                        Number(edits.dailyPriceCents || 0) * 7,
-                                      )
-                                    : toDollars(edits.weeklyPriceCents)
+                                value={toDollars(edits.weeklyPriceCents)}
+                                onChange={(e) =>
+                                  setParkingPassEdits({
+                                    ...parkingPassEdits,
+                                    [pass.id]: {
+                                      ...edits,
+                                      weeklyPriceCents: toCents(e.target.value),
+                                      _weeklyManuallyEdited:
+                                        toCents(e.target.value) > 0,
+                                    },
+                                  })
                                 }
-                                readOnly
-                                disabled
                               />
                             </div>
                             <div className="space-y-1">
@@ -8146,15 +8212,18 @@ export default function AdminDashboard() {
                                 min={0}
                                 step={1}
                                 className="w-full px-2 py-1 border rounded-md text-sm"
-                                value={
-                                  Number(edits.dailyPriceCents || 0)
-                                    ? toDollars(
-                                        Number(edits.dailyPriceCents || 0) * 30,
-                                      )
-                                    : toDollars(edits.monthlyPriceCents)
+                                value={toDollars(edits.monthlyPriceCents)}
+                                onChange={(e) =>
+                                  setParkingPassEdits({
+                                    ...parkingPassEdits,
+                                    [pass.id]: {
+                                      ...edits,
+                                      monthlyPriceCents: toCents(e.target.value),
+                                      _monthlyManuallyEdited:
+                                        toCents(e.target.value) > 0,
+                                    },
+                                  })
                                 }
-                                readOnly
-                                disabled
                               />
                             </div>
                           </div>

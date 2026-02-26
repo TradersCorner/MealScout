@@ -1250,6 +1250,7 @@ export function registerHostRoutes(app: Express) {
         breakfastPriceCents,
         lunchPriceCents,
         dinnerPriceCents,
+        dailyPriceCents,
         weeklyPriceCents,
         monthlyPriceCents,
       } = req.body;
@@ -1264,6 +1265,7 @@ export function registerHostRoutes(app: Express) {
         breakfastPriceCents !== undefined ||
         lunchPriceCents !== undefined ||
         dinnerPriceCents !== undefined ||
+        dailyPriceCents !== undefined ||
         weeklyPriceCents !== undefined ||
         monthlyPriceCents !== undefined;
       if (hasPricingUpdates && !event.requiresPayment) {
@@ -1319,6 +1321,8 @@ export function registerHostRoutes(app: Express) {
         null;
       let parsedMonthly: { provided: boolean; cents: number | null } | null =
         null;
+      let parsedDaily: { provided: boolean; cents: number | null } | null =
+        null;
 
       try {
         parsedBreakfast = parseCentsField(
@@ -1327,6 +1331,7 @@ export function registerHostRoutes(app: Express) {
         );
         parsedLunch = parseCentsField(lunchPriceCents, "Lunch price");
         parsedDinner = parseCentsField(dinnerPriceCents, "Dinner price");
+        parsedDaily = parseOverrideField(dailyPriceCents, "Daily price");
         parsedWeekly = parseOverrideField(weeklyPriceCents, "Weekly price");
         parsedMonthly = parseOverrideField(monthlyPriceCents, "Monthly price");
       } catch (error: any) {
@@ -1410,12 +1415,16 @@ export function registerHostRoutes(app: Express) {
         }
 
         // Daily + host base price always follow the meal-slot sum.
+        const effectiveDaily =
+          parsedDaily?.provided && parsedDaily.cents !== null
+            ? parsedDaily.cents
+            : nextSlotSum;
         updates.hostPriceCents = nextSlotSum;
-        updates.dailyPriceCents = nextSlotSum;
+        updates.dailyPriceCents = effectiveDaily;
 
         const hasMealChange = Boolean(anyMealPriceProvided);
-        const computedWeeklyDerived = nextSlotSum * 7;
-        const computedMonthlyDerived = nextSlotSum * 30;
+        const computedWeeklyDerived = effectiveDaily * 7;
+        const computedMonthlyDerived = effectiveDaily * 30;
 
         if (parsedWeekly?.provided) {
           // Null means "reset to derived".

@@ -41,6 +41,18 @@ From phase audit docs, these trigger classes did not show clear server-side trig
 1. Add/confirm `INCIDENT_SMS_RECIPIENTS` in production env so critical incident SMS fanout is active.
 2. Run one end-to-end SEV1 incident test in staging and verify email + Slack + SMS delivery.
 
+## Incident Test Verification (2026-02-25)
+
+- Ran `npm run test:incidents` in local workspace.
+- Result: expected fail-fast due to missing required incident env (`BREVO_API_KEY`, `INCIDENT_EMAIL_RECIPIENTS`).
+- Additional optional channels also not configured locally (`SLACK_WEBHOOK_URL`, `INCIDENT_SMS_RECIPIENTS`), so full tri-channel validation is currently blocked in local.
+- Next execution target: staging/prod-like env with the following set:
+   - `BREVO_API_KEY`
+   - `INCIDENT_EMAIL_RECIPIENTS`
+   - `INCIDENT_SMS_RECIPIENTS`
+   - `SLACK_WEBHOOK_URL`
+   - `INCIDENT_SIGNATURE_SECRET`
+
 ## Data Retention Safeguard Added
 
 - `storage.deleteUser` now always performs soft-delete/anonymization (disable account + scrub PII) and no longer hard-deletes from `users`.
@@ -49,7 +61,7 @@ From phase audit docs, these trigger classes did not show clear server-side trig
 ## Pricing Role Access Verification (2026-02-25)
 
 - Admin pricing edit APIs already accept both admin and staff roles (`isStaffOrAdmin`) for:
-   - `PATCH /api/admin/parking-pass/:id`
-   - `PATCH /api/admin/hosts/:id`
+  - `PATCH /api/admin/parking-pass/:id`
+  - `PATCH /api/admin/hosts/:id`
 - Staff dashboard host location manager edit gate has been aligned to permit `staff` and `super_admin` alongside `admin`.
 - Result: manual pricing/location edits are now available to both admin and staff in dashboard workflows.

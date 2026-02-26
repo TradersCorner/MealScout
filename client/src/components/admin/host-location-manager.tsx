@@ -517,7 +517,6 @@ export default function HostLocationManager({
                       step={1}
                       value={toDollars(pricingEdits.parkingPassDailyPriceCents)}
                       onChange={(e) => {
-                        if (!pricingEdits._dailyOnlySelected) return;
                         const cents = toCents(e.target.value);
                         setPricingEdits({
                           ...pricingEdits,
@@ -527,9 +526,7 @@ export default function HostLocationManager({
                           _dailyManuallyEdited: cents > 0,
                         });
                       }}
-                      disabled={!pricingEdits._dailyOnlySelected}
-                      readOnly={!pricingEdits._dailyOnlySelected}
-                      className="px-2 py-1 border rounded text-sm w-full disabled:bg-muted/30"
+                      className="px-2 py-1 border rounded text-sm w-full"
                     />
                   </div>
                   <div className="space-y-1">

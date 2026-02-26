@@ -4871,9 +4871,10 @@ export function registerAdminManagementRoutes(app: Express) {
             }
 
             if (filledSlots === 3) {
-              derivedDailyCents = slotSum;
-              derivedWeeklyCents = slotSum * 7;
-              derivedMonthlyCents = slotSum * 30;
+              const effectiveDaily = daily > 0 ? daily : slotSum;
+              derivedDailyCents = effectiveDaily;
+              derivedWeeklyCents = effectiveDaily * 7;
+              derivedMonthlyCents = effectiveDaily * 30;
             }
           }
         }

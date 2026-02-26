@@ -111,6 +111,7 @@ From phase audit docs, these trigger classes did not show clear server-side trig
 - Purpose: one-command staging gate for notification channels + RBAC verification before sign-off.
 - Render/server mode: set `CHECKLIST_SKIP_RBAC=true` to run incident validation only when RBAC session cookies are not available in that environment.
 - Readiness summary refined so `RBAC_BASE_URL` is treated as optional (default applies) and no longer counted as a required missing env.
+- Render shell compatibility hardening: critical checklist scripts now invoke `npx --yes tsx` so they run even when `tsx` is not locally installed in production runtime images.
 - Local command validation completed:
    - Incident checklist => FAIL (missing incident env)
    - RBAC check => FAIL (missing RBAC cookies/env)

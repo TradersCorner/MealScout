@@ -6179,29 +6179,25 @@ export class DatabaseStorage implements IStorage {
       throw new Error("Cannot delete super admin account");
     }
 
-    try {
-      await db.delete(users).where(eq(users.id, userId));
-    } catch (error) {
-      const deletedEmail = `deleted+${userId}@mealscout.invalid`;
-      await db
-        .update(users)
-        .set({
-          isDisabled: true,
-          email: deletedEmail,
-          firstName: null,
-          lastName: null,
-          phone: null,
-          passwordHash: null,
-          facebookId: null,
-          facebookAccessToken: null,
-          googleId: null,
-          googleAccessToken: null,
-          tradescoutId: null,
-          profileImageUrl: null,
-          updatedAt: new Date(),
-        })
-        .where(eq(users.id, userId));
-    }
+    const deletedEmail = `deleted+${userId}@mealscout.invalid`;
+    await db
+      .update(users)
+      .set({
+        isDisabled: true,
+        email: deletedEmail,
+        firstName: null,
+        lastName: null,
+        phone: null,
+        passwordHash: null,
+        facebookId: null,
+        facebookAccessToken: null,
+        googleId: null,
+        googleAccessToken: null,
+        tradescoutId: null,
+        profileImageUrl: null,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, userId));
   }
 
   // Password reset token operations

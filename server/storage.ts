@@ -141,45 +141,42 @@ export interface IStorage {
     userId: string,
     address: UserAddress,
     previousAddress?: UserAddress,
-    options?: { force?: boolean }
+    options?: { force?: boolean },
   ): Promise<Host | null>;
   deleteHostForUserAddress(
     userId: string,
-    address: UserAddress
+    address: UserAddress,
   ): Promise<boolean>;
   getParkingPassBlackoutDates(
-    seriesId: string
+    seriesId: string,
   ): Promise<ParkingPassBlackoutDate[]>;
   createParkingPassBlackoutDate(
-    blackout: InsertParkingPassBlackoutDate
+    blackout: InsertParkingPassBlackoutDate,
   ): Promise<ParkingPassBlackoutDate>;
-  deleteParkingPassBlackoutDate(
-    seriesId: string,
-    date: Date
-  ): Promise<void>;
+  deleteParkingPassBlackoutDate(seriesId: string, date: Date): Promise<void>;
   getAllHosts(): Promise<Host[]>;
   updateHostCoordinates(
     hostId: string,
     lat: number,
-    lng: number
+    lng: number,
   ): Promise<Host>;
   createEvent(event: InsertEvent): Promise<Event>;
   getEvent(id: string): Promise<Event | undefined>;
   getEventsByHost(
-    hostId: string
+    hostId: string,
   ): Promise<(Event & { interests: EventInterest[] })[]>;
   getEventsOwnedByUser(
-    userId: string
+    userId: string,
   ): Promise<(Event & { interests: EventInterest[] })[]>;
   createEventInterest(interest: InsertEventInterest): Promise<EventInterest>;
   updateEventInterestStatus(id: string, status: string): Promise<EventInterest>;
   getEventInterest(id: string): Promise<EventInterest | undefined>;
   getEventInterestByTruckId(
     eventId: string,
-    truckId: string
+    truckId: string,
   ): Promise<EventInterest | undefined>;
   getEventInterestsByEventId(
-    eventId: string
+    eventId: string,
   ): Promise<(EventInterest & { truck: any })[]>;
 
   // Event Series (Open Calls)
@@ -189,7 +186,7 @@ export interface IStorage {
   getEventSeriesOwnedByUser(userId: string): Promise<EventSeries[]>;
   updateEventSeries(
     id: string,
-    updates: Partial<InsertEventSeries>
+    updates: Partial<InsertEventSeries>,
   ): Promise<EventSeries>;
   publishEventSeries(id: string): Promise<EventSeries>;
   getEventsBySeriesId(seriesId: string): Promise<Event[]>;
@@ -239,13 +236,13 @@ export interface IStorage {
       | FacebookUserData
       | TradeScoutUserData,
     userType?: User["userType"],
-    appContext?: "mealscout" | "tradescout"
+    appContext?: "mealscout" | "tradescout",
   ): Promise<User>;
   updateUserStripeInfo(
     id: string,
     stripeCustomerId: string,
     stripeSubscriptionId: string,
-    subscriptionBillingInterval?: string
+    subscriptionBillingInterval?: string,
   ): Promise<User>;
   updateUser(
     id: string,
@@ -267,7 +264,7 @@ export interface IStorage {
         | "publicProfileSettings"
         | "accountSettings"
       >
-    >
+    >,
   ): Promise<User>;
 
   // Restaurant operations
@@ -276,36 +273,36 @@ export interface IStorage {
   getRestaurantsByOwner(ownerId: string): Promise<Restaurant[]>;
   updateRestaurant(
     id: string,
-    restaurant: Partial<InsertRestaurant>
+    restaurant: Partial<InsertRestaurant>,
   ): Promise<Restaurant>;
   getNearbyRestaurants(
     lat: number,
     lng: number,
-    radiusKm: number
+    radiusKm: number,
   ): Promise<Restaurant[]>;
   getSubscribedRestaurants(
     lat: number,
     lng: number,
-    radiusKm: number
+    radiusKm: number,
   ): Promise<Restaurant[]>;
   verifyRestaurantOwnership(
     restaurantId: string,
-    userId: string
+    userId: string,
   ): Promise<boolean>;
   createTruckManualSchedule(
-    schedule: InsertTruckManualSchedule
+    schedule: InsertTruckManualSchedule,
   ): Promise<TruckManualSchedule>;
   getTruckManualSchedules(truckId: string): Promise<TruckManualSchedule[]>;
   deleteTruckManualSchedule(
     scheduleId: string,
-    truckId?: string
+    truckId?: string,
   ): Promise<void>;
   createTruckParkingReport(
-    report: InsertTruckParkingReport
+    report: InsertTruckParkingReport,
   ): Promise<TruckParkingReport>;
   getTruckParkingReports(
     truckId: string,
-    options?: { startDate?: Date; endDate?: Date }
+    options?: { startDate?: Date; endDate?: Date },
   ): Promise<TruckParkingReport[]>;
 
   // Deal operations
@@ -338,11 +335,11 @@ export interface IStorage {
   getDealClaimsCount(dealId: string, userId?: string): Promise<number>;
   getRestaurantDealClaims(
     restaurantId: string,
-    status?: string
+    status?: string,
   ): Promise<any[]>;
   verifyRestaurantOwnershipByClaim(
     claimId: string,
-    userId: string
+    userId: string,
   ): Promise<boolean>;
 
   // Review operations
@@ -372,10 +369,10 @@ export interface IStorage {
 
   // Verification operations
   createVerificationRequest(
-    verificationRequest: InsertVerificationRequest
+    verificationRequest: InsertVerificationRequest,
   ): Promise<VerificationRequest>;
   getVerificationRequestsByOwner(
-    ownerId: string
+    ownerId: string,
   ): Promise<VerificationRequest[]>;
   getVerificationRequests(): Promise<
     (VerificationRequest & {
@@ -391,11 +388,11 @@ export interface IStorage {
   rejectVerificationRequest(
     id: string,
     reviewerId: string,
-    reason: string
+    reason: string,
   ): Promise<void>;
   setRestaurantVerified(
     restaurantId: string,
-    isVerified: boolean
+    isVerified: boolean,
   ): Promise<void>;
   hasPendingVerificationRequest(restaurantId: string): Promise<boolean>;
 
@@ -403,25 +400,25 @@ export interface IStorage {
   recordDealView(view: InsertDealView): Promise<DealView>;
   getDealViewsCount(
     dealId: string,
-    dateRange?: { start: Date; end: Date }
+    dateRange?: { start: Date; end: Date },
   ): Promise<number>;
   hasRecentDealView(
     dealId: string,
     userId?: string,
     sessionId?: string,
-    timeWindowMs?: number
+    timeWindowMs?: number,
   ): Promise<boolean>;
 
   // Deal claim revenue operations
   markClaimAsUsed(
     claimId: string,
-    orderAmount?: number | null
+    orderAmount?: number | null,
   ): Promise<DealClaim | null>;
 
   // Advanced analytics operations
   getRestaurantAnalyticsSummary(
     restaurantId: string,
-    dateRange?: { start: Date; end: Date }
+    dateRange?: { start: Date; end: Date },
   ): Promise<{
     totalViews: number;
     totalClaims: number;
@@ -439,7 +436,7 @@ export interface IStorage {
   getRestaurantAnalyticsTimeseries(
     restaurantId: string,
     dateRange: { start: Date; end: Date },
-    interval: "day" | "week"
+    interval: "day" | "week",
   ): Promise<
     Array<{
       date: string;
@@ -451,7 +448,7 @@ export interface IStorage {
 
   getRestaurantCustomerInsights(
     restaurantId: string,
-    dateRange?: { start: Date; end: Date }
+    dateRange?: { start: Date; end: Date },
   ): Promise<{
     repeatCustomers: number;
     averageOrderValue: number;
@@ -464,7 +461,7 @@ export interface IStorage {
 
   getRestaurantAnalyticsExport(
     restaurantId: string,
-    dateRange: { start: Date; end: Date }
+    dateRange: { start: Date; end: Date },
   ): Promise<
     Array<{
       dealTitle: string;
@@ -478,44 +475,44 @@ export interface IStorage {
   // Food truck operations
   setRestaurantMobileSettings(
     restaurantId: string,
-    settings: UpdateRestaurantMobileSettings
+    settings: UpdateRestaurantMobileSettings,
   ): Promise<Restaurant>;
   updateRestaurantLocation(
     restaurantId: string,
-    location: UpdateRestaurantLocation
+    location: UpdateRestaurantLocation,
   ): Promise<Restaurant>;
   setRestaurantOperatingHours(
     restaurantId: string,
-    operatingHours: OperatingHours
+    operatingHours: OperatingHours,
   ): Promise<Restaurant>;
   isRestaurantOpenNow(restaurantId: string): Promise<boolean>;
   startTruckSession(
     restaurantId: string,
     deviceId: string,
-    userId: string
+    userId: string,
   ): Promise<FoodTruckSession>;
   endTruckSession(restaurantId: string, userId: string): Promise<void>;
   getActiveTruckSession(
-    restaurantId: string
+    restaurantId: string,
   ): Promise<FoodTruckSession | undefined>;
   upsertLiveLocation(
-    location: InsertFoodTruckLocation
+    location: InsertFoodTruckLocation,
   ): Promise<FoodTruckLocation>;
   getLiveTrucksNearby(
     lat: number,
     lng: number,
-    radiusKm: number
+    radiusKm: number,
   ): Promise<Array<Restaurant & { distance: number; sessionId?: string }>>;
   getTruckLocationHistory(
     restaurantId: string,
-    dateRange?: { start: Date; end: Date }
+    dateRange?: { start: Date; end: Date },
   ): Promise<FoodTruckLocation[]>;
   hasRecentLocationUpdate(
     restaurantId: string,
     lat: number,
     lng: number,
     timeWindowMs?: number,
-    distanceThreshold?: number
+    distanceThreshold?: number,
   ): Promise<boolean>;
 
   // Restaurant favorites operations
@@ -526,7 +523,10 @@ export interface IStorage {
   removeRestaurantFavorite(restaurantId: string, userId: string): Promise<void>;
   getUserRestaurantFavorites(userId: string): Promise<any[]>;
   getUserRestaurantFavoritesCount(userId: string): Promise<number>;
-  createRestaurantFollow(follow: { restaurantId: string; userId: string }): Promise<any>;
+  createRestaurantFollow(follow: {
+    restaurantId: string;
+    userId: string;
+  }): Promise<any>;
   removeRestaurantFollow(restaurantId: string, userId: string): Promise<void>;
   getUserRestaurantFollows(userId: string): Promise<any[]>;
   createRestaurantUserRecommendation(recommendation: {
@@ -536,7 +536,7 @@ export interface IStorage {
   getUserRestaurantRecommendations(userId: string): Promise<any[]>;
   getRestaurantFavoritesAnalytics(
     restaurantId: string,
-    dateRange?: { start: Date; end: Date }
+    dateRange?: { start: Date; end: Date },
   ): Promise<{
     totalFavorites: number;
     favoritesTrend: Array<{ date: string; count: number }>;
@@ -554,7 +554,7 @@ export interface IStorage {
   markRecommendationClicked(recommendationId: string): Promise<void>;
   getRestaurantRecommendationsAnalytics(
     restaurantId: string,
-    dateRange?: { start: Date; end: Date }
+    dateRange?: { start: Date; end: Date },
   ): Promise<{
     totalRecommendations: number;
     totalClicks: number;
@@ -572,12 +572,12 @@ export interface IStorage {
   }>;
   // Host location requests / truck interest
   createLocationRequest(
-    request: InsertLocationRequest
+    request: InsertLocationRequest,
   ): Promise<LocationRequest>;
   getLocationRequestById(id: string): Promise<LocationRequest | undefined>;
   expireStaleLocationRequests(): Promise<number>;
   createTruckInterest(
-    interest: InsertTruckInterest
+    interest: InsertTruckInterest,
   ): Promise<{ interestId: string; locationRequest: LocationRequest }>;
 
   // User address operations
@@ -586,7 +586,7 @@ export interface IStorage {
   getUserAddress(id: string): Promise<UserAddress | undefined>;
   updateUserAddress(
     id: string,
-    address: Partial<InsertUserAddress>
+    address: Partial<InsertUserAddress>,
   ): Promise<UserAddress>;
   deleteUserAddress(id: string): Promise<void>;
   setDefaultAddress(userId: string, addressId: string): Promise<void>;
@@ -594,11 +594,11 @@ export interface IStorage {
 
   // Password reset token operations
   createPasswordResetToken(
-    tokenData: InsertPasswordResetToken
+    tokenData: InsertPasswordResetToken,
   ): Promise<PasswordResetToken>;
   getPasswordResetToken(id: string): Promise<PasswordResetToken | undefined>;
   getPasswordResetTokenByTokenHash(
-    tokenHash: string
+    tokenHash: string,
   ): Promise<PasswordResetToken | undefined>;
   markPasswordResetTokenUsed(id: string): Promise<PasswordResetToken>;
   deleteUserResetTokens(userId: string): Promise<void>;
@@ -606,25 +606,23 @@ export interface IStorage {
 
   // Phone verification tokens
   createPhoneVerificationToken(
-    tokenData: InsertPhoneVerificationToken
+    tokenData: InsertPhoneVerificationToken,
   ): Promise<PhoneVerificationToken>;
   getPhoneVerificationTokenByHash(
     phone: string,
-    tokenHash: string
+    tokenHash: string,
   ): Promise<PhoneVerificationToken | undefined>;
-  markPhoneVerificationTokenUsed(
-    id: string
-  ): Promise<PhoneVerificationToken>;
+  markPhoneVerificationTokenUsed(id: string): Promise<PhoneVerificationToken>;
   deletePhoneVerificationTokens(phone: string): Promise<void>;
   deleteExpiredPhoneVerificationTokens(): Promise<number>;
 
   // Account setup token operations
   createAccountSetupToken(
-    tokenData: InsertAccountSetupToken
+    tokenData: InsertAccountSetupToken,
   ): Promise<AccountSetupToken>;
   getAccountSetupToken(id: string): Promise<AccountSetupToken | undefined>;
   getAccountSetupTokenByTokenHash(
-    tokenHash: string
+    tokenHash: string,
   ): Promise<AccountSetupToken | undefined>;
   markAccountSetupTokenUsed(id: string): Promise<AccountSetupToken>;
   deleteUserSetupTokens(userId: string): Promise<void>;
@@ -633,14 +631,12 @@ export interface IStorage {
 
   // Email verification token operations
   createEmailVerificationToken(
-    tokenData: InsertEmailVerificationToken
+    tokenData: InsertEmailVerificationToken,
   ): Promise<EmailVerificationToken>;
   getEmailVerificationTokenByTokenHash(
-    tokenHash: string
+    tokenHash: string,
   ): Promise<EmailVerificationToken | undefined>;
-  markEmailVerificationTokenUsed(
-    id: string
-  ): Promise<EmailVerificationToken>;
+  markEmailVerificationTokenUsed(id: string): Promise<EmailVerificationToken>;
 
   // API Key operations
   getActiveApiKeys(): Promise<any[]>;
@@ -659,10 +655,10 @@ export interface IStorage {
 
   // Stripe lookup operations
   getUserByStripeCustomerId(
-    stripeCustomerId: string
+    stripeCustomerId: string,
   ): Promise<User | undefined>;
   getUserByStripeSubscriptionId(
-    stripeSubscriptionId: string
+    stripeSubscriptionId: string,
   ): Promise<User | undefined>;
 
   // Admin user operations
@@ -678,7 +674,7 @@ export interface IStorage {
       | "event_coordinator"
       | "staff"
       | "admin"
-      | "super_admin"
+      | "super_admin",
   ): Promise<User>;
   deleteUser(userId: string): Promise<void>;
   createUserManually(userData: {
@@ -702,7 +698,7 @@ export interface IStorage {
   getHostByUserId(userId: string): Promise<Host | undefined>;
   createEvent(event: InsertEvent): Promise<Event>;
   getEventsByHost(
-    hostId: string
+    hostId: string,
   ): Promise<(Event & { interests: EventInterest[] })[]>;
   getAllUpcomingEvents(): Promise<
     (Event & { host: Host; series?: EventSeries | null })[]
@@ -710,30 +706,37 @@ export interface IStorage {
   createEventInterest(interest: InsertEventInterest): Promise<EventInterest>;
   getEventInterestByTruckId(
     eventId: string,
-    truckId: string
+    truckId: string,
   ): Promise<EventInterest | undefined>;
   getEventInterestsByEventId(
-    eventId: string
+    eventId: string,
   ): Promise<(EventInterest & { truck: any })[]>;
   // Map surfacing
   getOpenLocationRequests(): Promise<LocationRequest[]>;
 }
 
 export class DatabaseStorage implements IStorage {
-  private userTableInfoPromise:
-    | Promise<{ schema: string; columns: Set<string> }>
-    | null = null;
-  private hostTableInfoPromise:
-    | Promise<{ schema: string; columns: Set<string> }>
-    | null = null;
-  private eventTableInfoPromise:
-    | Promise<{ schema: string; columns: Set<string> }>
-    | null = null;
-  private eventSeriesTableInfoPromise:
-    | Promise<{ schema: string; columns: Set<string> }>
-    | null = null;
+  private userTableInfoPromise: Promise<{
+    schema: string;
+    columns: Set<string>;
+  }> | null = null;
+  private hostTableInfoPromise: Promise<{
+    schema: string;
+    columns: Set<string>;
+  }> | null = null;
+  private eventTableInfoPromise: Promise<{
+    schema: string;
+    columns: Set<string>;
+  }> | null = null;
+  private eventSeriesTableInfoPromise: Promise<{
+    schema: string;
+    columns: Set<string>;
+  }> | null = null;
 
-  private async getUserTableInfo(): Promise<{ schema: string; columns: Set<string> }> {
+  private async getUserTableInfo(): Promise<{
+    schema: string;
+    columns: Set<string>;
+  }> {
     if (this.userTableInfoPromise) return this.userTableInfoPromise;
     // Never allow this to reject; admin + auth flows should degrade gracefully under schema drift.
     this.userTableInfoPromise = (async () => {
@@ -769,14 +772,20 @@ export class DatabaseStorage implements IStorage {
         );
         return { schema, columns };
       } catch (error) {
-        console.warn("getUserTableInfo failed; using safe user projection:", error);
+        console.warn(
+          "getUserTableInfo failed; using safe user projection:",
+          error,
+        );
         return { schema: "public", columns: new Set<string>() };
       }
     })();
     return this.userTableInfoPromise;
   }
 
-  private async getHostTableInfo(): Promise<{ schema: string; columns: Set<string> }> {
+  private async getHostTableInfo(): Promise<{
+    schema: string;
+    columns: Set<string>;
+  }> {
     if (this.hostTableInfoPromise) return this.hostTableInfoPromise;
     // Never allow this to reject: if information_schema isn't accessible (or any other
     // transient DB issue), fall back to a minimal, safe projection instead of 500'ing.
@@ -813,14 +822,20 @@ export class DatabaseStorage implements IStorage {
         );
         return { schema, columns };
       } catch (error) {
-        console.warn("getHostTableInfo failed; using safe host projection:", error);
+        console.warn(
+          "getHostTableInfo failed; using safe host projection:",
+          error,
+        );
         return { schema: "public", columns: new Set<string>() };
       }
     })();
     return this.hostTableInfoPromise;
   }
 
-  private async getEventTableInfo(): Promise<{ schema: string; columns: Set<string> }> {
+  private async getEventTableInfo(): Promise<{
+    schema: string;
+    columns: Set<string>;
+  }> {
     if (this.eventTableInfoPromise) return this.eventTableInfoPromise;
     this.eventTableInfoPromise = (async () => {
       try {
@@ -855,7 +870,10 @@ export class DatabaseStorage implements IStorage {
         );
         return { schema, columns };
       } catch (error) {
-        console.warn("getEventTableInfo failed; using safe event projection:", error);
+        console.warn(
+          "getEventTableInfo failed; using safe event projection:",
+          error,
+        );
         return { schema: "public", columns: new Set<string>() };
       }
     })();
@@ -866,7 +884,8 @@ export class DatabaseStorage implements IStorage {
     schema: string;
     columns: Set<string>;
   }> {
-    if (this.eventSeriesTableInfoPromise) return this.eventSeriesTableInfoPromise;
+    if (this.eventSeriesTableInfoPromise)
+      return this.eventSeriesTableInfoPromise;
     this.eventSeriesTableInfoPromise = (async () => {
       try {
         if (!pool) {
@@ -952,7 +971,10 @@ export class DatabaseStorage implements IStorage {
     return result.rows || [];
   }
 
-  private async selectUsersSafe(whereSql: string, params: any[]): Promise<any[]> {
+  private async selectUsersSafe(
+    whereSql: string,
+    params: any[],
+  ): Promise<any[]> {
     if (!pool) return [];
     const { schema, columns } = await this.getUserTableInfo();
     const has = (col: string) => columns.size === 0 || columns.has(col);
@@ -1032,20 +1054,49 @@ export class DatabaseStorage implements IStorage {
       name: row.name == null ? null : String(row.name),
       description: row.description == null ? null : String(row.description),
       status: row.status == null ? null : String(row.status),
-      publishedAt: row.publishedAt ? new Date(row.publishedAt).toISOString() : null,
+      publishedAt: row.publishedAt
+        ? new Date(row.publishedAt).toISOString()
+        : null,
       updatedAt: row.updatedAt ? new Date(row.updatedAt).toISOString() : null,
-      defaultStartTime: row.defaultStartTime == null ? null : String(row.defaultStartTime),
-      defaultEndTime: row.defaultEndTime == null ? null : String(row.defaultEndTime),
-      defaultMaxTrucks: row.defaultMaxTrucks == null ? null : Number(row.defaultMaxTrucks),
-      defaultHardCapEnabled: row.defaultHardCapEnabled == null ? null : Boolean(row.defaultHardCapEnabled),
+      defaultStartTime:
+        row.defaultStartTime == null ? null : String(row.defaultStartTime),
+      defaultEndTime:
+        row.defaultEndTime == null ? null : String(row.defaultEndTime),
+      defaultMaxTrucks:
+        row.defaultMaxTrucks == null ? null : Number(row.defaultMaxTrucks),
+      defaultHardCapEnabled:
+        row.defaultHardCapEnabled == null
+          ? null
+          : Boolean(row.defaultHardCapEnabled),
       parkingPassDaysOfWeek: row.parkingPassDaysOfWeek ?? null,
-      defaultBreakfastPriceCents: row.defaultBreakfastPriceCents == null ? null : Number(row.defaultBreakfastPriceCents),
-      defaultLunchPriceCents: row.defaultLunchPriceCents == null ? null : Number(row.defaultLunchPriceCents),
-      defaultDinnerPriceCents: row.defaultDinnerPriceCents == null ? null : Number(row.defaultDinnerPriceCents),
-      defaultDailyPriceCents: row.defaultDailyPriceCents == null ? null : Number(row.defaultDailyPriceCents),
-      defaultWeeklyPriceCents: row.defaultWeeklyPriceCents == null ? null : Number(row.defaultWeeklyPriceCents),
-      defaultMonthlyPriceCents: row.defaultMonthlyPriceCents == null ? null : Number(row.defaultMonthlyPriceCents),
-      defaultHostPriceCents: row.defaultHostPriceCents == null ? null : Number(row.defaultHostPriceCents),
+      defaultBreakfastPriceCents:
+        row.defaultBreakfastPriceCents == null
+          ? null
+          : Number(row.defaultBreakfastPriceCents),
+      defaultLunchPriceCents:
+        row.defaultLunchPriceCents == null
+          ? null
+          : Number(row.defaultLunchPriceCents),
+      defaultDinnerPriceCents:
+        row.defaultDinnerPriceCents == null
+          ? null
+          : Number(row.defaultDinnerPriceCents),
+      defaultDailyPriceCents:
+        row.defaultDailyPriceCents == null
+          ? null
+          : Number(row.defaultDailyPriceCents),
+      defaultWeeklyPriceCents:
+        row.defaultWeeklyPriceCents == null
+          ? null
+          : Number(row.defaultWeeklyPriceCents),
+      defaultMonthlyPriceCents:
+        row.defaultMonthlyPriceCents == null
+          ? null
+          : Number(row.defaultMonthlyPriceCents),
+      defaultHostPriceCents:
+        row.defaultHostPriceCents == null
+          ? null
+          : Number(row.defaultHostPriceCents),
     }));
   }
 
@@ -1085,10 +1136,9 @@ export class DatabaseStorage implements IStorage {
       `${has("updated_at") ? `${q("updated_at")} as "updatedAt"` : `null as "updatedAt"`}`,
     ];
 
-    const whereStatus =
-      has("status")
-        ? ` and coalesce(${q("status")}::text, 'open') <> 'cancelled'`
-        : "";
+    const whereStatus = has("status")
+      ? ` and coalesce(${q("status")}::text, 'open') <> 'cancelled'`
+      : "";
     const sqlText = `
       select ${select.join(", ")}
       from ${q(schema)}.${q("events")}
@@ -1100,7 +1150,10 @@ export class DatabaseStorage implements IStorage {
     return result.rows || [];
   }
 
-  private async selectHostsSafe(whereSql: string, params: any[]): Promise<any[]> {
+  private async selectHostsSafe(
+    whereSql: string,
+    params: any[],
+  ): Promise<any[]> {
     if (!pool) return [];
     const { schema, columns } = await this.getHostTableInfo();
 
@@ -1150,7 +1203,9 @@ export class DatabaseStorage implements IStorage {
       `${has("updated_at") ? `${q("updated_at")} as "updatedAt"` : `null as "updatedAt"`}`,
     ];
 
-    const orderBy = has("created_at") ? ` order by ${q("created_at")} desc` : "";
+    const orderBy = has("created_at")
+      ? ` order by ${q("created_at")} desc`
+      : "";
     const sqlText = `select ${select.join(", ")} from ${q(schema)}.${q("hosts")} ${whereSql}${orderBy}`;
     const result = await pool.query(sqlText, params);
     return result.rows || [];
@@ -1159,9 +1214,7 @@ export class DatabaseStorage implements IStorage {
   private shouldAssignAffiliateTag(userType?: string | null) {
     return userType !== "admin" && userType !== "super_admin";
   }
-  private async createDraftParkingPassForHost(
-    host: Host,
-  ): Promise<boolean> {
+  private async createDraftParkingPassForHost(host: Host): Promise<boolean> {
     // Create an unpriced draft Parking Pass series (listing defaults). Occurrences are virtual.
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -1186,12 +1239,14 @@ export class DatabaseStorage implements IStorage {
     const defaultEndTime = PARKING_PASS_MEAL_WINDOWS.dinner.end;
     const spotCount = host.spotCount ?? 1;
 
-    const breakfast = Number((host as any).parkingPassBreakfastPriceCents ?? 0) || 0;
+    const breakfast =
+      Number((host as any).parkingPassBreakfastPriceCents ?? 0) || 0;
     const lunch = Number((host as any).parkingPassLunchPriceCents ?? 0) || 0;
     const dinner = Number((host as any).parkingPassDinnerPriceCents ?? 0) || 0;
     const daily = Number((host as any).parkingPassDailyPriceCents ?? 0) || 0;
     const weekly = Number((host as any).parkingPassWeeklyPriceCents ?? 0) || 0;
-    const monthly = Number((host as any).parkingPassMonthlyPriceCents ?? 0) || 0;
+    const monthly =
+      Number((host as any).parkingPassMonthlyPriceCents ?? 0) || 0;
     const hostPrice = breakfast + lunch + dinner;
     const startTime = String((host as any).parkingPassStartTime || "").trim();
     const endTime = String((host as any).parkingPassEndTime || "").trim();
@@ -1226,7 +1281,9 @@ export class DatabaseStorage implements IStorage {
         defaultMaxTrucks: spotCount,
         defaultHardCapEnabled: false,
         seriesType: "parking_pass",
-        parkingPassDaysOfWeek: Array.isArray(daysOfWeek) ? (daysOfWeek as any) : [],
+        parkingPassDaysOfWeek: Array.isArray(daysOfWeek)
+          ? (daysOfWeek as any)
+          : [],
         defaultBreakfastPriceCents: breakfast,
         defaultLunchPriceCents: lunch,
         defaultDinnerPriceCents: dinner,
@@ -1253,15 +1310,20 @@ export class DatabaseStorage implements IStorage {
 
     const defaultStartTime = PARKING_PASS_MEAL_WINDOWS.breakfast.start;
     const defaultEndTime = PARKING_PASS_MEAL_WINDOWS.dinner.end;
-    const startTime = String((host as any).parkingPassStartTime || "").trim() || defaultStartTime;
-    const endTime = String((host as any).parkingPassEndTime || "").trim() || defaultEndTime;
+    const startTime =
+      String((host as any).parkingPassStartTime || "").trim() ||
+      defaultStartTime;
+    const endTime =
+      String((host as any).parkingPassEndTime || "").trim() || defaultEndTime;
 
-    const breakfast = Number((host as any).parkingPassBreakfastPriceCents ?? 0) || 0;
+    const breakfast =
+      Number((host as any).parkingPassBreakfastPriceCents ?? 0) || 0;
     const lunch = Number((host as any).parkingPassLunchPriceCents ?? 0) || 0;
     const dinner = Number((host as any).parkingPassDinnerPriceCents ?? 0) || 0;
     const daily = Number((host as any).parkingPassDailyPriceCents ?? 0) || 0;
     const weekly = Number((host as any).parkingPassWeeklyPriceCents ?? 0) || 0;
-    const monthly = Number((host as any).parkingPassMonthlyPriceCents ?? 0) || 0;
+    const monthly =
+      Number((host as any).parkingPassMonthlyPriceCents ?? 0) || 0;
     const hostPrice = breakfast + lunch + dinner;
     const daysOfWeek = (host as any).parkingPassDaysOfWeek ?? [];
     const spotCount = Number((host as any).spotCount ?? 1) || 1;
@@ -1286,12 +1348,19 @@ export class DatabaseStorage implements IStorage {
       const existing = await db
         .select({ id: eventSeries.id })
         .from(eventSeries)
-        .where(and(eq(eventSeries.hostId, host.id), eq(eventSeries.seriesType, "parking_pass")))
+        .where(
+          and(
+            eq(eventSeries.hostId, host.id),
+            eq(eventSeries.seriesType, "parking_pass"),
+          ),
+        )
         .limit(1);
       seriesId = existing?.[0]?.id ?? null;
     } catch {
       const safe = await this.getParkingPassSeriesSafe().catch(() => []);
-      const match = safe.find((row) => String(row.hostId || "").trim() === host.id);
+      const match = safe.find(
+        (row) => String(row.hostId || "").trim() === host.id,
+      );
       seriesId = match?.id ?? null;
     }
 
@@ -1316,7 +1385,10 @@ export class DatabaseStorage implements IStorage {
 
     try {
       if (seriesId) {
-        await db.update(eventSeries).set(updates).where(eq(eventSeries.id, seriesId));
+        await db
+          .update(eventSeries)
+          .set(updates)
+          .where(eq(eventSeries.id, seriesId));
         return seriesId;
       }
       const today = new Date();
@@ -1410,10 +1482,15 @@ export class DatabaseStorage implements IStorage {
     const normalizedUserId = String(userId || "").trim();
     if (!normalizedUserId) return undefined;
     try {
-      const rows = await this.selectHostsSafe(`where "user_id" = $1 limit 1`, [normalizedUserId]);
+      const rows = await this.selectHostsSafe(`where "user_id" = $1 limit 1`, [
+        normalizedUserId,
+      ]);
       return (rows[0] as any) || undefined;
     } catch (error) {
-      console.warn("getHostByUserId safe projection failed, falling back:", error);
+      console.warn(
+        "getHostByUserId safe projection failed, falling back:",
+        error,
+      );
       try {
         const [host] = await db
           .select()
@@ -1431,9 +1508,14 @@ export class DatabaseStorage implements IStorage {
     const normalizedUserId = String(userId || "").trim();
     if (!normalizedUserId) return [];
     try {
-      return (await this.selectHostsSafe(`where "user_id" = $1`, [normalizedUserId])) as any;
+      return (await this.selectHostsSafe(`where "user_id" = $1`, [
+        normalizedUserId,
+      ])) as any;
     } catch (error) {
-      console.warn("getHostsByUserId safe projection failed, falling back:", error);
+      console.warn(
+        "getHostsByUserId safe projection failed, falling back:",
+        error,
+      );
       try {
         return await db
           .select()
@@ -1450,14 +1532,14 @@ export class DatabaseStorage implements IStorage {
   async getHostsByIds(hostIds: string[]): Promise<Host[]> {
     const ids = Array.from(
       new Set(
-        (hostIds || [])
-          .map((id) => String(id || "").trim())
-          .filter(Boolean),
+        (hostIds || []).map((id) => String(id || "").trim()).filter(Boolean),
       ),
     );
     if (ids.length === 0) return [];
     try {
-      return (await this.selectHostsSafe(`where "id" = any($1::text[])`, [ids])) as any;
+      return (await this.selectHostsSafe(`where "id" = any($1::text[])`, [
+        ids,
+      ])) as any;
     } catch {
       return await db.select().from(hosts).where(inArray(hosts.id, ids));
     }
@@ -1551,12 +1633,13 @@ export class DatabaseStorage implements IStorage {
     };
 
     if (matched) {
-      const updates: Partial<typeof hosts.$inferInsert> & { updatedAt: Date } = {
-        address: address.address,
-        city: address.city,
-        state: address.state,
-        updatedAt: new Date(),
-      };
+      const updates: Partial<typeof hosts.$inferInsert> & { updatedAt: Date } =
+        {
+          address: address.address,
+          city: address.city,
+          state: address.state,
+          updatedAt: new Date(),
+        };
       if (hasValidManualCoords) {
         updates.latitude = latNum!.toString();
         updates.longitude = lngNum!.toString();
@@ -1577,7 +1660,10 @@ export class DatabaseStorage implements IStorage {
           await this.ensureDraftParkingPassForHost(updated.id);
         }
       } catch (e) {
-        console.warn("ensureDraftParkingPassForHost failed for updated host", e);
+        console.warn(
+          "ensureDraftParkingPassForHost failed for updated host",
+          e,
+        );
       }
       return updated ?? matched;
     }
@@ -1602,7 +1688,11 @@ export class DatabaseStorage implements IStorage {
         updatedAt: new Date(),
       })
       .returning();
-    if (created && !hasValidManualCoords && (!created.latitude || !created.longitude)) {
+    if (
+      created &&
+      !hasValidManualCoords &&
+      (!created.latitude || !created.longitude)
+    ) {
       kickOffGeocode(created.id);
     }
     try {
@@ -1647,7 +1737,7 @@ export class DatabaseStorage implements IStorage {
   async updateHostCoordinates(
     hostId: string,
     lat: number,
-    lng: number
+    lng: number,
   ): Promise<Host> {
     const [updated] = await db
       .update(hosts)
@@ -1706,7 +1796,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getEventsByHost(
-    hostId: string
+    hostId: string,
   ): Promise<(Event & { interests: EventInterest[] })[]> {
     return await db.query.events.findMany({
       where: eq(events.hostId, hostId),
@@ -1786,13 +1876,15 @@ export class DatabaseStorage implements IStorage {
 
     return eventRows.map((event: any) => ({
       ...(event as any),
-      host: hostById.get(String(event.hostId || "")) ?? stubHost(String(event.hostId || "")),
+      host:
+        hostById.get(String(event.hostId || "")) ??
+        stubHost(String(event.hostId || "")),
       series: null,
     })) as any;
   }
 
   async createEventInterest(
-    interest: InsertEventInterest
+    interest: InsertEventInterest,
   ): Promise<EventInterest> {
     const [newInterest] = await db
       .insert(eventInterests)
@@ -1803,7 +1895,7 @@ export class DatabaseStorage implements IStorage {
 
   async updateEventInterestStatus(
     id: string,
-    status: string
+    status: string,
   ): Promise<EventInterest> {
     const [updated] = await db
       .update(eventInterests)
@@ -1823,7 +1915,7 @@ export class DatabaseStorage implements IStorage {
 
   async getEventInterestByTruckId(
     eventId: string,
-    truckId: string
+    truckId: string,
   ): Promise<EventInterest | undefined> {
     const [interest] = await db
       .select()
@@ -1831,8 +1923,8 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(eventInterests.eventId, eventId),
-          eq(eventInterests.truckId, truckId)
-        )
+          eq(eventInterests.truckId, truckId),
+        ),
       );
     return interest;
   }
@@ -1847,7 +1939,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getEventInterestsByEventId(
-    eventId: string
+    eventId: string,
   ): Promise<(EventInterest & { truck: any })[]> {
     return await db.query.eventInterests.findMany({
       where: eq(eventInterests.eventId, eventId),
@@ -1898,7 +1990,7 @@ export class DatabaseStorage implements IStorage {
 
   async updateEventSeries(
     id: string,
-    updates: Partial<InsertEventSeries>
+    updates: Partial<InsertEventSeries>,
   ): Promise<EventSeries> {
     const [updated] = await db
       .update(eventSeries)
@@ -1936,7 +2028,7 @@ export class DatabaseStorage implements IStorage {
   // Stripe helpers
   async updateUserStripeCustomerId(
     userId: string,
-    customerId: string
+    customerId: string,
   ): Promise<void> {
     await db
       .update(users)
@@ -1948,7 +2040,7 @@ export class DatabaseStorage implements IStorage {
     id: string,
     stripeCustomerId: string,
     stripeSubscriptionId: string,
-    subscriptionBillingInterval?: string
+    subscriptionBillingInterval?: string,
   ): Promise<User> {
     const [user] = await db
       .update(users)
@@ -1988,7 +2080,7 @@ export class DatabaseStorage implements IStorage {
         | "publicProfileSettings"
         | "accountSettings"
       >
-    >
+    >,
   ): Promise<User> {
     const [user] = await db
       .update(users)
@@ -2056,7 +2148,10 @@ export class DatabaseStorage implements IStorage {
       if (row.isDisabled === true) return undefined;
       return row as any;
     } catch (error) {
-      console.warn("getUserByEmail safe projection failed, falling back:", error);
+      console.warn(
+        "getUserByEmail safe projection failed, falling back:",
+        error,
+      );
       const [user] = await db
         .select()
         .from(users)
@@ -2082,7 +2177,10 @@ export class DatabaseStorage implements IStorage {
       if (row.isDisabled === true) return undefined;
       return row as any;
     } catch (error) {
-      console.warn("getUserByPhone safe projection failed, falling back:", error);
+      console.warn(
+        "getUserByPhone safe projection failed, falling back:",
+        error,
+      );
       const [user] = await db
         .select()
         .from(users)
@@ -2110,7 +2208,7 @@ export class DatabaseStorage implements IStorage {
       | "event_coordinator"
       | "staff"
       | "admin"
-      | "super_admin"
+      | "super_admin",
   ): Promise<User> {
     // Protect super admin email from demotion; allow upgrading it to super_admin
     const SUPER_ADMIN_EMAIL =
@@ -2126,8 +2224,7 @@ export class DatabaseStorage implements IStorage {
         : userType === "admin" || userType === "super_admin"
           ? 0
           : undefined;
-    const shouldAutoVerify =
-      userType === "admin" || userType === "super_admin";
+    const shouldAutoVerify = userType === "admin" || userType === "super_admin";
     const [updatedUser] = await db
       .update(users)
       .set({
@@ -2143,7 +2240,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUserByStripeCustomerId(
-    stripeCustomerId: string
+    stripeCustomerId: string,
   ): Promise<User | undefined> {
     const [user] = await db
       .select()
@@ -2151,14 +2248,14 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(users.stripeCustomerId, stripeCustomerId),
-          or(eq(users.isDisabled, false), isNull(users.isDisabled))
-        )
+          or(eq(users.isDisabled, false), isNull(users.isDisabled)),
+        ),
       );
     return user;
   }
 
   async getUserByStripeSubscriptionId(
-    stripeSubscriptionId: string
+    stripeSubscriptionId: string,
   ): Promise<User | undefined> {
     const [user] = await db
       .select()
@@ -2166,8 +2263,8 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(users.stripeSubscriptionId, stripeSubscriptionId),
-          or(eq(users.isDisabled, false), isNull(users.isDisabled))
-        )
+          or(eq(users.isDisabled, false), isNull(users.isDisabled)),
+        ),
       );
     return user;
   }
@@ -2180,7 +2277,7 @@ export class DatabaseStorage implements IStorage {
       | FacebookUserData
       | TradeScoutUserData,
     userType: User["userType"] = "customer",
-    appContext: "mealscout" | "tradescout" = "mealscout"
+    appContext: "mealscout" | "tradescout" = "mealscout",
   ): Promise<User> {
     try {
       if (authType === "tradescout") {
@@ -2235,11 +2332,11 @@ export class DatabaseStorage implements IStorage {
 
           if (existingUser.length > 0) {
             console.log(
-              "âœ… Found existing user by email, linking TradeScout account..."
+              "âœ… Found existing user by email, linking TradeScout account...",
             );
             console.log(
               "âš ï¸  Preserving existing userType:",
-              existingUser[0].userType
+              existingUser[0].userType,
             );
             const current = existingUser[0];
 
@@ -2338,11 +2435,11 @@ export class DatabaseStorage implements IStorage {
 
           if (existingUser.length > 0) {
             console.log(
-              "âœ… Found existing user by email, linking Google account..."
+              "âœ… Found existing user by email, linking Google account...",
             );
             console.log(
               "âš ï¸  Preserving existing userType:",
-              existingUser[0].userType
+              existingUser[0].userType,
             );
             const current = existingUser[0];
             const newAppContext =
@@ -2446,11 +2543,11 @@ export class DatabaseStorage implements IStorage {
 
           if (existingUser.length > 0) {
             console.log(
-              "âœ… Found existing user by email, linking Facebook account..."
+              "âœ… Found existing user by email, linking Facebook account...",
             );
             console.log(
               "âš ï¸  Preserving existing userType:",
-              existingUser[0].userType
+              existingUser[0].userType,
             );
             const current = existingUser[0];
             const newAppContext =
@@ -2546,7 +2643,7 @@ export class DatabaseStorage implements IStorage {
       // Handle unique constraint violations (23505)
       if (error.code === "23505") {
         console.log(
-          "ðŸ”„ Handling unique constraint violation, retrying with fetch-and-update..."
+          "ðŸ”„ Handling unique constraint violation, retrying with fetch-and-update...",
         );
 
         if (authType === "tradescout") {
@@ -2559,19 +2656,19 @@ export class DatabaseStorage implements IStorage {
               tsData.email
                 ? or(
                     eq(users.tradescoutId, tsData.tradescoutId),
-                    eq(users.email, tsData.email)
+                    eq(users.email, tsData.email),
                   )
-                : eq(users.tradescoutId, tsData.tradescoutId)
+                : eq(users.tradescoutId, tsData.tradescoutId),
             )
             .limit(1);
 
           if (existingUser.length > 0) {
             console.log(
-              "âœ… Found existing user during TradeScout retry, updating..."
+              "âœ… Found existing user during TradeScout retry, updating...",
             );
             console.log(
               "âš ï¸  Preserving existing userType:",
-              existingUser[0].userType
+              existingUser[0].userType,
             );
             const current = existingUser[0];
             const [user] = await db
@@ -2600,9 +2697,9 @@ export class DatabaseStorage implements IStorage {
               googleData.email
                 ? or(
                     eq(users.googleId, googleData.googleId),
-                    eq(users.email, googleData.email)
+                    eq(users.email, googleData.email),
                   )
-                : eq(users.googleId, googleData.googleId)
+                : eq(users.googleId, googleData.googleId),
             )
             .limit(1);
 
@@ -2610,7 +2707,7 @@ export class DatabaseStorage implements IStorage {
             console.log("âœ… Found existing user during retry, updating...");
             console.log(
               "âš ï¸  Preserving existing userType:",
-              existingUser[0].userType
+              existingUser[0].userType,
             );
             const [user] = await db
               .update(users)
@@ -2640,9 +2737,9 @@ export class DatabaseStorage implements IStorage {
               facebookData.email
                 ? or(
                     eq(users.facebookId, facebookData.facebookId),
-                    eq(users.email, facebookData.email)
+                    eq(users.email, facebookData.email),
                   )
-                : eq(users.facebookId, facebookData.facebookId)
+                : eq(users.facebookId, facebookData.facebookId),
             )
             .limit(1);
 
@@ -2650,7 +2747,7 @@ export class DatabaseStorage implements IStorage {
             console.log("âœ… Found existing user during retry, updating...");
             console.log(
               "âš ï¸  Preserving existing userType:",
-              existingUser[0].userType
+              existingUser[0].userType,
             );
             const [user] = await db
               .update(users)
@@ -2704,7 +2801,7 @@ export class DatabaseStorage implements IStorage {
       if ((newRestaurant as any).city) {
         await this.ensureCityExists(
           (newRestaurant as any).city,
-          (newRestaurant as any).state || null
+          (newRestaurant as any).state || null,
         );
       }
     } catch (e) {
@@ -2748,7 +2845,7 @@ export class DatabaseStorage implements IStorage {
 
   async updateRestaurant(
     id: string,
-    restaurant: Partial<InsertRestaurant>
+    restaurant: Partial<InsertRestaurant>,
   ): Promise<Restaurant> {
     const [updated] = await db
       .update(restaurants)
@@ -2768,7 +2865,7 @@ export class DatabaseStorage implements IStorage {
   async getNearbyRestaurants(
     lat: number,
     lng: number,
-    radiusKm: number
+    radiusKm: number,
   ): Promise<Restaurant[]> {
     // Using simple distance calculation - in production, consider PostGIS
     return await db
@@ -2785,15 +2882,15 @@ export class DatabaseStorage implements IStorage {
               sin(radians(${lat})) *
               sin(radians(${restaurants.latitude}))
             )) <= ${radiusKm}
-          `
-        )
+          `,
+        ),
       );
   }
 
   async getSubscribedRestaurants(
     lat: number,
     lng: number,
-    radiusKm: number
+    radiusKm: number,
   ): Promise<Restaurant[]> {
     // Get nearby restaurants whose owners have active subscriptions
     const results = await db
@@ -2835,19 +2932,19 @@ export class DatabaseStorage implements IStorage {
               sin(radians(${lat})) *
               sin(radians(${restaurants.latitude}))
             )) <= ${radiusKm}
-          `
-        )
+          `,
+        ),
       );
 
     // Map results back to Restaurant type (remove subscriptionStatus)
     return results.map(
-      ({ subscriptionStatus, ...restaurant }: any) => restaurant as Restaurant
+      ({ subscriptionStatus, ...restaurant }: any) => restaurant as Restaurant,
     );
   }
 
   async verifyRestaurantOwnership(
     restaurantId: string,
-    userId: string
+    userId: string,
   ): Promise<boolean> {
     const [restaurant] = await db
       .select({ ownerId: restaurants.ownerId })
@@ -2859,7 +2956,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createTruckManualSchedule(
-    schedule: InsertTruckManualSchedule
+    schedule: InsertTruckManualSchedule,
   ): Promise<TruckManualSchedule> {
     const [created] = await db
       .insert(truckManualSchedules)
@@ -2872,7 +2969,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getTruckManualSchedules(
-    truckId: string
+    truckId: string,
   ): Promise<TruckManualSchedule[]> {
     return await db
       .select()
@@ -2883,12 +2980,12 @@ export class DatabaseStorage implements IStorage {
 
   async deleteTruckManualSchedule(
     scheduleId: string,
-    truckId?: string
+    truckId?: string,
   ): Promise<void> {
     const whereClause = truckId
       ? and(
           eq(truckManualSchedules.id, scheduleId),
-          eq(truckManualSchedules.truckId, truckId)
+          eq(truckManualSchedules.truckId, truckId),
         )
       : eq(truckManualSchedules.id, scheduleId);
 
@@ -2896,7 +2993,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createTruckParkingReport(
-    report: InsertTruckParkingReport
+    report: InsertTruckParkingReport,
   ): Promise<TruckParkingReport> {
     const updatedAt = new Date();
     const values = { ...report, updatedAt };
@@ -2921,7 +3018,9 @@ export class DatabaseStorage implements IStorage {
       const existing = await db
         .select({ id: truckParkingReports.id })
         .from(truckParkingReports)
-        .where(eq(truckParkingReports.manualScheduleId, report.manualScheduleId))
+        .where(
+          eq(truckParkingReports.manualScheduleId, report.manualScheduleId),
+        )
         .limit(1);
       if (existing.length > 0) {
         const [updated] = await db
@@ -2942,7 +3041,7 @@ export class DatabaseStorage implements IStorage {
 
   async getTruckParkingReports(
     truckId: string,
-    options?: { startDate?: Date; endDate?: Date }
+    options?: { startDate?: Date; endDate?: Date },
   ): Promise<TruckParkingReport[]> {
     const whereClauses = [eq(truckParkingReports.truckId, truckId)];
     if (options?.startDate) {
@@ -3051,8 +3150,8 @@ export class DatabaseStorage implements IStorage {
             OR
             -- Overnight time window (startTime > endTime)
             (${deals.startTime} > ${deals.endTime} AND (${currentTime} >= ${deals.startTime} OR ${currentTime} <= ${deals.endTime}))
-          )`
-        )
+          )`,
+        ),
       )
       .orderBy(desc(deals.createdAt))
       .limit(50); // Limit results for better performance
@@ -3062,7 +3161,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getFilteredDeals(
-    showLimitedTimeOnly: boolean = false
+    showLimitedTimeOnly: boolean = false,
   ): Promise<Deal[]> {
     const now = new Date();
     const currentTime = now.toTimeString().slice(0, 5); // "HH:MM"
@@ -3092,8 +3191,8 @@ export class DatabaseStorage implements IStorage {
               (${deals.startTime} = '00:00' AND ${deals.endTime} = '23:59')
               OR (${deals.startTime} = '00:00' AND ${deals.endTime} = '24:00')
               OR (${deals.startTime} = ${deals.endTime})
-            )`
-          )
+            )`,
+          ),
         )
         .orderBy(desc(deals.createdAt))
         .limit(200); // Increase limit to get more deals for randomization
@@ -3117,8 +3216,8 @@ export class DatabaseStorage implements IStorage {
               OR
               -- Overnight time window (startTime > endTime)
               (${deals.startTime} > ${deals.endTime} AND (${currentTime} >= ${deals.startTime} OR ${currentTime} <= ${deals.endTime}))
-            )`
-          )
+            )`,
+          ),
         )
         .orderBy(desc(deals.createdAt))
         .limit(200); // Increase limit to get more deals for randomization
@@ -3185,7 +3284,10 @@ export class DatabaseStorage implements IStorage {
         .where(
           and(
             eq(restaurants.isActive, true),
-            or(eq(restaurants.isFoodTruck, false), isNull(restaurants.isFoodTruck)),
+            or(
+              eq(restaurants.isFoodTruck, false),
+              isNull(restaurants.isFoodTruck),
+            ),
           ),
         ),
       db.select({ count: sql<number>`cast(count(*) as integer)` }).from(deals),
@@ -3200,7 +3302,7 @@ export class DatabaseStorage implements IStorage {
         .select({ count: sql<number>`cast(count(*) as integer)` })
         .from(dealClaims)
         .where(
-          gte(dealClaims.claimedAt, new Date(new Date().setHours(0, 0, 0, 0)))
+          gte(dealClaims.claimedAt, new Date(new Date().setHours(0, 0, 0, 0))),
         ),
       db
         .select({ count: sql<number>`cast(count(*) as integer)` })
@@ -3484,7 +3586,7 @@ export class DatabaseStorage implements IStorage {
   async getNearbyDeals(
     lat: number,
     lng: number,
-    radiusKm: number
+    radiusKm: number,
   ): Promise<any[]> {
     const now = new Date();
     const currentTime = now.toTimeString().slice(0, 5);
@@ -3558,8 +3660,8 @@ export class DatabaseStorage implements IStorage {
               sin(radians(${lat})) *
               sin(radians(${restaurants.latitude}))
             )) <= ${radiusKm}
-          `
-        )
+          `,
+        ),
       )
       .orderBy(sql`distance ASC, RANDOM()`);
 
@@ -3626,7 +3728,7 @@ export class DatabaseStorage implements IStorage {
     if (needsRestaurantData && searchResults.length > 0) {
       // Get unique restaurant IDs
       const restaurantIds = Array.from(
-        new Set(searchResults.map((deal) => deal.restaurantId))
+        new Set(searchResults.map((deal) => deal.restaurantId)),
       );
 
       // Fetch restaurant data
@@ -3661,7 +3763,7 @@ export class DatabaseStorage implements IStorage {
           deal.title.toLowerCase().includes(searchTerm) ||
           deal.description.toLowerCase().includes(searchTerm) ||
           deal.restaurantData?.name?.toLowerCase().includes(searchTerm) ||
-          deal.restaurantData?.cuisineType?.toLowerCase().includes(searchTerm)
+          deal.restaurantData?.cuisineType?.toLowerCase().includes(searchTerm),
       );
     }
 
@@ -3669,19 +3771,19 @@ export class DatabaseStorage implements IStorage {
     if (filters.cuisineType && filters.cuisineType.trim()) {
       const cuisineFilter = filters.cuisineType.toLowerCase();
       searchResults = searchResults.filter((deal) =>
-        deal.restaurantData?.cuisineType?.toLowerCase().includes(cuisineFilter)
+        deal.restaurantData?.cuisineType?.toLowerCase().includes(cuisineFilter),
       );
     }
 
     // Apply price range filters
     if (filters.minPrice !== undefined) {
       searchResults = searchResults.filter(
-        (deal) => deal.discountedPrice >= filters.minPrice!
+        (deal) => deal.discountedPrice >= filters.minPrice!,
       );
     }
     if (filters.maxPrice !== undefined) {
       searchResults = searchResults.filter(
-        (deal) => deal.discountedPrice <= filters.maxPrice!
+        (deal) => deal.discountedPrice <= filters.maxPrice!,
       );
     }
 
@@ -3719,12 +3821,12 @@ export class DatabaseStorage implements IStorage {
       searchResults.sort((a, b) => b.discountedPrice - a.discountedPrice);
     } else if (filters.sortBy === "discount") {
       searchResults.sort(
-        (a, b) => (b.discountPercentage || 0) - (a.discountPercentage || 0)
+        (a, b) => (b.discountPercentage || 0) - (a.discountPercentage || 0),
       );
     } else if (filters.sortBy === "date") {
       searchResults.sort(
         (a, b) =>
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
       );
     } else {
       // Default relevance sort (verified restaurants first, then by creation date)
@@ -3799,7 +3901,7 @@ export class DatabaseStorage implements IStorage {
 
   async getRestaurantDealClaims(
     restaurantId: string,
-    status?: string
+    status?: string,
   ): Promise<any[]> {
     const conditions = [eq(deals.restaurantId, restaurantId)];
 
@@ -3871,7 +3973,7 @@ export class DatabaseStorage implements IStorage {
 
     if (!adminEmail || !adminPassword) {
       console.log(
-        "âš ï¸  Admin credentials not configured - skipping admin creation"
+        "âš ï¸  Admin credentials not configured - skipping admin creation",
       );
       return;
     }
@@ -3887,11 +3989,11 @@ export class DatabaseStorage implements IStorage {
         if (existingAdmin.passwordHash) {
           const matches = await bcrypt.compare(
             adminPassword,
-            existingAdmin.passwordHash
+            existingAdmin.passwordHash,
           );
           if (!matches) {
             console.log(
-              "ðŸ”„ Admin password differs from configured ADMIN_PASSWORD â€“ updating hash"
+              "ðŸ”„ Admin password differs from configured ADMIN_PASSWORD â€“ updating hash",
             );
             const newHash = await bcrypt.hash(adminPassword, 12);
             await db
@@ -3941,7 +4043,7 @@ export class DatabaseStorage implements IStorage {
           phone: "+1 (555) 000-0000",
           passwordHash,
         },
-        "admin"
+        "admin",
       );
 
       await db
@@ -3986,7 +4088,7 @@ export class DatabaseStorage implements IStorage {
           phone: "+1 (985) 555-0001",
           passwordHash: await bcrypt.hash("password123", 10),
         },
-        "restaurant_owner"
+        "restaurant_owner",
       );
 
       const owner2 = await this.upsertUserByAuth(
@@ -3998,7 +4100,7 @@ export class DatabaseStorage implements IStorage {
           phone: "+1 (985) 555-0002",
           passwordHash: await bcrypt.hash("password123", 10),
         },
-        "restaurant_owner"
+        "restaurant_owner",
       );
 
       const owner3 = await this.upsertUserByAuth(
@@ -4010,7 +4112,7 @@ export class DatabaseStorage implements IStorage {
           phone: "+1 (985) 555-0003",
           passwordHash: await bcrypt.hash("password123", 10),
         },
-        "restaurant_owner"
+        "restaurant_owner",
       );
 
       // Create sample customer
@@ -4023,7 +4125,7 @@ export class DatabaseStorage implements IStorage {
           phone: "+1 (985) 555-0100",
           passwordHash: await bcrypt.hash("password123", 10),
         },
-        "customer"
+        "customer",
       );
 
       // Create additional owners for geographic diversity
@@ -4036,7 +4138,7 @@ export class DatabaseStorage implements IStorage {
           phone: "+1 (985) 555-0004",
           passwordHash: await bcrypt.hash("password123", 10),
         },
-        "restaurant_owner"
+        "restaurant_owner",
       );
 
       const owner5 = await this.upsertUserByAuth(
@@ -4048,7 +4150,7 @@ export class DatabaseStorage implements IStorage {
           phone: "+1 (985) 555-0005",
           passwordHash: await bcrypt.hash("password123", 10),
         },
-        "restaurant_owner"
+        "restaurant_owner",
       );
 
       const owner6 = await this.upsertUserByAuth(
@@ -4060,7 +4162,7 @@ export class DatabaseStorage implements IStorage {
           phone: "+1 (985) 555-0006",
           passwordHash: await bcrypt.hash("password123", 10),
         },
-        "restaurant_owner"
+        "restaurant_owner",
       );
 
       // Create restaurants across different US cities for testing
@@ -4681,10 +4783,10 @@ export class DatabaseStorage implements IStorage {
       console.log("ðŸ“Š Created:");
       console.log("   - 6 restaurant owners (password: password123)");
       console.log(
-        "   - 1 customer (customer@example.com, password: password123)"
+        "   - 1 customer (customer@example.com, password: password123)",
       );
       console.log(
-        "   - 15 restaurants across 8+ US cities (Hammond, NYC, LA, Chicago, Houston, Austin, Miami, Seattle)"
+        "   - 15 restaurants across 8+ US cities (Hammond, NYC, LA, Chicago, Houston, Austin, Miami, Seattle)",
       );
       console.log("   - 3 food trucks in different cities");
       console.log("   - 15 diverse deals with regional cuisine specialties");
@@ -4697,7 +4799,7 @@ export class DatabaseStorage implements IStorage {
 
   // Verification operations
   async createVerificationRequest(
-    verificationRequest: InsertVerificationRequest
+    verificationRequest: InsertVerificationRequest,
   ): Promise<VerificationRequest> {
     const [newRequest] = await db
       .insert(verificationRequests)
@@ -4707,7 +4809,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getVerificationRequestsByOwner(
-    ownerId: string
+    ownerId: string,
   ): Promise<VerificationRequest[]> {
     return await db
       .select({
@@ -4725,7 +4827,7 @@ export class DatabaseStorage implements IStorage {
       .from(verificationRequests)
       .innerJoin(
         restaurants,
-        eq(verificationRequests.restaurantId, restaurants.id)
+        eq(verificationRequests.restaurantId, restaurants.id),
       )
       .where(eq(restaurants.ownerId, ownerId))
       .orderBy(desc(verificationRequests.createdAt));
@@ -4763,14 +4865,14 @@ export class DatabaseStorage implements IStorage {
       .from(verificationRequests)
       .innerJoin(
         restaurants,
-        eq(verificationRequests.restaurantId, restaurants.id)
+        eq(verificationRequests.restaurantId, restaurants.id),
       )
       .orderBy(desc(verificationRequests.submittedAt));
   }
 
   async approveVerificationRequest(
     id: string,
-    reviewerId: string
+    reviewerId: string,
   ): Promise<void> {
     // Start transaction to update both tables
     await db.transaction(async (tx: any) => {
@@ -4804,7 +4906,7 @@ export class DatabaseStorage implements IStorage {
   async rejectVerificationRequest(
     id: string,
     reviewerId: string,
-    reason: string
+    reason: string,
   ): Promise<void> {
     // Start transaction to update both tables atomically
     await db.transaction(async (tx: any) => {
@@ -4838,7 +4940,7 @@ export class DatabaseStorage implements IStorage {
 
   async setRestaurantVerified(
     restaurantId: string,
-    isVerified: boolean
+    isVerified: boolean,
   ): Promise<void> {
     await db
       .update(restaurants)
@@ -4856,8 +4958,8 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(verificationRequests.restaurantId, restaurantId),
-          eq(verificationRequests.status, "pending")
-        )
+          eq(verificationRequests.status, "pending"),
+        ),
       )
       .limit(1);
     return !!request;
@@ -4871,7 +4973,7 @@ export class DatabaseStorage implements IStorage {
 
   async getDealViewsCount(
     dealId: string,
-    dateRange?: { start: Date; end: Date }
+    dateRange?: { start: Date; end: Date },
   ): Promise<number> {
     const conditions = [eq(dealViews.dealId, dealId)];
 
@@ -4892,7 +4994,7 @@ export class DatabaseStorage implements IStorage {
     dealId: string,
     userId?: string,
     sessionId?: string,
-    timeWindowMs: number = 3600000
+    timeWindowMs: number = 3600000,
   ): Promise<boolean> {
     const cutoffTime = new Date(Date.now() - timeWindowMs);
     const conditions = [
@@ -4922,7 +5024,7 @@ export class DatabaseStorage implements IStorage {
   // Deal claim revenue operations
   async markClaimAsUsed(
     claimId: string,
-    orderAmount?: number | null
+    orderAmount?: number | null,
   ): Promise<DealClaim | null> {
     const [claim] = await db
       .update(dealClaims)
@@ -4938,7 +5040,7 @@ export class DatabaseStorage implements IStorage {
 
   async verifyRestaurantOwnershipByClaim(
     claimId: string,
-    userId: string
+    userId: string,
   ): Promise<boolean> {
     const result = await db
       .select({ ownerId: restaurants.ownerId })
@@ -4954,7 +5056,7 @@ export class DatabaseStorage implements IStorage {
   // Advanced analytics operations
   async getRestaurantAnalyticsSummary(
     restaurantId: string,
-    dateRange?: { start: Date; end: Date }
+    dateRange?: { start: Date; end: Date },
   ) {
     const dealIds = await db
       .select({ id: deals.id })
@@ -5017,7 +5119,7 @@ export class DatabaseStorage implements IStorage {
       .leftJoin(dealViews, eq(deals.id, dealViews.dealId))
       .leftJoin(
         dealClaims,
-        and(eq(deals.id, dealClaims.dealId), eq(dealClaims.isUsed, true))
+        and(eq(deals.id, dealClaims.dealId), eq(dealClaims.isUsed, true)),
       )
       .where(eq(deals.restaurantId, restaurantId))
       .groupBy(deals.id, deals.title)
@@ -5036,7 +5138,7 @@ export class DatabaseStorage implements IStorage {
   async getRestaurantAnalyticsTimeseries(
     restaurantId: string,
     dateRange: { start: Date; end: Date },
-    interval: "day" | "week"
+    interval: "day" | "week",
   ) {
     const dealIds = await db
       .select({ id: deals.id })
@@ -5065,15 +5167,15 @@ export class DatabaseStorage implements IStorage {
           eq(dealViews.dealId, dealClaims.dealId),
           eq(dealClaims.isUsed, true),
           gte(dealClaims.claimedAt, dateRange.start),
-          lte(dealClaims.claimedAt, dateRange.end)
-        )
+          lte(dealClaims.claimedAt, dateRange.end),
+        ),
       )
       .where(
         and(
           inArray(dealViews.dealId, dealIdArray),
           gte(dealViews.viewedAt, dateRange.start),
-          lte(dealViews.viewedAt, dateRange.end)
-        )
+          lte(dealViews.viewedAt, dateRange.end),
+        ),
       )
       .groupBy(sql`to_char(${dealViews.viewedAt}, '${dateFormat}')`)
       .orderBy(sql`to_char(${dealViews.viewedAt}, '${dateFormat}')`);
@@ -5083,7 +5185,7 @@ export class DatabaseStorage implements IStorage {
 
   async getRestaurantCustomerInsights(
     restaurantId: string,
-    dateRange?: { start: Date; end: Date }
+    dateRange?: { start: Date; end: Date },
   ) {
     const dealIds = await db
       .select({ id: deals.id })
@@ -5196,7 +5298,7 @@ export class DatabaseStorage implements IStorage {
 
   async getRestaurantAnalyticsExport(
     restaurantId: string,
-    dateRange: { start: Date; end: Date }
+    dateRange: { start: Date; end: Date },
   ) {
     const exportData = await db
       .select({
@@ -5212,8 +5314,8 @@ export class DatabaseStorage implements IStorage {
         and(
           eq(deals.id, dealViews.dealId),
           gte(dealViews.viewedAt, dateRange.start),
-          lte(dealViews.viewedAt, dateRange.end)
-        )
+          lte(dealViews.viewedAt, dateRange.end),
+        ),
       )
       .leftJoin(
         dealClaims,
@@ -5221,14 +5323,14 @@ export class DatabaseStorage implements IStorage {
           eq(deals.id, dealClaims.dealId),
           eq(dealClaims.isUsed, true),
           gte(dealClaims.usedAt, dateRange.start),
-          lte(dealClaims.usedAt, dateRange.end)
-        )
+          lte(dealClaims.usedAt, dateRange.end),
+        ),
       )
       .where(eq(deals.restaurantId, restaurantId))
       .groupBy(
         deals.id,
         deals.title,
-        sql`to_char(${dealViews.viewedAt}, 'YYYY-MM-DD')`
+        sql`to_char(${dealViews.viewedAt}, 'YYYY-MM-DD')`,
       )
       .orderBy(deals.title, sql`to_char(${dealViews.viewedAt}, 'YYYY-MM-DD')`);
 
@@ -5238,7 +5340,7 @@ export class DatabaseStorage implements IStorage {
   // Food truck operations
   async setRestaurantMobileSettings(
     restaurantId: string,
-    settings: UpdateRestaurantMobileSettings
+    settings: UpdateRestaurantMobileSettings,
   ): Promise<Restaurant> {
     const [restaurant] = await db
       .update(restaurants)
@@ -5253,7 +5355,7 @@ export class DatabaseStorage implements IStorage {
 
   async updateRestaurantLocation(
     restaurantId: string,
-    location: UpdateRestaurantLocation
+    location: UpdateRestaurantLocation,
   ): Promise<Restaurant> {
     const updateData: any = {
       currentLatitude: location.latitude.toString(),
@@ -5282,7 +5384,7 @@ export class DatabaseStorage implements IStorage {
 
   async setRestaurantOperatingHours(
     restaurantId: string,
-    operatingHours: OperatingHours
+    operatingHours: OperatingHours,
   ): Promise<Restaurant> {
     const [restaurant] = await db
       .update(restaurants)
@@ -5342,7 +5444,7 @@ export class DatabaseStorage implements IStorage {
 
     // Get unique restaurant IDs to batch check operating hours
     const restaurantIds = Array.from(
-      new Set(deals.map((deal) => deal.restaurantId))
+      new Set(deals.map((deal) => deal.restaurantId)),
     ).filter((id) => id != null);
 
     // Return early if no valid restaurant IDs
@@ -5359,7 +5461,7 @@ export class DatabaseStorage implements IStorage {
 
     // Create a map for quick lookup
     const restaurantHoursMap = new Map(
-      restaurantsWithHours.map((r: any) => [r.id, r.operatingHours])
+      restaurantsWithHours.map((r: any) => [r.id, r.operatingHours]),
     );
 
     // Filter deals where restaurants are currently open
@@ -5413,7 +5515,7 @@ export class DatabaseStorage implements IStorage {
   async startTruckSession(
     restaurantId: string,
     deviceId: string,
-    userId: string
+    userId: string,
   ): Promise<FoodTruckSession> {
     // End any existing active session first
     await db
@@ -5425,8 +5527,8 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(foodTruckSessions.restaurantId, restaurantId),
-          eq(foodTruckSessions.isActive, true)
-        )
+          eq(foodTruckSessions.isActive, true),
+        ),
       );
 
     // Start new session
@@ -5463,8 +5565,8 @@ export class DatabaseStorage implements IStorage {
         and(
           eq(foodTruckSessions.restaurantId, restaurantId),
           eq(foodTruckSessions.startedByUserId, userId),
-          eq(foodTruckSessions.isActive, true)
-        )
+          eq(foodTruckSessions.isActive, true),
+        ),
       );
 
     // Update restaurant mobile status
@@ -5478,7 +5580,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getActiveTruckSession(
-    restaurantId: string
+    restaurantId: string,
   ): Promise<FoodTruckSession | undefined> {
     const [session] = await db
       .select()
@@ -5486,8 +5588,8 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(foodTruckSessions.restaurantId, restaurantId),
-          eq(foodTruckSessions.isActive, true)
-        )
+          eq(foodTruckSessions.isActive, true),
+        ),
       )
       .orderBy(desc(foodTruckSessions.startedAt))
       .limit(1);
@@ -5499,7 +5601,7 @@ export class DatabaseStorage implements IStorage {
     lat: number,
     lng: number,
     timeWindowMs: number = 10000, // 10 seconds
-    distanceThreshold: number = 10 // 10 meters
+    distanceThreshold: number = 10, // 10 meters
   ): Promise<boolean> {
     const cutoffTime = new Date(Date.now() - timeWindowMs);
 
@@ -5512,8 +5614,8 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(foodTruckLocations.restaurantId, restaurantId),
-          gte(foodTruckLocations.recordedAt, cutoffTime)
-        )
+          gte(foodTruckLocations.recordedAt, cutoffTime),
+        ),
       )
       .orderBy(desc(foodTruckLocations.recordedAt))
       .limit(1);
@@ -5529,13 +5631,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   async upsertLiveLocation(
-    location: InsertFoodTruckLocation
+    location: InsertFoodTruckLocation,
   ): Promise<FoodTruckLocation> {
     // Check for recent duplicate location
     const hasRecent = await this.hasRecentLocationUpdate(
       location.restaurantId,
       location.latitude,
-      location.longitude
+      location.longitude,
     );
 
     if (hasRecent) {
@@ -5551,7 +5653,7 @@ export class DatabaseStorage implements IStorage {
 
     // Get active session for the restaurant
     const activeSession = await this.getActiveTruckSession(
-      location.restaurantId
+      location.restaurantId,
     );
 
     // Insert new location record
@@ -5582,7 +5684,7 @@ export class DatabaseStorage implements IStorage {
   async getLiveTrucksNearby(
     lat: number,
     lng: number,
-    radiusKm: number
+    radiusKm: number,
   ): Promise<Array<Restaurant & { distance: number; sessionId?: string }>> {
     const staleMinutesRaw = Number(process.env.LIVE_TRUCK_STALE_MINUTES || 120);
     const staleMinutes = Number.isFinite(staleMinutesRaw)
@@ -5620,8 +5722,8 @@ export class DatabaseStorage implements IStorage {
         foodTruckSessions,
         and(
           eq(restaurants.id, foodTruckSessions.restaurantId),
-          eq(foodTruckSessions.isActive, true)
-        )
+          eq(foodTruckSessions.isActive, true),
+        ),
       )
       .where(
         and(
@@ -5629,14 +5731,16 @@ export class DatabaseStorage implements IStorage {
           eq(restaurants.mobileOnline, true),
           eq(restaurants.isActive, true),
           sql`current_latitude IS NOT NULL`,
-          sql`current_longitude IS NOT NULL`
-        )
+          sql`current_longitude IS NOT NULL`,
+        ),
       );
     const freshResults = results.filter((truck: any) => {
       const lastBroadcastMs = truck?.lastBroadcastAt
         ? new Date(truck.lastBroadcastAt).getTime()
         : Number.NaN;
-      return Number.isFinite(lastBroadcastMs) && lastBroadcastMs >= freshnessCutoffMs;
+      return (
+        Number.isFinite(lastBroadcastMs) && lastBroadcastMs >= freshnessCutoffMs
+      );
     });
 
     // Calculate distance in JavaScript for now (simpler than complex SQL)
@@ -5680,7 +5784,7 @@ export class DatabaseStorage implements IStorage {
 
   async getTruckLocationHistory(
     restaurantId: string,
-    dateRange?: { start: Date; end: Date }
+    dateRange?: { start: Date; end: Date },
   ): Promise<FoodTruckLocation[]> {
     const conditions = [eq(foodTruckLocations.restaurantId, restaurantId)];
 
@@ -5712,20 +5816,20 @@ export class DatabaseStorage implements IStorage {
 
   async removeRestaurantFavorite(
     restaurantId: string,
-    userId: string
+    userId: string,
   ): Promise<void> {
     await db
       .delete(restaurantFavorites)
       .where(
         and(
           eq(restaurantFavorites.restaurantId, restaurantId),
-          eq(restaurantFavorites.userId, userId)
-        )
+          eq(restaurantFavorites.userId, userId),
+        ),
       );
   }
 
   async getUserRestaurantFavorites(
-    userId: string
+    userId: string,
   ): Promise<(RestaurantFavorite & { restaurant: Restaurant })[]> {
     const result = await db
       .select({
@@ -5739,7 +5843,7 @@ export class DatabaseStorage implements IStorage {
       .from(restaurantFavorites)
       .innerJoin(
         restaurants,
-        eq(restaurantFavorites.restaurantId, restaurants.id)
+        eq(restaurantFavorites.restaurantId, restaurants.id),
       )
       .where(eq(restaurantFavorites.userId, userId))
       .orderBy(desc(restaurantFavorites.favoritedAt));
@@ -5759,26 +5863,29 @@ export class DatabaseStorage implements IStorage {
     restaurantId: string;
     userId: string;
   }): Promise<RestaurantFollow> {
-    const [result] = await db.insert(restaurantFollows).values(follow).returning();
+    const [result] = await db
+      .insert(restaurantFollows)
+      .values(follow)
+      .returning();
     return result;
   }
 
   async removeRestaurantFollow(
     restaurantId: string,
-    userId: string
+    userId: string,
   ): Promise<void> {
     await db
       .delete(restaurantFollows)
       .where(
         and(
           eq(restaurantFollows.restaurantId, restaurantId),
-          eq(restaurantFollows.userId, userId)
-        )
+          eq(restaurantFollows.userId, userId),
+        ),
       );
   }
 
   async getUserRestaurantFollows(
-    userId: string
+    userId: string,
   ): Promise<(RestaurantFollow & { restaurant: Restaurant })[]> {
     const result = await db
       .select({
@@ -5792,7 +5899,7 @@ export class DatabaseStorage implements IStorage {
       .from(restaurantFollows)
       .innerJoin(
         restaurants,
-        eq(restaurantFollows.restaurantId, restaurants.id)
+        eq(restaurantFollows.restaurantId, restaurants.id),
       )
       .where(eq(restaurantFollows.userId, userId))
       .orderBy(desc(restaurantFollows.followedAt));
@@ -5812,7 +5919,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUserRestaurantRecommendations(
-    userId: string
+    userId: string,
   ): Promise<(RestaurantUserRecommendation & { restaurant: Restaurant })[]> {
     const result = await db
       .select({
@@ -5826,7 +5933,7 @@ export class DatabaseStorage implements IStorage {
       .from(restaurantUserRecommendations)
       .innerJoin(
         restaurants,
-        eq(restaurantUserRecommendations.restaurantId, restaurants.id)
+        eq(restaurantUserRecommendations.restaurantId, restaurants.id),
       )
       .where(eq(restaurantUserRecommendations.userId, userId))
       .orderBy(desc(restaurantUserRecommendations.recommendedAt));
@@ -5836,7 +5943,7 @@ export class DatabaseStorage implements IStorage {
 
   async getRestaurantFavoritesAnalytics(
     restaurantId: string,
-    dateRange?: { start: Date; end: Date }
+    dateRange?: { start: Date; end: Date },
   ) {
     let favorites;
     if (dateRange) {
@@ -5851,8 +5958,8 @@ export class DatabaseStorage implements IStorage {
           and(
             eq(restaurantFavorites.restaurantId, restaurantId),
             gte(restaurantFavorites.favoritedAt, dateRange.start),
-            lte(restaurantFavorites.favoritedAt, dateRange.end)
-          )
+            lte(restaurantFavorites.favoritedAt, dateRange.end),
+          ),
         );
     } else {
       favorites = await db
@@ -5877,9 +5984,9 @@ export class DatabaseStorage implements IStorage {
           ? and(
               eq(restaurantFavorites.restaurantId, restaurantId),
               gte(restaurantFavorites.favoritedAt, dateRange.start),
-              lte(restaurantFavorites.favoritedAt, dateRange.end)
+              lte(restaurantFavorites.favoritedAt, dateRange.end),
             )
-          : eq(restaurantFavorites.restaurantId, restaurantId)
+          : eq(restaurantFavorites.restaurantId, restaurantId),
       )
       .groupBy(sql`DATE(${restaurantFavorites.favoritedAt})`)
       .orderBy(sql`DATE(${restaurantFavorites.favoritedAt})`);
@@ -5923,7 +6030,7 @@ export class DatabaseStorage implements IStorage {
 
   async getRestaurantRecommendationsAnalytics(
     restaurantId: string,
-    dateRange?: { start: Date; end: Date }
+    dateRange?: { start: Date; end: Date },
   ) {
     let recommendations;
     if (dateRange) {
@@ -5940,8 +6047,8 @@ export class DatabaseStorage implements IStorage {
           and(
             eq(restaurantRecommendations.restaurantId, restaurantId),
             gte(restaurantRecommendations.showedAt, dateRange.start),
-            lte(restaurantRecommendations.showedAt, dateRange.end)
-          )
+            lte(restaurantRecommendations.showedAt, dateRange.end),
+          ),
         );
     } else {
       recommendations = await db
@@ -5957,7 +6064,7 @@ export class DatabaseStorage implements IStorage {
     }
 
     const totalClicks = recommendations.filter(
-      (r: { isClicked: boolean | null }) => r.isClicked === true
+      (r: { isClicked: boolean | null }) => r.isClicked === true,
     ).length;
     const clickThroughRate =
       recommendations.length > 0
@@ -5968,10 +6075,10 @@ export class DatabaseStorage implements IStorage {
     const recommendationsByType = recommendations.reduce(
       (
         acc: Array<{ type: string; count: number; clicks: number }>,
-        rec: { recommendationType: string; isClicked: boolean | null }
+        rec: { recommendationType: string; isClicked: boolean | null },
       ) => {
         const existing = acc.find(
-          (item: { type: string }) => item.type === rec.recommendationType
+          (item: { type: string }) => item.type === rec.recommendationType,
         );
         if (existing) {
           existing.count++;
@@ -5985,7 +6092,7 @@ export class DatabaseStorage implements IStorage {
         }
         return acc;
       },
-      [] as Array<{ type: string; count: number; clicks: number }>
+      [] as Array<{ type: string; count: number; clicks: number }>,
     );
 
     // Calculate trend data (group by day)
@@ -6001,9 +6108,9 @@ export class DatabaseStorage implements IStorage {
           ? and(
               eq(restaurantRecommendations.restaurantId, restaurantId),
               gte(restaurantRecommendations.showedAt, dateRange.start),
-              lte(restaurantRecommendations.showedAt, dateRange.end)
+              lte(restaurantRecommendations.showedAt, dateRange.end),
             )
-          : eq(restaurantRecommendations.restaurantId, restaurantId)
+          : eq(restaurantRecommendations.restaurantId, restaurantId),
       )
       .groupBy(sql`DATE(${restaurantRecommendations.showedAt})`)
       .orderBy(sql`DATE(${restaurantRecommendations.showedAt})`);
@@ -6019,7 +6126,7 @@ export class DatabaseStorage implements IStorage {
 
   // Host location request operations
   async createLocationRequest(
-    request: InsertLocationRequest
+    request: InsertLocationRequest,
   ): Promise<LocationRequest> {
     const payload = {
       ...request,
@@ -6038,7 +6145,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getLocationRequestById(
-    id: string
+    id: string,
   ): Promise<LocationRequest | undefined> {
     const [request] = await db
       .select()
@@ -6055,19 +6162,19 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(locationRequests.status, "open"),
-          lte(locationRequests.createdAt, cutoff)
-        )
+          lte(locationRequests.createdAt, cutoff),
+        ),
       );
     return result.rowCount || 0;
   }
 
   async createTruckInterest(
-    interest: InsertTruckInterest
+    interest: InsertTruckInterest,
   ): Promise<{ interestId: string; locationRequest: LocationRequest }> {
     await this.expireStaleLocationRequests();
 
     const locationRequest = await this.getLocationRequestById(
-      interest.locationRequestId
+      interest.locationRequestId,
     );
     if (!locationRequest) {
       throw new Error("Location request not found");
@@ -6124,7 +6231,7 @@ export class DatabaseStorage implements IStorage {
 
   async updateUserAddress(
     id: string,
-    address: Partial<InsertUserAddress>
+    address: Partial<InsertUserAddress>,
   ): Promise<UserAddress> {
     const updateData: any = {
       ...address,
@@ -6165,7 +6272,10 @@ export class DatabaseStorage implements IStorage {
         .update(userAddresses)
         .set({ isDefault: true, updatedAt: new Date() })
         .where(
-          and(eq(userAddresses.id, addressId), eq(userAddresses.userId, userId))
+          and(
+            eq(userAddresses.id, addressId),
+            eq(userAddresses.userId, userId),
+          ),
         );
     });
   }
@@ -6202,7 +6312,7 @@ export class DatabaseStorage implements IStorage {
 
   // Password reset token operations
   async createPasswordResetToken(
-    tokenData: InsertPasswordResetToken
+    tokenData: InsertPasswordResetToken,
   ): Promise<PasswordResetToken> {
     const [token] = await db
       .insert(passwordResetTokens)
@@ -6212,7 +6322,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getPasswordResetToken(
-    id: string
+    id: string,
   ): Promise<PasswordResetToken | undefined> {
     const [token] = await db
       .select()
@@ -6222,7 +6332,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getPasswordResetTokenByTokenHash(
-    tokenHash: string
+    tokenHash: string,
   ): Promise<PasswordResetToken | undefined> {
     const [token] = await db
       .select()
@@ -6231,8 +6341,8 @@ export class DatabaseStorage implements IStorage {
         and(
           eq(passwordResetTokens.tokenHash, tokenHash),
           gte(passwordResetTokens.expiresAt, new Date()),
-          isNull(passwordResetTokens.usedAt)
-        )
+          isNull(passwordResetTokens.usedAt),
+        ),
       );
     return token;
   }
@@ -6256,9 +6366,9 @@ export class DatabaseStorage implements IStorage {
           eq(passwordResetTokens.userId, userId),
           or(
             lte(passwordResetTokens.expiresAt, now),
-            isNotNull(passwordResetTokens.usedAt)
-          )
-        )
+            isNotNull(passwordResetTokens.usedAt),
+          ),
+        ),
       );
   }
 
@@ -6272,7 +6382,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createPhoneVerificationToken(
-    tokenData: InsertPhoneVerificationToken
+    tokenData: InsertPhoneVerificationToken,
   ): Promise<PhoneVerificationToken> {
     const [token] = await db
       .insert(phoneVerificationTokens)
@@ -6283,7 +6393,7 @@ export class DatabaseStorage implements IStorage {
 
   async getPhoneVerificationTokenByHash(
     phone: string,
-    tokenHash: string
+    tokenHash: string,
   ): Promise<PhoneVerificationToken | undefined> {
     const [token] = await db
       .select()
@@ -6293,14 +6403,14 @@ export class DatabaseStorage implements IStorage {
           eq(phoneVerificationTokens.phone, phone),
           eq(phoneVerificationTokens.tokenHash, tokenHash),
           gte(phoneVerificationTokens.expiresAt, new Date()),
-          isNull(phoneVerificationTokens.usedAt)
-        )
+          isNull(phoneVerificationTokens.usedAt),
+        ),
       );
     return token;
   }
 
   async markPhoneVerificationTokenUsed(
-    id: string
+    id: string,
   ): Promise<PhoneVerificationToken> {
     const [token] = await db
       .update(phoneVerificationTokens)
@@ -6325,7 +6435,7 @@ export class DatabaseStorage implements IStorage {
 
   // Account setup token operations
   async createAccountSetupToken(
-    tokenData: InsertAccountSetupToken
+    tokenData: InsertAccountSetupToken,
   ): Promise<AccountSetupToken> {
     const [token] = await db
       .insert(accountSetupTokens)
@@ -6335,7 +6445,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAccountSetupToken(
-    id: string
+    id: string,
   ): Promise<AccountSetupToken | undefined> {
     const [token] = await db
       .select()
@@ -6345,7 +6455,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAccountSetupTokenByTokenHash(
-    tokenHash: string
+    tokenHash: string,
   ): Promise<AccountSetupToken | undefined> {
     const [token] = await db
       .select()
@@ -6354,8 +6464,8 @@ export class DatabaseStorage implements IStorage {
         and(
           eq(accountSetupTokens.tokenHash, tokenHash),
           gte(accountSetupTokens.expiresAt, new Date()),
-          isNull(accountSetupTokens.usedAt)
-        )
+          isNull(accountSetupTokens.usedAt),
+        ),
       );
     return token;
   }
@@ -6379,9 +6489,9 @@ export class DatabaseStorage implements IStorage {
           eq(accountSetupTokens.userId, userId),
           or(
             lte(accountSetupTokens.expiresAt, now),
-            isNotNull(accountSetupTokens.usedAt)
-          )
-        )
+            isNotNull(accountSetupTokens.usedAt),
+          ),
+        ),
       );
   }
 
@@ -6396,7 +6506,7 @@ export class DatabaseStorage implements IStorage {
 
   // Email verification token operations
   async createEmailVerificationToken(
-    tokenData: InsertEmailVerificationToken
+    tokenData: InsertEmailVerificationToken,
   ): Promise<EmailVerificationToken> {
     const [token] = await db
       .insert(emailVerificationTokens)
@@ -6406,7 +6516,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getEmailVerificationTokenByTokenHash(
-    tokenHash: string
+    tokenHash: string,
   ): Promise<EmailVerificationToken | undefined> {
     const [token] = await db
       .select()
@@ -6415,14 +6525,14 @@ export class DatabaseStorage implements IStorage {
         and(
           eq(emailVerificationTokens.tokenHash, tokenHash),
           gte(emailVerificationTokens.expiresAt, new Date()),
-          isNull(emailVerificationTokens.usedAt)
-        )
+          isNull(emailVerificationTokens.usedAt),
+        ),
       );
     return token;
   }
 
   async markEmailVerificationTokenUsed(
-    id: string
+    id: string,
   ): Promise<EmailVerificationToken> {
     const [token] = await db
       .update(emailVerificationTokens)
@@ -6441,8 +6551,8 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(apiKeys.isActive, true),
-          or(isNull(apiKeys.expiresAt), gte(apiKeys.expiresAt, new Date()))
-        )
+          or(isNull(apiKeys.expiresAt), gte(apiKeys.expiresAt, new Date())),
+        ),
       );
     return keys;
   }
@@ -6456,7 +6566,7 @@ export class DatabaseStorage implements IStorage {
 
   // Deal feedback operations
   async createDealFeedback(
-    feedback: InsertDealFeedback
+    feedback: InsertDealFeedback,
   ): Promise<DealFeedback> {
     const [createdFeedback] = await db
       .insert(dealFeedback)
@@ -6572,7 +6682,7 @@ export class DatabaseStorage implements IStorage {
   async updateUserPassword(
     userId: string,
     passwordHash: string,
-    mustResetPassword: boolean
+    mustResetPassword: boolean,
   ): Promise<void> {
     await db
       .update(users)
@@ -6739,4 +6849,3 @@ export class DatabaseStorage implements IStorage {
 }
 
 export const storage = new DatabaseStorage();
-

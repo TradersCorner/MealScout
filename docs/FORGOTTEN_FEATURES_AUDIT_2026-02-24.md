@@ -38,9 +38,8 @@ From phase audit docs, these trigger classes did not show clear server-side trig
 
 ## Recommended Minimal Next Actions
 
-1. Decide one of:
-   - Implement Twilio SMS incident path, or
-   - Explicitly disable/remove SMS config knobs to avoid false expectation.
+1. Add/confirm `INCIDENT_SMS_RECIPIENTS` in production env so critical incident SMS fanout is active.
+2. Run one end-to-end SEV1 incident test in staging and verify email + Slack + SMS delivery.
 
 ## Data Retention Safeguard Added
 

@@ -2,7 +2,7 @@
 
 import { spawnSync } from "node:child_process";
 
-const checks = [
+const allChecks = [
   {
     id: "incidents",
     title: "Incident tri-channel checklist",
@@ -16,6 +16,14 @@ const checks = [
     args: ["run", "test:staff-rbac"],
   },
 ];
+
+const skipRbac = ["1", "true", "yes", "on"].includes(
+  String(process.env.CHECKLIST_SKIP_RBAC || "").trim().toLowerCase(),
+);
+
+const checks = skipRbac
+  ? allChecks.filter((check) => check.id !== "rbac")
+  : allChecks;
 
 const requiredEnvByCheck = {
   incidents: [
@@ -92,6 +100,10 @@ const main = () => {
   console.log("=".repeat(66));
   console.log("MealScout Security Verification Checklist");
   console.log("=".repeat(66));
+
+  if (skipRbac) {
+    console.log("RBAC check is skipped via CHECKLIST_SKIP_RBAC.");
+  }
 
   printEnvSummary();
 

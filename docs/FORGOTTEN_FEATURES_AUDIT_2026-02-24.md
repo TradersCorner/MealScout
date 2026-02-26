@@ -109,6 +109,7 @@ From phase audit docs, these trigger classes did not show clear server-side trig
    - `npm run checklist:incidents`
    - `npm run test:staff-rbac`
 - Purpose: one-command staging gate for notification channels + RBAC verification before sign-off.
+- Render/server mode: set `CHECKLIST_SKIP_RBAC=true` to run incident validation only when RBAC session cookies are not available in that environment.
 - Readiness summary refined so `RBAC_BASE_URL` is treated as optional (default applies) and no longer counted as a required missing env.
 - Local command validation completed:
    - Incident checklist => FAIL (missing incident env)

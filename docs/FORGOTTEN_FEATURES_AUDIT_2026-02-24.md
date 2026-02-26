@@ -105,6 +105,7 @@ From phase audit docs, these trigger classes did not show clear server-side trig
 ## Unified Security Gate (2026-02-26)
 
 - Added combined runner: `npm run checklist:security`.
+- Added production-friendly runner: `npm run checklist:security:prod` (auto-sets `CHECKLIST_SKIP_RBAC=true`).
 - It executes, in order:
    - `npm run checklist:incidents`
    - `npm run test:staff-rbac`

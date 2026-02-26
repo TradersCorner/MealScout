@@ -99,9 +99,9 @@ From phase audit docs, these trigger classes did not show clear server-side trig
    - `validate:config` shows email/slack/sms configured and no default incident secret warning.
    - `test:incidents` completes without fail-fast errors.
    - Critical incident test emits notifications on all three channels:
-      - Email received by `INCIDENT_EMAIL_RECIPIENTS`
-      - Slack message appears on incident webhook channel
-      - SMS received by `INCIDENT_SMS_RECIPIENTS`
+     - Email received by `INCIDENT_EMAIL_RECIPIENTS`
+     - Slack message appears on incident webhook channel
+     - SMS received by `INCIDENT_SMS_RECIPIENTS`
 
 4. **Evidence to capture for closure**
    - Command output snippets for both scripts

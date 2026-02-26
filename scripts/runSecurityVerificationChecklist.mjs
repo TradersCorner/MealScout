@@ -29,8 +29,11 @@ const requiredEnvByCheck = {
     "RBAC_COOKIE_CUSTOMER",
     "RBAC_COOKIE_STAFF",
     "RBAC_COOKIE_ADMIN",
-    "RBAC_BASE_URL",
   ],
+};
+
+const optionalEnvByCheck = {
+  rbac: ["RBAC_BASE_URL"],
 };
 
 const getMissing = (names) =>
@@ -44,10 +47,17 @@ const printEnvSummary = () => {
 
   for (const check of checks) {
     const required = requiredEnvByCheck[check.id] || [];
+    const optional = optionalEnvByCheck[check.id] || [];
     const missing = getMissing(required);
+    const missingOptional = getMissing(optional);
 
     if (!missing.length) {
       console.log(`- ${check.title}: ✅ env ready`);
+      if (missingOptional.length) {
+        console.log(
+          `  - Optional not set: ${missingOptional.join(", ")} (defaults apply)`,
+        );
+      }
       continue;
     }
 

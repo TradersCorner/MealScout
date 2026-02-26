@@ -72,3 +72,12 @@ From phase audit docs, these trigger classes did not show clear server-side trig
   - `PATCH /api/admin/hosts/:id`
 - Staff dashboard host location manager edit gate has been aligned to permit `staff` and `super_admin` alongside `admin`.
 - Result: manual pricing/location edits are now available to both admin and staff in dashboard workflows.
+
+## Static Role Smoke Check (2026-02-25)
+
+- Verified `HostLocationManager` in staff UI is wired with editable mode via `canEditHostLocations` for `staff`/`admin`/`super_admin`.
+- Verified admin pricing update endpoints remain staff-accessible and are not short-circuited by `denyStaffEdits`:
+   - `PATCH /api/admin/parking-pass/:id`
+   - `PATCH /api/admin/hosts/:id`
+- Verified host-route role helper still recognizes `staff`/`admin`/`super_admin` in role checks used by host management flows.
+- Remaining validation gap is runtime-only (staging execution with full incident notification env).

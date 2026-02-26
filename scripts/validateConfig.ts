@@ -5,6 +5,12 @@
  * Use this to verify environment setup before running full tests.
  */
 
+import dotenv from 'dotenv';
+
+dotenv.config({ path: '.env' });
+dotenv.config({ path: '.env.local', override: true });
+dotenv.config({ path: '.env.development', override: true });
+
 // Check environment configuration
 function validateEnvironment() {
   console.log('\n' + '='.repeat(60));

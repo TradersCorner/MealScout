@@ -35,6 +35,7 @@ const coerceCents = (value: unknown) => {
 
 const applySlotSumToDailyIfAuto = (prev: any, nextSlotSumCents: number) => {
   if (prev?._dailyOnlySelected) return prev;
+  if (prev?._dailyManuallyEdited) return prev;
   const nextDaily = Math.max(0, Math.round(nextSlotSumCents));
   if (nextDaily <= 0) return prev;
 

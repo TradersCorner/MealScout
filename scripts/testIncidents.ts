@@ -181,12 +181,17 @@ async function validateNotificationChannels() {
 
   const checks = {
     email: !!process.env.BREVO_API_KEY,
+    emailRecipients: (process.env.INCIDENT_EMAIL_RECIPIENTS || "")
+      .split(",")
+      .map((value) => value.trim())
+      .filter(Boolean).length > 0,
     slack: !!process.env.SLACK_WEBHOOK_URL,
-    sms: !!process.env.TWILIO_ACCOUNT_SID && !!process.env.TWILIO_AUTH_TOKEN,
+    sms: !!process.env.BREVO_API_KEY,
     incidentSecret: !!process.env.INCIDENT_SIGNATURE_SECRET,
   };
 
   console.log('Email notifications:', checks.email ? '✅ Enabled' : '⚠️  Not configured');
+  console.log('Incident email recipients:', checks.emailRecipients ? '✅ Configured' : '⚠️  Not configured');
   console.log('Slack notifications:', checks.slack ? '✅ Enabled' : '⚠️  Not configured');
   console.log('SMS notifications:', checks.sms ? '✅ Enabled' : '⚠️  Not configured');
   console.log('Incident signing:', checks.incidentSecret ? '✅ Enabled' : '⚠️  Using default secret');
@@ -206,6 +211,12 @@ async function runAllTests() {
   try {
     // Validate configuration
     const config = await validateNotificationChannels();
+
+    if (!config.email || !config.emailRecipients) {
+      throw new Error(
+        'Incident tests require BREVO_API_KEY and INCIDENT_EMAIL_RECIPIENTS because incident notifications enforce email delivery.'
+      );
+    }
 
     // Test 1: Low severity
     const incident1 = await testPasswordResetAbuse();

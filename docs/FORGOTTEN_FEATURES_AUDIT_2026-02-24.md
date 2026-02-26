@@ -53,6 +53,13 @@ From phase audit docs, these trigger classes did not show clear server-side trig
    - `SLACK_WEBHOOK_URL`
    - `INCIDENT_SIGNATURE_SECRET`
 
+## Config Validator Snapshot (2026-02-25)
+
+- Ran `npm run validate:config` in local workspace.
+- Critical baseline is present (DB + session secret), but incident signing is still on default secret.
+- Notification channels are all unconfigured locally (email/slack/sms), matching the incident test fail-fast output.
+- Local run is suitable for baseline app testing, but not for full SOC-lite notification verification until incident env is populated.
+
 ## Data Retention Safeguard Added
 
 - `storage.deleteUser` now always performs soft-delete/anonymization (disable account + scrub PII) and no longer hard-deletes from `users`.

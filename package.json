@@ -20,6 +20,7 @@
     "check": "tsc",
     "db:push": "drizzle-kit push",
     "test:flows:e2e": "playwright test",
+    "test:staff-rbac": "tsx scripts/testStaffRBAC.ts",
     "test:deal-contract": "tsx scripts/testDealCreationContract.ts",
     "test:deal-routes": "tsx scripts/testDealCreationRoutes.ts",
     "test:supplier-payments": "tsx scripts/testSupplierPaymentIntentFlow.ts",

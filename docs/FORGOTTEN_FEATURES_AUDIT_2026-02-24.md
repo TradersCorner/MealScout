@@ -90,6 +90,17 @@ From phase audit docs, these trigger classes did not show clear server-side trig
 - Verified host-route role helper still recognizes `staff`/`admin`/`super_admin` in role checks used by host management flows.
 - Remaining validation gap is runtime-only (staging execution with full incident notification env).
 
+## RBAC Script Hardening (2026-02-26)
+
+- Updated `scripts/testStaffRBAC.ts` to use environment-based cookies/base URL instead of requiring source edits.
+- Added npm entrypoint: `npm run test:staff-rbac`.
+- Required env for runtime RBAC validation:
+   - `RBAC_COOKIE_CUSTOMER`
+   - `RBAC_COOKIE_STAFF`
+   - `RBAC_COOKIE_ADMIN`
+   - `RBAC_BASE_URL` (optional; defaults to `http://localhost:5200`)
+- Local execution now fails fast with explicit setup instructions when cookies are not provided.
+
 ## Staging Tri-Channel Validation Runbook (Ready)
 
 1. **Set required incident env in staging**

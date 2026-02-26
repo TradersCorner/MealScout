@@ -8,19 +8,32 @@
  * - Disabled accounts are blocked
  * 
  * Usage:
- * 1. Start dev server: npm run dev:server
+ * 1. Start target server (default: http://localhost:5200)
  * 2. Get session cookies from browser DevTools (Application > Cookies)
- * 3. Update COOKIES object below with real session cookies
- * 4. Run: npx tsx scripts/testStaffRBAC.ts
+ * 3. Set env vars (preferred):
+ *    RBAC_BASE_URL=http://localhost:5200
+ *    RBAC_COOKIE_CUSTOMER="connect.sid=..."
+ *    RBAC_COOKIE_STAFF="connect.sid=..."
+ *    RBAC_COOKIE_ADMIN="connect.sid=..."
+ * 4. Run: npm run test:staff-rbac
  */
 
-const BASE_URL = "http://localhost:5200";
+const BASE_URL = process.env.RBAC_BASE_URL || "http://localhost:5200";
 
 // ⚠️ UPDATE THESE WITH REAL SESSION COOKIES FROM BROWSER
 const COOKIES = {
   customer: "connect.sid=PASTE_CUSTOMER_COOKIE_HERE",
   staff: "connect.sid=PASTE_STAFF_COOKIE_HERE",
   admin: "connect.sid=PASTE_ADMIN_COOKIE_HERE",
+};
+
+const envOrFallback = (envValue: string | undefined, fallback: string) =>
+  envValue && envValue.trim().length > 0 ? envValue.trim() : fallback;
+
+const runtimeCookies = {
+  customer: envOrFallback(process.env.RBAC_COOKIE_CUSTOMER, COOKIES.customer),
+  staff: envOrFallback(process.env.RBAC_COOKIE_STAFF, COOKIES.staff),
+  admin: envOrFallback(process.env.RBAC_COOKIE_ADMIN, COOKIES.admin),
 };
 
 interface TestResult {
@@ -92,21 +105,25 @@ async function main() {
 
   // Check if cookies are set
   if (
-    COOKIES.customer.includes("PASTE") ||
-    COOKIES.staff.includes("PASTE") ||
-    COOKIES.admin.includes("PASTE")
+    runtimeCookies.customer.includes("PASTE") ||
+    runtimeCookies.staff.includes("PASTE") ||
+    runtimeCookies.admin.includes("PASTE")
   ) {
     console.error(
-      "❌ ERROR: Please update COOKIES object with real session cookies!"
+      "❌ ERROR: Missing RBAC cookies. Set RBAC_COOKIE_CUSTOMER, RBAC_COOKIE_STAFF, and RBAC_COOKIE_ADMIN."
     );
     console.log("\nHow to get cookies:");
     console.log("1. Log in to MealScout in browser");
     console.log("2. Open DevTools (F12)");
     console.log("3. Go to Application > Cookies > localhost");
     console.log("4. Copy 'connect.sid' value");
+    console.log("5. Set env vars before running the script:\n");
     console.log(
-      "5. Update COOKIES object in this script (scripts/testStaffRBAC.ts)\n"
+      '   $env:RBAC_COOKIE_CUSTOMER="connect.sid=..."'
     );
+    console.log('   $env:RBAC_COOKIE_STAFF="connect.sid=..."');
+    console.log('   $env:RBAC_COOKIE_ADMIN="connect.sid=..."');
+    console.log('   $env:RBAC_BASE_URL="http://localhost:5200"\n');
     process.exit(1);
   }
 
@@ -116,7 +133,7 @@ async function main() {
     "Customer → GET /api/admin/staff",
     "GET",
     `${BASE_URL}/api/admin/staff`,
-    COOKIES.customer,
+    runtimeCookies.customer,
     null,
     403
   );
@@ -127,7 +144,7 @@ async function main() {
     "Customer → POST /api/staff/users",
     "POST",
     `${BASE_URL}/api/staff/users`,
-    COOKIES.customer,
+    runtimeCookies.customer,
     { email: "test@example.com", firstName: "Test" },
     403
   );
@@ -138,7 +155,7 @@ async function main() {
     "Staff → GET /api/admin/staff",
     "GET",
     `${BASE_URL}/api/admin/staff`,
-    COOKIES.staff,
+    runtimeCookies.staff,
     null,
     403
   );
@@ -147,7 +164,7 @@ async function main() {
     "Staff → POST /api/admin/staff/:id/promote",
     "POST",
     `${BASE_URL}/api/admin/staff/fake-user-id/promote`,
-    COOKIES.staff,
+    runtimeCookies.staff,
     null,
     403
   );
@@ -159,7 +176,7 @@ async function main() {
     "Staff → POST /api/staff/users",
     "POST",
     `${BASE_URL}/api/staff/users`,
-    COOKIES.staff,
+    runtimeCookies.staff,
     { email: testEmail, firstName: "Test", lastName: "User" },
     200
   );
@@ -175,7 +192,7 @@ async function main() {
     "Staff → POST /api/staff/users (with userType:admin)",
     "POST",
     `${BASE_URL}/api/staff/users`,
-    COOKIES.staff,
+    runtimeCookies.staff,
     { email: evilEmail, firstName: "Evil", userType: "admin" },
     200 // Should succeed but ignore userType
   );
@@ -192,7 +209,7 @@ async function main() {
     "Admin → GET /api/admin/staff",
     "GET",
     `${BASE_URL}/api/admin/staff`,
-    COOKIES.admin,
+    runtimeCookies.admin,
     null,
     200
   );
@@ -201,7 +218,7 @@ async function main() {
     "Admin → POST /api/staff/users",
     "POST",
     `${BASE_URL}/api/staff/users`,
-    COOKIES.admin,
+    runtimeCookies.admin,
     { email: `admin-test${Date.now()}@mealscout.test`, firstName: "Admin" },
     200
   );

@@ -30,6 +30,7 @@
     "verify:deal-writes": "npx dotenv-cli -e .env -- npx tsx scripts/verifyDealWrites.ts",
     "test:incidents": "tsx scripts/testIncidents.ts",
     "checklist:incidents": "node scripts/runIncidentStagingChecklist.mjs",
+    "checklist:security": "node scripts/runSecurityVerificationChecklist.mjs",
     "validate:config": "tsx scripts/validateConfig.ts",
     "migrate:sql": "tsx scripts/runSqlMigration.ts",
     "backfill:host-coordinates": "tsx scripts/backfillHostGeocodes.ts",

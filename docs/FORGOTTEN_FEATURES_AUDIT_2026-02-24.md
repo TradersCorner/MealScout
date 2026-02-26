@@ -102,6 +102,18 @@ From phase audit docs, these trigger classes did not show clear server-side trig
    - `RBAC_BASE_URL` (optional; defaults to `http://localhost:5200`)
 - Local execution now fails fast with explicit setup instructions when cookies are not provided.
 
+## Unified Security Gate (2026-02-26)
+
+- Added combined runner: `npm run checklist:security`.
+- It executes, in order:
+   - `npm run checklist:incidents`
+   - `npm run test:staff-rbac`
+- Purpose: one-command staging gate for notification channels + RBAC verification before sign-off.
+- Local command validation completed:
+   - Incident checklist => FAIL (missing incident env)
+   - RBAC check => FAIL (missing RBAC cookies/env)
+   - Combined gate exits non-zero as designed until staging secrets/sessions are supplied.
+
 ## Staging Tri-Channel Validation Runbook (Ready)
 
 1. **Set required incident env in staging**
@@ -113,6 +125,7 @@ From phase audit docs, these trigger classes did not show clear server-side trig
    - `INCIDENT_SIGNATURE_SECRET`
 
 2. **Run config and incident harness in staging shell**
+   - Optional full gate: `npm run checklist:security`
    - `npm run checklist:incidents` (recommended: runs both checks and prints pass/fail summary)
    - `npm run validate:config`
    - `npm run test:incidents`

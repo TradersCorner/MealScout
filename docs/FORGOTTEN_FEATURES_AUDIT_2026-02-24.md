@@ -60,6 +60,14 @@ From phase audit docs, these trigger classes did not show clear server-side trig
 - Notification channels are all unconfigured locally (email/slack/sms), matching the incident test fail-fast output.
 - Local run is suitable for baseline app testing, but not for full SOC-lite notification verification until incident env is populated.
 
+## Incident Checklist Command Validation (2026-02-26)
+
+- Added one-command runner: `npm run checklist:incidents`.
+- Local execution result (expected in current env):
+   - `validate:config` => PASS
+   - `test:incidents` => FAIL (missing `BREVO_API_KEY` / `INCIDENT_EMAIL_RECIPIENTS` and other notification env)
+- Outcome: checklist command behavior is validated and ready for staging handoff execution.
+
 ## Data Retention Safeguard Added
 
 - `storage.deleteUser` now always performs soft-delete/anonymization (disable account + scrub PII) and no longer hard-deletes from `users`.
@@ -92,6 +100,7 @@ From phase audit docs, these trigger classes did not show clear server-side trig
    - `INCIDENT_SIGNATURE_SECRET`
 
 2. **Run config and incident harness in staging shell**
+   - `npm run checklist:incidents` (recommended: runs both checks and prints pass/fail summary)
    - `npm run validate:config`
    - `npm run test:incidents`
 

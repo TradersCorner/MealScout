@@ -67,7 +67,10 @@ export default function StaffDashboard() {
   const [selectedTab, setSelectedTab] = useState<
     "accounts" | "host-locations"
   >("accounts");
-  const canEditHostLocations = user?.userType === "admin";
+  const canEditHostLocations =
+    user?.userType === "admin" ||
+    user?.userType === "staff" ||
+    user?.userType === "super_admin";
 
   // Verify staff access
   const { data: staffCheck, isLoading: checkingAccess } = useQuery({

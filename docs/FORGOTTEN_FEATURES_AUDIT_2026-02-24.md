@@ -110,6 +110,7 @@ From phase audit docs, these trigger classes did not show clear server-side trig
    - `npm run test:staff-rbac`
 - Purpose: one-command staging gate for notification channels + RBAC verification before sign-off.
 - Render/server mode: set `CHECKLIST_SKIP_RBAC=true` to run incident validation only when RBAC session cookies are not available in that environment.
+- SMS is optional by default in checklist env validation; set `CHECKLIST_REQUIRE_SMS=true` when you want to enforce SMS readiness.
 - Readiness summary refined so `RBAC_BASE_URL` is treated as optional (default applies) and no longer counted as a required missing env.
 - Render shell compatibility hardening: critical checklist scripts now invoke `npx --yes tsx` so they run even when `tsx` is not locally installed in production runtime images.
 - Local command validation completed:
@@ -123,9 +124,9 @@ From phase audit docs, these trigger classes did not show clear server-side trig
    - Copy baseline keys from `docs/INCIDENT_STAGING_ENV.example` and inject real values via staging secret manager.
    - `BREVO_API_KEY`
    - `INCIDENT_EMAIL_RECIPIENTS`
-   - `INCIDENT_SMS_RECIPIENTS`
    - `SLACK_WEBHOOK_URL`
    - `INCIDENT_SIGNATURE_SECRET`
+   - `INCIDENT_SMS_RECIPIENTS` (optional unless `CHECKLIST_REQUIRE_SMS=true`)
 
 2. **Run config and incident harness in staging shell**
    - Optional full gate: `npm run checklist:security`

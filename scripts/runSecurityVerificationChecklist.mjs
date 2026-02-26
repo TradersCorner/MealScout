@@ -29,7 +29,6 @@ const requiredEnvByCheck = {
   incidents: [
     "BREVO_API_KEY",
     "INCIDENT_EMAIL_RECIPIENTS",
-    "INCIDENT_SMS_RECIPIENTS",
     "SLACK_WEBHOOK_URL",
     "INCIDENT_SIGNATURE_SECRET",
   ],
@@ -41,8 +40,18 @@ const requiredEnvByCheck = {
 };
 
 const optionalEnvByCheck = {
+  incidents: ["INCIDENT_SMS_RECIPIENTS"],
   rbac: ["RBAC_BASE_URL"],
 };
+
+const requireSms = ["1", "true", "yes", "on"].includes(
+  String(process.env.CHECKLIST_REQUIRE_SMS || "").trim().toLowerCase(),
+);
+
+if (requireSms) {
+  requiredEnvByCheck.incidents.push("INCIDENT_SMS_RECIPIENTS");
+  optionalEnvByCheck.incidents = [];
+}
 
 const getMissing = (names) =>
   names.filter((name) => {
@@ -103,6 +112,9 @@ const main = () => {
 
   if (skipRbac) {
     console.log("RBAC check is skipped via CHECKLIST_SKIP_RBAC.");
+  }
+  if (!requireSms) {
+    console.log("Incident SMS env is optional (set CHECKLIST_REQUIRE_SMS=true to enforce).");
   }
 
   printEnvSummary();

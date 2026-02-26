@@ -17,13 +17,20 @@ const checks = [
   },
 ];
 
+const requireSms = ["1", "true", "yes", "on"].includes(
+  String(process.env.CHECKLIST_REQUIRE_SMS || "").trim().toLowerCase(),
+);
+
 const requiredIncidentEnv = [
   "BREVO_API_KEY",
   "INCIDENT_EMAIL_RECIPIENTS",
-  "INCIDENT_SMS_RECIPIENTS",
   "SLACK_WEBHOOK_URL",
   "INCIDENT_SIGNATURE_SECRET",
 ];
+
+if (requireSms) {
+  requiredIncidentEnv.push("INCIDENT_SMS_RECIPIENTS");
+}
 
 const runCheck = (check) => {
   console.log(`\n▶ ${check.title}`);
@@ -66,6 +73,10 @@ const main = () => {
   console.log("=".repeat(64));
   console.log("MealScout Incident Staging Checklist");
   console.log("=".repeat(64));
+
+  if (!requireSms) {
+    console.log("SMS requirement is optional (set CHECKLIST_REQUIRE_SMS=true to enforce).");
+  }
 
   printMissingEnvSummary();
 

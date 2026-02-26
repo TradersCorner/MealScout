@@ -93,6 +93,7 @@ From phase audit docs, these trigger classes did not show clear server-side trig
 ## Staging Tri-Channel Validation Runbook (Ready)
 
 1. **Set required incident env in staging**
+   - Copy baseline keys from `docs/INCIDENT_STAGING_ENV.example` and inject real values via staging secret manager.
    - `BREVO_API_KEY`
    - `INCIDENT_EMAIL_RECIPIENTS`
    - `INCIDENT_SMS_RECIPIENTS`

@@ -45,9 +45,9 @@ function validateEnvironment() {
     },
     sms: {
       name: 'SMS Notifications (Critical only)',
-      configured: !!(process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN),
+      configured: !!process.env.BREVO_API_KEY,
       required: false,
-      value: process.env.TWILIO_ACCOUNT_SID ? '✓ Twilio configured' : '✗ Not configured',
+      value: process.env.BREVO_API_KEY ? '✓ Brevo configured' : '✗ Not configured',
       recipients: process.env.INCIDENT_SMS_RECIPIENTS || 'Not set',
     },
     escalation: {

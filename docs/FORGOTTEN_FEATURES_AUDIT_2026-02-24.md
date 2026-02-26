@@ -8,9 +8,10 @@
    - Impact: featured video cycling logic can never run in production.
    - Resolution: Registered in `server/routes.ts` (commit `35ac5fd`).
 
-2. **Incident SMS notifications are declared but intentionally unimplemented**
-   - `server/incidentManager.ts` logs warning: Twilio/SMS path requested but no SMS sent.
-   - Impact: SEV1 incidents do not send SMS even when SMS config is enabled.
+2. **Incident SMS notifications are declared but intentionally unimplemented** ✅ Fixed
+   - `server/incidentManager.ts` now sends SMS for critical incidents via existing Brevo `smsService`.
+   - `scripts/validateConfig.ts` now validates SMS readiness using `BREVO_API_KEY` (aligned with runtime service).
+   - Impact resolved: SEV1 incidents can now send SMS when `INCIDENT_SMS_RECIPIENTS` and Brevo config are present.
 
 3. **Legacy/deferred auth module still present but inactive** ✅ Decision locked
    - `server/facebookAuth.ts` file exists.

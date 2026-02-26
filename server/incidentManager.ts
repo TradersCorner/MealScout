@@ -4,6 +4,7 @@ import { incidents, oncallRotation } from "../shared/schema";
 import { eq, and, gte, lte, desc } from "drizzle-orm";
 import auditLogger, { logAudit } from "./auditLogger";
 import { emailService, isEmailConfigured } from "./emailService";
+import { isSmsConfigured, sendSms } from "./smsService";
 import fs from "fs";
 import path from "path";
 
@@ -38,10 +39,10 @@ const NOTIFICATION_CONFIG = {
     webhookUrl: process.env.SLACK_WEBHOOK_URL,
   },
   sms: {
-    enabled:
-      !!process.env.TWILIO_ACCOUNT_SID && !!process.env.TWILIO_AUTH_TOKEN,
+    enabled: isSmsConfigured(),
     recipients: (process.env.INCIDENT_SMS_RECIPIENTS || "")
       .split(",")
+      .map((value) => value.trim())
       .filter(Boolean),
   },
 };
@@ -300,11 +301,28 @@ ${JSON.stringify(incident.metadata || {}, null, 2)}
     incident.severity === "critical" &&
     NOTIFICATION_CONFIG.sms.recipients.length > 0
   ) {
-    // SMS notifications are currently not implemented. Do not log false success.
-    auditLogger.warn(
-      "SMS incident notification requested but Twilio integration is not implemented; no SMS was sent.",
-      { incidentId: incident.id, eventType }
-    );
+    const smsMessage = `${message} | Incident ID: ${incident.id}`;
+    const failures: string[] = [];
+
+    for (const recipient of NOTIFICATION_CONFIG.sms.recipients) {
+      const ok = await sendSms(recipient, smsMessage);
+      if (!ok) {
+        failures.push(recipient);
+      }
+    }
+
+    if (failures.length > 0) {
+      auditLogger.error("SMS notification failed for some recipients", {
+        incidentId: incident.id,
+        eventType,
+        recipients: failures,
+      });
+    } else {
+      auditLogger.info("SMS notification sent", {
+        incidentId: incident.id,
+        eventType,
+      });
+    }
   }
 }
 

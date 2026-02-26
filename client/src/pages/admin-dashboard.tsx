@@ -3218,17 +3218,18 @@ export default function AdminDashboard() {
                         step={1}
                         className="w-full px-2 py-1 border rounded-md text-sm"
                         value={toDollars(edits.parkingPassBreakfastPriceCents)}
-                        onChange={(e) =>
+                        onChange={(e) => {
+                          const next = applyHostDailyAutoIfAllowed({
+                            ...edits,
+                            parkingPassBreakfastPriceCents: toCents(
+                              e.target.value,
+                            ),
+                          });
                           setHostEdits({
                             ...hostEdits,
-                            [host.id]: {
-                              ...edits,
-                              parkingPassBreakfastPriceCents: toCents(
-                                e.target.value,
-                              ),
-                            },
-                          })
-                        }
+                            [host.id]: next,
+                          });
+                        }}
                       />
                     </div>
                     <div className="space-y-1">
@@ -3239,17 +3240,18 @@ export default function AdminDashboard() {
                         step={1}
                         className="w-full px-2 py-1 border rounded-md text-sm"
                         value={toDollars(edits.parkingPassLunchPriceCents)}
-                        onChange={(e) =>
+                        onChange={(e) => {
+                          const next = applyHostDailyAutoIfAllowed({
+                            ...edits,
+                            parkingPassLunchPriceCents: toCents(
+                              e.target.value,
+                            ),
+                          });
                           setHostEdits({
                             ...hostEdits,
-                            [host.id]: {
-                              ...edits,
-                              parkingPassLunchPriceCents: toCents(
-                                e.target.value,
-                              ),
-                            },
-                          })
-                        }
+                            [host.id]: next,
+                          });
+                        }}
                       />
                     </div>
                     <div className="space-y-1">
@@ -3262,17 +3264,18 @@ export default function AdminDashboard() {
                         step={1}
                         className="w-full px-2 py-1 border rounded-md text-sm"
                         value={toDollars(edits.parkingPassDinnerPriceCents)}
-                        onChange={(e) =>
+                        onChange={(e) => {
+                          const next = applyHostDailyAutoIfAllowed({
+                            ...edits,
+                            parkingPassDinnerPriceCents: toCents(
+                              e.target.value,
+                            ),
+                          });
                           setHostEdits({
                             ...hostEdits,
-                            [host.id]: {
-                              ...edits,
-                              parkingPassDinnerPriceCents: toCents(
-                                e.target.value,
-                              ),
-                            },
-                          })
-                        }
+                            [host.id]: next,
+                          });
+                        }}
                       />
                     </div>
                     <div className="space-y-1">
@@ -3292,6 +3295,7 @@ export default function AdminDashboard() {
                               parkingPassDailyPriceCents: cents,
                               parkingPassWeeklyPriceCents: cents * 7,
                               parkingPassMonthlyPriceCents: cents * 30,
+                              _parkingPassDailyManuallyEdited: true,
                             },
                           });
                         }}
@@ -3444,15 +3448,16 @@ export default function AdminDashboard() {
                             step={1}
                             className="w-full px-2 py-1 border rounded-md text-sm"
                             value={toDollars(passEdits.breakfastPriceCents)}
-                            onChange={(e) =>
+                            onChange={(e) => {
+                              const next = applyListingDailyAutoIfAllowed({
+                                ...passEdits,
+                                breakfastPriceCents: toCents(e.target.value),
+                              });
                               setParkingPassEdits({
                                 ...parkingPassEdits,
-                                [pass.id]: {
-                                  ...passEdits,
-                                  breakfastPriceCents: toCents(e.target.value),
-                                },
-                              })
-                            }
+                                [pass.id]: next,
+                              });
+                            }}
                           />
                         </div>
                         <div className="space-y-1">
@@ -3465,15 +3470,16 @@ export default function AdminDashboard() {
                             step={1}
                             className="w-full px-2 py-1 border rounded-md text-sm"
                             value={toDollars(passEdits.lunchPriceCents)}
-                            onChange={(e) =>
+                            onChange={(e) => {
+                              const next = applyListingDailyAutoIfAllowed({
+                                ...passEdits,
+                                lunchPriceCents: toCents(e.target.value),
+                              });
                               setParkingPassEdits({
                                 ...parkingPassEdits,
-                                [pass.id]: {
-                                  ...passEdits,
-                                  lunchPriceCents: toCents(e.target.value),
-                                },
-                              })
-                            }
+                                [pass.id]: next,
+                              });
+                            }}
                           />
                         </div>
                         <div className="space-y-1">
@@ -3486,15 +3492,16 @@ export default function AdminDashboard() {
                             step={1}
                             className="w-full px-2 py-1 border rounded-md text-sm"
                             value={toDollars(passEdits.dinnerPriceCents)}
-                            onChange={(e) =>
+                            onChange={(e) => {
+                              const next = applyListingDailyAutoIfAllowed({
+                                ...passEdits,
+                                dinnerPriceCents: toCents(e.target.value),
+                              });
                               setParkingPassEdits({
                                 ...parkingPassEdits,
-                                [pass.id]: {
-                                  ...passEdits,
-                                  dinnerPriceCents: toCents(e.target.value),
-                                },
-                              })
-                            }
+                                [pass.id]: next,
+                              });
+                            }}
                           />
                         </div>
                         <div className="space-y-1">
@@ -3516,6 +3523,7 @@ export default function AdminDashboard() {
                                   weeklyPriceCents: toCents(e.target.value) * 7,
                                   monthlyPriceCents:
                                     toCents(e.target.value) * 30,
+                                  _dailyManuallyEdited: true,
                                 },
                               })
                             }
@@ -3803,6 +3811,11 @@ export default function AdminDashboard() {
     }
     const nextEdits: Record<string, any> = {};
     parkingPasses.forEach((pass: any) => {
+      const breakfast = Number(pass.breakfastPriceCents ?? 0) || 0;
+      const lunch = Number(pass.lunchPriceCents ?? 0) || 0;
+      const dinner = Number(pass.dinnerPriceCents ?? 0) || 0;
+      const slotSum = breakfast + lunch + dinner;
+      const daily = Number(pass.dailyPriceCents ?? 0) || 0;
       nextEdits[pass.id] = {
         startTime: pass.startTime || "",
         endTime: pass.endTime || "",
@@ -3811,9 +3824,11 @@ export default function AdminDashboard() {
         breakfastPriceCents: pass.breakfastPriceCents ?? 0,
         lunchPriceCents: pass.lunchPriceCents ?? 0,
         dinnerPriceCents: pass.dinnerPriceCents ?? 0,
-        dailyPriceCents: pass.dailyPriceCents ?? 0,
+        dailyPriceCents: daily > 0 ? daily : slotSum,
         weeklyPriceCents: pass.weeklyPriceCents ?? 0,
         monthlyPriceCents: pass.monthlyPriceCents ?? 0,
+        _dailyManuallyEdited:
+          daily > 0 && slotSum > 0 ? daily !== slotSum : false,
       };
     });
     setParkingPassEdits(nextEdits);
@@ -3850,6 +3865,11 @@ export default function AdminDashboard() {
         host.expectedFootTraffic === undefined
           ? null
           : host.expectedFootTraffic;
+      const breakfast = Number(host.parkingPassBreakfastPriceCents ?? 0) || 0;
+      const lunch = Number(host.parkingPassLunchPriceCents ?? 0) || 0;
+      const dinner = Number(host.parkingPassDinnerPriceCents ?? 0) || 0;
+      const slotSum = breakfast + lunch + dinner;
+      const daily = Number(host.parkingPassDailyPriceCents ?? 0) || 0;
       nextEdits[host.id] = {
         businessName: host.businessName || "",
         address: host.address || "",
@@ -3876,9 +3896,11 @@ export default function AdminDashboard() {
           host.parkingPassBreakfastPriceCents ?? 0,
         parkingPassLunchPriceCents: host.parkingPassLunchPriceCents ?? 0,
         parkingPassDinnerPriceCents: host.parkingPassDinnerPriceCents ?? 0,
-        parkingPassDailyPriceCents: host.parkingPassDailyPriceCents ?? 0,
+        parkingPassDailyPriceCents: daily > 0 ? daily : slotSum,
         parkingPassWeeklyPriceCents: host.parkingPassWeeklyPriceCents ?? 0,
         parkingPassMonthlyPriceCents: host.parkingPassMonthlyPriceCents ?? 0,
+        _parkingPassDailyManuallyEdited:
+          daily > 0 && slotSum > 0 ? daily !== slotSum : false,
       };
     });
     setHostEdits(nextEdits);
@@ -4818,6 +4840,36 @@ export default function AdminDashboard() {
     const parsed = Number(value);
     if (!Number.isFinite(parsed)) return 0;
     return Math.round(parsed * 100);
+  };
+
+  const applyHostDailyAutoIfAllowed = (edits: any) => {
+    if (edits?._parkingPassDailyManuallyEdited) return edits;
+    const slotSum =
+      (Number(edits?.parkingPassBreakfastPriceCents ?? 0) || 0) +
+      (Number(edits?.parkingPassLunchPriceCents ?? 0) || 0) +
+      (Number(edits?.parkingPassDinnerPriceCents ?? 0) || 0);
+    if (slotSum <= 0) return edits;
+    return {
+      ...edits,
+      parkingPassDailyPriceCents: slotSum,
+      parkingPassWeeklyPriceCents: slotSum * 7,
+      parkingPassMonthlyPriceCents: slotSum * 30,
+    };
+  };
+
+  const applyListingDailyAutoIfAllowed = (edits: any) => {
+    if (edits?._dailyManuallyEdited) return edits;
+    const slotSum =
+      (Number(edits?.breakfastPriceCents ?? 0) || 0) +
+      (Number(edits?.lunchPriceCents ?? 0) || 0) +
+      (Number(edits?.dinnerPriceCents ?? 0) || 0);
+    if (slotSum <= 0) return edits;
+    return {
+      ...edits,
+      dailyPriceCents: slotSum,
+      weeklyPriceCents: slotSum * 7,
+      monthlyPriceCents: slotSum * 30,
+    };
   };
 
   return (
@@ -7981,17 +8033,18 @@ export default function AdminDashboard() {
                                 step={1}
                                 className="w-full px-2 py-1 border rounded-md text-sm"
                                 value={toDollars(edits.breakfastPriceCents)}
-                                onChange={(e) =>
+                                onChange={(e) => {
+                                  const next = applyListingDailyAutoIfAllowed({
+                                    ...edits,
+                                    breakfastPriceCents: toCents(
+                                      e.target.value,
+                                    ),
+                                  });
                                   setParkingPassEdits({
                                     ...parkingPassEdits,
-                                    [pass.id]: {
-                                      ...edits,
-                                      breakfastPriceCents: toCents(
-                                        e.target.value,
-                                      ),
-                                    },
-                                  })
-                                }
+                                    [pass.id]: next,
+                                  });
+                                }}
                               />
                             </div>
                             <div className="space-y-1">
@@ -8004,15 +8057,16 @@ export default function AdminDashboard() {
                                 step={1}
                                 className="w-full px-2 py-1 border rounded-md text-sm"
                                 value={toDollars(edits.lunchPriceCents)}
-                                onChange={(e) =>
+                                onChange={(e) => {
+                                  const next = applyListingDailyAutoIfAllowed({
+                                    ...edits,
+                                    lunchPriceCents: toCents(e.target.value),
+                                  });
                                   setParkingPassEdits({
                                     ...parkingPassEdits,
-                                    [pass.id]: {
-                                      ...edits,
-                                      lunchPriceCents: toCents(e.target.value),
-                                    },
-                                  })
-                                }
+                                    [pass.id]: next,
+                                  });
+                                }}
                               />
                             </div>
                             <div className="space-y-1">
@@ -8025,15 +8079,16 @@ export default function AdminDashboard() {
                                 step={1}
                                 className="w-full px-2 py-1 border rounded-md text-sm"
                                 value={toDollars(edits.dinnerPriceCents)}
-                                onChange={(e) =>
+                                onChange={(e) => {
+                                  const next = applyListingDailyAutoIfAllowed({
+                                    ...edits,
+                                    dinnerPriceCents: toCents(e.target.value),
+                                  });
                                   setParkingPassEdits({
                                     ...parkingPassEdits,
-                                    [pass.id]: {
-                                      ...edits,
-                                      dinnerPriceCents: toCents(e.target.value),
-                                    },
-                                  })
-                                }
+                                    [pass.id]: next,
+                                  });
+                                }}
                               />
                             </div>
                             <div className="space-y-1">
@@ -8056,6 +8111,7 @@ export default function AdminDashboard() {
                                         toCents(e.target.value) * 7,
                                       monthlyPriceCents:
                                         toCents(e.target.value) * 30,
+                                      _dailyManuallyEdited: true,
                                     },
                                   })
                                 }

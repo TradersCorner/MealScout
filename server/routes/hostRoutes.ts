@@ -1439,19 +1439,6 @@ export function registerHostRoutes(app: Express) {
               ? computedMonthlyDerived
               : Number(event.monthlyPriceCents ?? 0);
 
-        const hasAnyPrice = [
-          nextSlotSum,
-          Number(effectiveDaily || 0),
-          Number(effectiveWeekly || 0),
-          Number(effectiveMonthly || 0),
-        ].some((value) => Number(value) > 0);
-
-        if (!hasAnyPrice) {
-          return res.status(400).json({
-            message: "Set at least one price greater than zero.",
-          });
-        }
-
         updates.hostPriceCents = effectiveHostPrice;
         updates.dailyPriceCents = effectiveDaily;
         updates.weeklyPriceCents = effectiveWeekly;

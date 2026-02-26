@@ -3715,17 +3715,6 @@ export function registerAdminManagementRoutes(app: Express) {
             ? Number(updates.monthlyPriceCents)
             : monthlyExisting;
         const slotSum = breakfast + lunch + dinner;
-        const hasAnyPrice = [
-          slotSum,
-          dailyCandidate,
-          weeklyCandidate,
-          monthlyCandidate,
-        ].some((value) => Number(value) > 0);
-        if (!hasAnyPrice) {
-          return res.status(400).json({
-            message: "At least one slot price is required.",
-          });
-        }
         const dailyOverride =
           updates.dailyPriceCents !== undefined
             ? Number(updates.dailyPriceCents)
@@ -4853,20 +4842,6 @@ export function registerAdminManagementRoutes(app: Express) {
               derivedDailyCents > 0 ? derivedDailyCents * 30 : Number(derivedMonthlyCents ?? 0);
           }
 
-          const hasAnyPrice = [
-            Number(derivedBreakfastCents ?? 0) || 0,
-            Number(derivedLunchCents ?? 0) || 0,
-            Number(derivedDinnerCents ?? 0) || 0,
-            Number(derivedDailyCents ?? 0) || 0,
-            Number(derivedWeeklyCents ?? 0) || 0,
-            Number(derivedMonthlyCents ?? 0) || 0,
-          ].some((value) => value > 0);
-
-          if (!hasAnyPrice) {
-            return res.status(400).json({
-              message: "Set at least one parking pass price greater than zero.",
-            });
-          }
         }
 
         const wantsSpotImageUpdate = req.body?.spotImageUrl !== undefined;

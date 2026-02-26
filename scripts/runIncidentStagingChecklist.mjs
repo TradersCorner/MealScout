@@ -21,15 +21,21 @@ const requireSms = ["1", "true", "yes", "on"].includes(
   String(process.env.CHECKLIST_REQUIRE_SMS || "").trim().toLowerCase(),
 );
 
+const requireSlack = ["1", "true", "yes", "on"].includes(
+  String(process.env.CHECKLIST_REQUIRE_SLACK || "").trim().toLowerCase(),
+);
+
 const requiredIncidentEnv = [
   "BREVO_API_KEY",
   "INCIDENT_EMAIL_RECIPIENTS",
-  "SLACK_WEBHOOK_URL",
   "INCIDENT_SIGNATURE_SECRET",
 ];
 
 if (requireSms) {
   requiredIncidentEnv.push("INCIDENT_SMS_RECIPIENTS");
+}
+if (requireSlack) {
+  requiredIncidentEnv.push("SLACK_WEBHOOK_URL");
 }
 
 const runCheck = (check) => {
@@ -76,6 +82,9 @@ const main = () => {
 
   if (!requireSms) {
     console.log("SMS requirement is optional (set CHECKLIST_REQUIRE_SMS=true to enforce).");
+  }
+  if (!requireSlack) {
+    console.log("Slack requirement is optional (set CHECKLIST_REQUIRE_SLACK=true to enforce).");
   }
 
   printMissingEnvSummary();

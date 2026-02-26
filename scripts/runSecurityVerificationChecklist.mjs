@@ -29,7 +29,6 @@ const requiredEnvByCheck = {
   incidents: [
     "BREVO_API_KEY",
     "INCIDENT_EMAIL_RECIPIENTS",
-    "SLACK_WEBHOOK_URL",
     "INCIDENT_SIGNATURE_SECRET",
   ],
   rbac: [
@@ -40,7 +39,7 @@ const requiredEnvByCheck = {
 };
 
 const optionalEnvByCheck = {
-  incidents: ["INCIDENT_SMS_RECIPIENTS"],
+  incidents: ["INCIDENT_SMS_RECIPIENTS", "SLACK_WEBHOOK_URL"],
   rbac: ["RBAC_BASE_URL"],
 };
 
@@ -48,9 +47,22 @@ const requireSms = ["1", "true", "yes", "on"].includes(
   String(process.env.CHECKLIST_REQUIRE_SMS || "").trim().toLowerCase(),
 );
 
+const requireSlack = ["1", "true", "yes", "on"].includes(
+  String(process.env.CHECKLIST_REQUIRE_SLACK || "").trim().toLowerCase(),
+);
+
 if (requireSms) {
   requiredEnvByCheck.incidents.push("INCIDENT_SMS_RECIPIENTS");
-  optionalEnvByCheck.incidents = [];
+  optionalEnvByCheck.incidents = optionalEnvByCheck.incidents.filter(
+    (name) => name !== "INCIDENT_SMS_RECIPIENTS",
+  );
+}
+
+if (requireSlack) {
+  requiredEnvByCheck.incidents.push("SLACK_WEBHOOK_URL");
+  optionalEnvByCheck.incidents = optionalEnvByCheck.incidents.filter(
+    (name) => name !== "SLACK_WEBHOOK_URL",
+  );
 }
 
 const getMissing = (names) =>
@@ -115,6 +127,9 @@ const main = () => {
   }
   if (!requireSms) {
     console.log("Incident SMS env is optional (set CHECKLIST_REQUIRE_SMS=true to enforce).");
+  }
+  if (!requireSlack) {
+    console.log("Incident Slack env is optional (set CHECKLIST_REQUIRE_SLACK=true to enforce).");
   }
 
   printEnvSummary();

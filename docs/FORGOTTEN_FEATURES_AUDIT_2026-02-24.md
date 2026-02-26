@@ -94,6 +94,7 @@ From phase audit docs, these trigger classes did not show clear server-side trig
 
 - Updated `scripts/testStaffRBAC.ts` to use environment-based cookies/base URL instead of requiring source edits.
 - Added npm entrypoint: `npm run test:staff-rbac`.
+- Added copy-ready env template: `docs/RBAC_TEST_ENV.example`.
 - Required env for runtime RBAC validation:
    - `RBAC_COOKIE_CUSTOMER`
    - `RBAC_COOKIE_STAFF`

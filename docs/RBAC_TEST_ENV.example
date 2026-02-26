@@ -1,0 +1,8 @@
+# RBAC runtime test template
+# Set these in your shell/session before running `npm run test:staff-rbac`.
+# Do NOT commit real cookies.
+
+RBAC_BASE_URL=http://localhost:5200
+RBAC_COOKIE_CUSTOMER=connect.sid=replace_with_customer_cookie
+RBAC_COOKIE_STAFF=connect.sid=replace_with_staff_cookie
+RBAC_COOKIE_ADMIN=connect.sid=replace_with_admin_cookie

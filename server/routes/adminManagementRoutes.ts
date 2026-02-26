@@ -1534,12 +1534,10 @@ export function registerAdminManagementRoutes(app: Express) {
           }
           const geocode = await retryGeocodeAddress(address);
           if (!geocode) {
-            return res
-              .status(422)
-              .json({
-                message: "Unable to geocode open request address",
-                address,
-              });
+            return res.status(422).json({
+              message: "Unable to geocode open request address",
+              address,
+            });
           }
           await db
             .update(locationRequests)
@@ -4821,9 +4819,12 @@ export function registerAdminManagementRoutes(app: Express) {
             (Number(derivedLunchCents ?? 0) || 0) +
             (Number(derivedDinnerCents ?? 0) || 0);
 
-          const dailyProvided = req.body?.parkingPassDailyPriceCents !== undefined;
-          const weeklyProvided = req.body?.parkingPassWeeklyPriceCents !== undefined;
-          const monthlyProvided = req.body?.parkingPassMonthlyPriceCents !== undefined;
+          const dailyProvided =
+            req.body?.parkingPassDailyPriceCents !== undefined;
+          const weeklyProvided =
+            req.body?.parkingPassWeeklyPriceCents !== undefined;
+          const monthlyProvided =
+            req.body?.parkingPassMonthlyPriceCents !== undefined;
 
           const effectiveDaily = dailyProvided
             ? Number(derivedDailyCents ?? 0)
@@ -4835,13 +4836,16 @@ export function registerAdminManagementRoutes(app: Express) {
 
           if (!weeklyProvided) {
             derivedWeeklyCents =
-              derivedDailyCents > 0 ? derivedDailyCents * 7 : Number(derivedWeeklyCents ?? 0);
+              derivedDailyCents > 0
+                ? derivedDailyCents * 7
+                : Number(derivedWeeklyCents ?? 0);
           }
           if (!monthlyProvided) {
             derivedMonthlyCents =
-              derivedDailyCents > 0 ? derivedDailyCents * 30 : Number(derivedMonthlyCents ?? 0);
+              derivedDailyCents > 0
+                ? derivedDailyCents * 30
+                : Number(derivedMonthlyCents ?? 0);
           }
-
         }
 
         const wantsSpotImageUpdate = req.body?.spotImageUrl !== undefined;

@@ -1416,28 +1416,30 @@ export function registerHostRoutes(app: Express) {
                 ? nextSlotSum
                 : Number(event.dailyPriceCents ?? 0);
         const effectiveHostPrice =
-          nextSlotSum > 0 ? nextSlotSum : Math.max(0, Number(effectiveDaily || 0));
+          nextSlotSum > 0
+            ? nextSlotSum
+            : Math.max(0, Number(effectiveDaily || 0));
 
-        const computedWeeklyDerived = Math.max(0, Number(effectiveDaily || 0)) * 7;
-        const computedMonthlyDerived = Math.max(0, Number(effectiveDaily || 0)) * 30;
+        const computedWeeklyDerived =
+          Math.max(0, Number(effectiveDaily || 0)) * 7;
+        const computedMonthlyDerived =
+          Math.max(0, Number(effectiveDaily || 0)) * 30;
 
-        const effectiveWeekly =
-          parsedWeekly?.provided
-            ? parsedWeekly.cents === null
-              ? computedWeeklyDerived
-              : parsedWeekly.cents
-            : computedWeeklyDerived > 0
-              ? computedWeeklyDerived
-              : Number(event.weeklyPriceCents ?? 0);
+        const effectiveWeekly = parsedWeekly?.provided
+          ? parsedWeekly.cents === null
+            ? computedWeeklyDerived
+            : parsedWeekly.cents
+          : computedWeeklyDerived > 0
+            ? computedWeeklyDerived
+            : Number(event.weeklyPriceCents ?? 0);
 
-        const effectiveMonthly =
-          parsedMonthly?.provided
-            ? parsedMonthly.cents === null
-              ? computedMonthlyDerived
-              : parsedMonthly.cents
-            : computedMonthlyDerived > 0
-              ? computedMonthlyDerived
-              : Number(event.monthlyPriceCents ?? 0);
+        const effectiveMonthly = parsedMonthly?.provided
+          ? parsedMonthly.cents === null
+            ? computedMonthlyDerived
+            : parsedMonthly.cents
+          : computedMonthlyDerived > 0
+            ? computedMonthlyDerived
+            : Number(event.monthlyPriceCents ?? 0);
 
         updates.hostPriceCents = effectiveHostPrice;
         updates.dailyPriceCents = effectiveDaily;
@@ -2197,9 +2199,9 @@ export function registerHostRoutes(app: Express) {
         const summary = await getHostEarningsSummary(host.id);
         const stripePayoutReady = Boolean(
           host.stripeConnectAccountId &&
-            host.stripeChargesEnabled &&
-            host.stripePayoutsEnabled &&
-            host.stripeOnboardingCompleted,
+          host.stripeChargesEnabled &&
+          host.stripePayoutsEnabled &&
+          host.stripeOnboardingCompleted,
         );
 
         res.json({
@@ -2226,9 +2228,9 @@ export function registerHostRoutes(app: Express) {
 
         const stripePayoutReady = Boolean(
           host.stripeConnectAccountId &&
-            host.stripeChargesEnabled &&
-            host.stripePayoutsEnabled &&
-            host.stripeOnboardingCompleted,
+          host.stripeChargesEnabled &&
+          host.stripePayoutsEnabled &&
+          host.stripeOnboardingCompleted,
         );
         if (!stripePayoutReady) {
           return res.status(400).json({

@@ -77,9 +77,9 @@ export default function HostLocationManager({
   const [editingHostId, setEditingHostId] = useState<string | null>(null);
   const [coordinates, setCoordinates] = useState({ lat: "", lng: "" });
   const [geocoding, setGeocoding] = useState(false);
-  const [editingPricingHostId, setEditingPricingHostId] = useState<string | null>(
-    null,
-  );
+  const [editingPricingHostId, setEditingPricingHostId] = useState<
+    string | null
+  >(null);
   const [pricingEdits, setPricingEdits] = useState<any>({
     parkingPassStartTime: "",
     parkingPassEndTime: "",
@@ -173,9 +173,7 @@ export default function HostLocationManager({
     setGeocoding(true);
     try {
       const response = await fetch(
-        `/api/location/search?limit=1&q=${encodeURIComponent(
-          query,
-        )}`,
+        `/api/location/search?limit=1&q=${encodeURIComponent(query)}`,
       );
       const data = await response.json();
 
@@ -246,7 +244,8 @@ export default function HostLocationManager({
                 )}
                 {host?.rep?.affiliateTag && (
                   <p className="text-xs text-muted-foreground">
-                    Rep affiliate tag: <span className="font-mono">{host.rep.affiliateTag}</span>
+                    Rep affiliate tag:{" "}
+                    <span className="font-mono">{host.rep.affiliateTag}</span>
                   </p>
                 )}
                 {host?.rep?.referredByCloser && (
@@ -280,21 +279,35 @@ export default function HostLocationManager({
                   variant="secondary"
                   onClick={() => {
                     setEditingPricingHostId(host.id);
-                    const breakfast = coerceCents(host.parkingPassBreakfastPriceCents);
+                    const breakfast = coerceCents(
+                      host.parkingPassBreakfastPriceCents,
+                    );
                     const lunch = coerceCents(host.parkingPassLunchPriceCents);
-                    const dinner = coerceCents(host.parkingPassDinnerPriceCents);
+                    const dinner = coerceCents(
+                      host.parkingPassDinnerPriceCents,
+                    );
                     const slotSum = breakfast + lunch + dinner;
-                    const savedDaily = coerceCents(host.parkingPassDailyPriceCents);
+                    const savedDaily = coerceCents(
+                      host.parkingPassDailyPriceCents,
+                    );
                     const initialDaily = savedDaily > 0 ? savedDaily : slotSum;
                     const dailyOnlySelected = slotSum === 0 && initialDaily > 0;
-                    const savedWeekly = coerceCents(host.parkingPassWeeklyPriceCents);
-                    const savedMonthly = coerceCents(host.parkingPassMonthlyPriceCents);
-                    const derivedWeekly = initialDaily > 0 ? initialDaily * 7 : 0;
-                    const derivedMonthly = initialDaily > 0 ? initialDaily * 30 : 0;
+                    const savedWeekly = coerceCents(
+                      host.parkingPassWeeklyPriceCents,
+                    );
+                    const savedMonthly = coerceCents(
+                      host.parkingPassMonthlyPriceCents,
+                    );
+                    const derivedWeekly =
+                      initialDaily > 0 ? initialDaily * 7 : 0;
+                    const derivedMonthly =
+                      initialDaily > 0 ? initialDaily * 30 : 0;
                     setPricingEdits({
                       parkingPassStartTime: host.parkingPassStartTime || "",
                       parkingPassEndTime: host.parkingPassEndTime || "",
-                      parkingPassDaysOfWeek: Array.isArray(host.parkingPassDaysOfWeek)
+                      parkingPassDaysOfWeek: Array.isArray(
+                        host.parkingPassDaysOfWeek,
+                      )
                         ? host.parkingPassDaysOfWeek
                         : [],
                       parkingPassBreakfastPriceCents: breakfast,
@@ -306,7 +319,9 @@ export default function HostLocationManager({
                       parkingPassMonthlyPriceCents:
                         savedMonthly > 0 ? savedMonthly : derivedMonthly,
                       _dailyManuallyEdited:
-                        savedDaily > 0 && slotSum > 0 ? savedDaily !== slotSum : false,
+                        savedDaily > 0 && slotSum > 0
+                          ? savedDaily !== slotSum
+                          : false,
                       _weeklyManuallyEdited:
                         savedWeekly > 0 && derivedWeekly > 0
                           ? savedWeekly !== derivedWeekly
@@ -386,7 +401,9 @@ export default function HostLocationManager({
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   <div className="space-y-1">
-                    <div className="text-[11px] text-muted-foreground">Start</div>
+                    <div className="text-[11px] text-muted-foreground">
+                      Start
+                    </div>
                     <input
                       type="time"
                       value={pricingEdits.parkingPassStartTime}
@@ -414,7 +431,9 @@ export default function HostLocationManager({
                     />
                   </div>
                   <div className="space-y-1">
-                    <div className="text-[11px] text-muted-foreground">Days</div>
+                    <div className="text-[11px] text-muted-foreground">
+                      Days
+                    </div>
                     <div className="flex flex-wrap gap-2">
                       {dayLabels.map((label, idx) => {
                         const days: number[] = Array.isArray(
@@ -460,7 +479,9 @@ export default function HostLocationManager({
                       type="number"
                       min={0}
                       step={1}
-                      value={toDollars(pricingEdits.parkingPassBreakfastPriceCents)}
+                      value={toDollars(
+                        pricingEdits.parkingPassBreakfastPriceCents,
+                      )}
                       onChange={(e) => {
                         const cents = toCents(e.target.value);
                         setPricingEdits((prev: any) => {
@@ -480,7 +501,9 @@ export default function HostLocationManager({
                     />
                   </div>
                   <div className="space-y-1">
-                    <div className="text-[11px] text-muted-foreground">Lunch ($)</div>
+                    <div className="text-[11px] text-muted-foreground">
+                      Lunch ($)
+                    </div>
                     <input
                       type="number"
                       min={0}
@@ -505,12 +528,16 @@ export default function HostLocationManager({
                     />
                   </div>
                   <div className="space-y-1">
-                    <div className="text-[11px] text-muted-foreground">Dinner ($)</div>
+                    <div className="text-[11px] text-muted-foreground">
+                      Dinner ($)
+                    </div>
                     <input
                       type="number"
                       min={0}
                       step={1}
-                      value={toDollars(pricingEdits.parkingPassDinnerPriceCents)}
+                      value={toDollars(
+                        pricingEdits.parkingPassDinnerPriceCents,
+                      )}
                       onChange={(e) => {
                         const cents = toCents(e.target.value);
                         setPricingEdits((prev: any) => {
@@ -530,7 +557,9 @@ export default function HostLocationManager({
                     />
                   </div>
                   <div className="space-y-1">
-                    <div className="text-[11px] text-muted-foreground">Daily ($)</div>
+                    <div className="text-[11px] text-muted-foreground">
+                      Daily ($)
+                    </div>
                     <input
                       type="number"
                       min={0}
@@ -539,10 +568,14 @@ export default function HostLocationManager({
                       onChange={(e) => {
                         const cents = toCents(e.target.value);
                         const nextWeekly = pricingEdits._weeklyManuallyEdited
-                          ? coerceCents(pricingEdits.parkingPassWeeklyPriceCents)
+                          ? coerceCents(
+                              pricingEdits.parkingPassWeeklyPriceCents,
+                            )
                           : cents * 7;
                         const nextMonthly = pricingEdits._monthlyManuallyEdited
-                          ? coerceCents(pricingEdits.parkingPassMonthlyPriceCents)
+                          ? coerceCents(
+                              pricingEdits.parkingPassMonthlyPriceCents,
+                            )
                           : cents * 30;
                         setPricingEdits({
                           ...pricingEdits,
@@ -556,12 +589,16 @@ export default function HostLocationManager({
                     />
                   </div>
                   <div className="space-y-1">
-                    <div className="text-[11px] text-muted-foreground">Weekly ($)</div>
+                    <div className="text-[11px] text-muted-foreground">
+                      Weekly ($)
+                    </div>
                     <input
                       type="number"
                       min={0}
                       step={1}
-                      value={toDollars(pricingEdits.parkingPassWeeklyPriceCents)}
+                      value={toDollars(
+                        pricingEdits.parkingPassWeeklyPriceCents,
+                      )}
                       onChange={(e) => {
                         const cents = toCents(e.target.value);
                         setPricingEdits({
@@ -574,12 +611,16 @@ export default function HostLocationManager({
                     />
                   </div>
                   <div className="space-y-1">
-                    <div className="text-[11px] text-muted-foreground">Monthly ($)</div>
+                    <div className="text-[11px] text-muted-foreground">
+                      Monthly ($)
+                    </div>
                     <input
                       type="number"
                       min={0}
                       step={1}
-                      value={toDollars(pricingEdits.parkingPassMonthlyPriceCents)}
+                      value={toDollars(
+                        pricingEdits.parkingPassMonthlyPriceCents,
+                      )}
                       onChange={(e) => {
                         const cents = toCents(e.target.value);
                         setPricingEdits({
@@ -601,8 +642,12 @@ export default function HostLocationManager({
                       const breakfast = coerceCents(
                         pricingEdits.parkingPassBreakfastPriceCents,
                       );
-                      const lunch = coerceCents(pricingEdits.parkingPassLunchPriceCents);
-                      const dinner = coerceCents(pricingEdits.parkingPassDinnerPriceCents);
+                      const lunch = coerceCents(
+                        pricingEdits.parkingPassLunchPriceCents,
+                      );
+                      const dinner = coerceCents(
+                        pricingEdits.parkingPassDinnerPriceCents,
+                      );
                       const slotSum = breakfast + lunch + dinner;
                       if (checked && slotSum > 0) {
                         toast({
@@ -620,7 +665,8 @@ export default function HostLocationManager({
                       });
                     }}
                   />
-                  Daily only (this host allows all-day parking, no time-slot pricing)
+                  Daily only (this host allows all-day parking, no time-slot
+                  pricing)
                 </label>
 
                 <div className="flex gap-2">
@@ -632,13 +678,16 @@ export default function HostLocationManager({
                         updates: {
                           parkingPassStartTime:
                             pricingEdits.parkingPassStartTime || null,
-                          parkingPassEndTime: pricingEdits.parkingPassEndTime || null,
+                          parkingPassEndTime:
+                            pricingEdits.parkingPassEndTime || null,
                           parkingPassDaysOfWeek: Array.isArray(
                             pricingEdits.parkingPassDaysOfWeek,
                           )
                             ? pricingEdits.parkingPassDaysOfWeek
                             : [],
-                          parkingPassDailyOnly: Boolean(pricingEdits._dailyOnlySelected),
+                          parkingPassDailyOnly: Boolean(
+                            pricingEdits._dailyOnlySelected,
+                          ),
                           parkingPassBreakfastPriceCents: Number(
                             pricingEdits.parkingPassBreakfastPriceCents || 0,
                           ),
@@ -662,7 +711,9 @@ export default function HostLocationManager({
                     }}
                     disabled={updateHostDefaults.isPending}
                   >
-                    {updateHostDefaults.isPending ? "Saving..." : "Save pricing"}
+                    {updateHostDefaults.isPending
+                      ? "Saving..."
+                      : "Save pricing"}
                   </Button>
                   <Button
                     size="sm"
@@ -681,4 +732,3 @@ export default function HostLocationManager({
     </div>
   );
 }
-

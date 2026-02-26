@@ -2242,7 +2242,8 @@ export default function AdminDashboard() {
       : [];
     return (
       rows.find(
-        (row) => row.id === activePendingPayoutRowId && row.status === "pending",
+        (row) =>
+          row.id === activePendingPayoutRowId && row.status === "pending",
       ) || null
     );
   }, [activePendingPayoutRowId, hostPayoutRequests?.rows]);
@@ -2275,7 +2276,8 @@ export default function AdminDashboard() {
     if (orderedPendingPayoutRowIds.length === 0) {
       toast({
         title: "No pending requests",
-        description: "There are no pending payout requests in the current view.",
+        description:
+          "There are no pending payout requests in the current view.",
       });
       return;
     }
@@ -2298,7 +2300,8 @@ export default function AdminDashboard() {
     if (orderedPendingPayoutRowIds.length === 0) {
       toast({
         title: "No pending requests",
-        description: "There are no pending payout requests in the current view.",
+        description:
+          "There are no pending payout requests in the current view.",
       });
       return;
     }
@@ -2481,7 +2484,8 @@ export default function AdminDashboard() {
     if (!activePendingPayoutRow) {
       toast({
         title: "No selected pending request",
-        description: "Use Next pending first, then approve the highlighted request.",
+        description:
+          "Use Next pending first, then approve the highlighted request.",
       });
       return;
     }
@@ -3243,9 +3247,7 @@ export default function AdminDashboard() {
                         onChange={(e) => {
                           const next = applyHostDailyAutoIfAllowed({
                             ...edits,
-                            parkingPassLunchPriceCents: toCents(
-                              e.target.value,
-                            ),
+                            parkingPassLunchPriceCents: toCents(e.target.value),
                           });
                           setHostEdits({
                             ...hostEdits,
@@ -3288,12 +3290,14 @@ export default function AdminDashboard() {
                         value={toDollars(edits.parkingPassDailyPriceCents)}
                         onChange={(e) => {
                           const cents = toCents(e.target.value);
-                          const nextWeekly = edits._parkingPassWeeklyManuallyEdited
-                            ? Number(edits.parkingPassWeeklyPriceCents || 0)
-                            : cents * 7;
-                          const nextMonthly = edits._parkingPassMonthlyManuallyEdited
-                            ? Number(edits.parkingPassMonthlyPriceCents || 0)
-                            : cents * 30;
+                          const nextWeekly =
+                            edits._parkingPassWeeklyManuallyEdited
+                              ? Number(edits.parkingPassWeeklyPriceCents || 0)
+                              : cents * 7;
+                          const nextMonthly =
+                            edits._parkingPassMonthlyManuallyEdited
+                              ? Number(edits.parkingPassMonthlyPriceCents || 0)
+                              : cents * 30;
                           setHostEdits({
                             ...hostEdits,
                             [host.id]: {
@@ -3534,12 +3538,14 @@ export default function AdminDashboard() {
                                 [pass.id]: {
                                   ...passEdits,
                                   dailyPriceCents: toCents(e.target.value),
-                                  weeklyPriceCents: passEdits._weeklyManuallyEdited
-                                    ? Number(passEdits.weeklyPriceCents || 0)
-                                    : toCents(e.target.value) * 7,
-                                  monthlyPriceCents: passEdits._monthlyManuallyEdited
-                                    ? Number(passEdits.monthlyPriceCents || 0)
-                                    : toCents(e.target.value) * 30,
+                                  weeklyPriceCents:
+                                    passEdits._weeklyManuallyEdited
+                                      ? Number(passEdits.weeklyPriceCents || 0)
+                                      : toCents(e.target.value) * 7,
+                                  monthlyPriceCents:
+                                    passEdits._monthlyManuallyEdited
+                                      ? Number(passEdits.monthlyPriceCents || 0)
+                                      : toCents(e.target.value) * 30,
                                   _dailyManuallyEdited: true,
                                 },
                               })
@@ -5820,7 +5826,8 @@ export default function AdminDashboard() {
                       variant="outline"
                       onClick={jumpToNextPendingPayout}
                       disabled={
-                        payoutQueueLoading || orderedPendingPayoutRowIds.length === 0
+                        payoutQueueLoading ||
+                        orderedPendingPayoutRowIds.length === 0
                       }
                       title="Shortcuts: N / Shift+N"
                     >
@@ -8168,12 +8175,14 @@ export default function AdminDashboard() {
                                     [pass.id]: {
                                       ...edits,
                                       dailyPriceCents: toCents(e.target.value),
-                                      weeklyPriceCents: edits._weeklyManuallyEdited
-                                        ? Number(edits.weeklyPriceCents || 0)
-                                        : toCents(e.target.value) * 7,
-                                      monthlyPriceCents: edits._monthlyManuallyEdited
-                                        ? Number(edits.monthlyPriceCents || 0)
-                                        : toCents(e.target.value) * 30,
+                                      weeklyPriceCents:
+                                        edits._weeklyManuallyEdited
+                                          ? Number(edits.weeklyPriceCents || 0)
+                                          : toCents(e.target.value) * 7,
+                                      monthlyPriceCents:
+                                        edits._monthlyManuallyEdited
+                                          ? Number(edits.monthlyPriceCents || 0)
+                                          : toCents(e.target.value) * 30,
                                       _dailyManuallyEdited: true,
                                     },
                                   })
@@ -8218,7 +8227,9 @@ export default function AdminDashboard() {
                                     ...parkingPassEdits,
                                     [pass.id]: {
                                       ...edits,
-                                      monthlyPriceCents: toCents(e.target.value),
+                                      monthlyPriceCents: toCents(
+                                        e.target.value,
+                                      ),
                                       _monthlyManuallyEdited:
                                         toCents(e.target.value) > 0,
                                     },

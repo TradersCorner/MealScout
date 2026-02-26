@@ -62,11 +62,11 @@ export default function StaffDashboard() {
 
   // Created account state
   const [createdAccount, setCreatedAccount] = useState<CreatedAccount | null>(
-    null
+    null,
   );
-  const [selectedTab, setSelectedTab] = useState<
-    "accounts" | "host-locations"
-  >("accounts");
+  const [selectedTab, setSelectedTab] = useState<"accounts" | "host-locations">(
+    "accounts",
+  );
   const canEditHostLocations =
     user?.userType === "admin" ||
     user?.userType === "staff" ||
@@ -113,7 +113,7 @@ export default function StaffDashboard() {
       const res = await apiRequest(
         "POST",
         "/api/staff/restaurant-owners",
-        data
+        data,
       );
       return res.json();
     },
@@ -297,283 +297,296 @@ export default function StaffDashboard() {
 
           <TabsContent value="accounts">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-8">
-          {/* Create Any User Type (Admin only) */}
-          {user?.userType === "admin" && (
-            <Card className="md:col-span-2">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <UserPlus className="w-5 h-5" />
-                  Create User (Any Type)
-                </CardTitle>
-                <CardDescription>
-                  Create any type of user account with temporary password
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    createGenericUser.mutate({
-                      email: genericEmail,
-                      firstName: genericFirstName || undefined,
-                      lastName: genericLastName || undefined,
-                      phone: genericPhone || undefined,
-                    });
-                  }}
-                  className="grid grid-cols-1 md:grid-cols-2 gap-4"
-                >
-                  <div>
-                    <Label htmlFor="generic-email">Email *</Label>
-                    <Input
-                      id="generic-email"
-                      type="email"
-                      value={genericEmail}
-                      onChange={(e) => setGenericEmail(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="generic-user-type">User Type *</Label>
-                    <select
-                      id="generic-user-type"
-                      value={genericUserType}
-                      onChange={(e) => setGenericUserType(e.target.value)}
-                      className="w-full px-3 py-2 border rounded-md bg-background"
+              {/* Create Any User Type (Admin only) */}
+              {user?.userType === "admin" && (
+                <Card className="md:col-span-2">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <UserPlus className="w-5 h-5" />
+                      Create User (Any Type)
+                    </CardTitle>
+                    <CardDescription>
+                      Create any type of user account with temporary password
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <form
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        createGenericUser.mutate({
+                          email: genericEmail,
+                          firstName: genericFirstName || undefined,
+                          lastName: genericLastName || undefined,
+                          phone: genericPhone || undefined,
+                        });
+                      }}
+                      className="grid grid-cols-1 md:grid-cols-2 gap-4"
                     >
-                      <option value="customer">Customer</option>
-                      <option value="restaurant_owner">Restaurant Owner</option>
-                      <option value="event_coordinator">Event Coordinator</option>
-                      <option value="staff">Staff</option>
-                      <option value="admin">Admin</option>
-                    </select>
-                  </div>
-                  <div>
-                    <Label htmlFor="generic-first-name">First Name</Label>
-                    <Input
-                      id="generic-first-name"
-                      type="text"
-                      value={genericFirstName}
-                      onChange={(e) => setGenericFirstName(e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="generic-last-name">Last Name</Label>
-                    <Input
-                      id="generic-last-name"
-                      type="text"
-                      value={genericLastName}
-                      onChange={(e) => setGenericLastName(e.target.value)}
-                    />
-                  </div>
-                  <div className="md:col-span-2">
-                    <Label htmlFor="generic-phone">Phone</Label>
-                    <Input
-                      id="generic-phone"
-                      type="tel"
-                      value={genericPhone}
-                      onChange={(e) => setGenericPhone(e.target.value)}
-                    />
-                  </div>
-                  <div className="md:col-span-2">
+                      <div>
+                        <Label htmlFor="generic-email">Email *</Label>
+                        <Input
+                          id="generic-email"
+                          type="email"
+                          value={genericEmail}
+                          onChange={(e) => setGenericEmail(e.target.value)}
+                          required
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="generic-user-type">User Type *</Label>
+                        <select
+                          id="generic-user-type"
+                          value={genericUserType}
+                          onChange={(e) => setGenericUserType(e.target.value)}
+                          className="w-full px-3 py-2 border rounded-md bg-background"
+                        >
+                          <option value="customer">Customer</option>
+                          <option value="restaurant_owner">
+                            Restaurant Owner
+                          </option>
+                          <option value="event_coordinator">
+                            Event Coordinator
+                          </option>
+                          <option value="staff">Staff</option>
+                          <option value="admin">Admin</option>
+                        </select>
+                      </div>
+                      <div>
+                        <Label htmlFor="generic-first-name">First Name</Label>
+                        <Input
+                          id="generic-first-name"
+                          type="text"
+                          value={genericFirstName}
+                          onChange={(e) => setGenericFirstName(e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="generic-last-name">Last Name</Label>
+                        <Input
+                          id="generic-last-name"
+                          type="text"
+                          value={genericLastName}
+                          onChange={(e) => setGenericLastName(e.target.value)}
+                        />
+                      </div>
+                      <div className="md:col-span-2">
+                        <Label htmlFor="generic-phone">Phone</Label>
+                        <Input
+                          id="generic-phone"
+                          type="tel"
+                          value={genericPhone}
+                          onChange={(e) => setGenericPhone(e.target.value)}
+                        />
+                      </div>
+                      <div className="md:col-span-2">
+                        <Button
+                          type="submit"
+                          className="w-full"
+                          disabled={
+                            createGenericUser.isPending || !genericEmail
+                          }
+                        >
+                          {createGenericUser.isPending
+                            ? "Creating..."
+                            : `Create ${genericUserType.replace("_", " ")}`}
+                        </Button>
+                      </div>
+                    </form>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Create Customer */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <UserPlus className="w-5 h-5" />
+                    Create Customer Account
+                  </CardTitle>
+                  <CardDescription>
+                    Create a diner/customer account with temporary password
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      createCustomer.mutate({
+                        email: customerEmail,
+                        firstName: customerFirstName || undefined,
+                        lastName: customerLastName || undefined,
+                        phone: customerPhone || undefined,
+                      });
+                    }}
+                    className="space-y-4"
+                  >
+                    <div>
+                      <Label htmlFor="customer-email">Email *</Label>
+                      <Input
+                        id="customer-email"
+                        type="email"
+                        value={customerEmail}
+                        onChange={(e) => setCustomerEmail(e.target.value)}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="customer-first-name">First Name</Label>
+                      <Input
+                        id="customer-first-name"
+                        type="text"
+                        value={customerFirstName}
+                        onChange={(e) => setCustomerFirstName(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="customer-last-name">Last Name</Label>
+                      <Input
+                        id="customer-last-name"
+                        type="text"
+                        value={customerLastName}
+                        onChange={(e) => setCustomerLastName(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="customer-phone">Phone</Label>
+                      <Input
+                        id="customer-phone"
+                        type="tel"
+                        value={customerPhone}
+                        onChange={(e) => setCustomerPhone(e.target.value)}
+                      />
+                    </div>
                     <Button
                       type="submit"
                       className="w-full"
-                      disabled={createGenericUser.isPending || !genericEmail}
+                      disabled={createCustomer.isPending || !customerEmail}
                     >
-                      {createGenericUser.isPending
+                      {createCustomer.isPending
                         ? "Creating..."
-                        : `Create ${genericUserType.replace("_", " ")}`}
+                        : "Create Customer"}
                     </Button>
-                  </div>
-                </form>
-              </CardContent>
-            </Card>
-          )}
+                  </form>
+                </CardContent>
+              </Card>
 
-          {/* Create Customer */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <UserPlus className="w-5 h-5" />
-                Create Customer Account
-              </CardTitle>
-              <CardDescription>
-                Create a diner/customer account with temporary password
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  createCustomer.mutate({
-                    email: customerEmail,
-                    firstName: customerFirstName || undefined,
-                    lastName: customerLastName || undefined,
-                    phone: customerPhone || undefined,
-                  });
-                }}
-                className="space-y-4"
-              >
-                <div>
-                  <Label htmlFor="customer-email">Email *</Label>
-                  <Input
-                    id="customer-email"
-                    type="email"
-                    value={customerEmail}
-                    onChange={(e) => setCustomerEmail(e.target.value)}
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="customer-first-name">First Name</Label>
-                  <Input
-                    id="customer-first-name"
-                    type="text"
-                    value={customerFirstName}
-                    onChange={(e) => setCustomerFirstName(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="customer-last-name">Last Name</Label>
-                  <Input
-                    id="customer-last-name"
-                    type="text"
-                    value={customerLastName}
-                    onChange={(e) => setCustomerLastName(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="customer-phone">Phone</Label>
-                  <Input
-                    id="customer-phone"
-                    type="tel"
-                    value={customerPhone}
-                    onChange={(e) => setCustomerPhone(e.target.value)}
-                  />
-                </div>
-                <Button
-                  type="submit"
-                  className="w-full"
-                  disabled={createCustomer.isPending || !customerEmail}
-                >
-                  {createCustomer.isPending ? "Creating..." : "Create Customer"}
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
-
-          {/* Create Restaurant Owner */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Store className="w-5 h-5" />
-                Create Restaurant Owner
-              </CardTitle>
-              <CardDescription>
-                Create restaurant owner account with optional restaurant shell
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  createRestaurantOwner.mutate({
-                    email: ownerEmail,
-                    firstName: ownerFirstName || undefined,
-                    lastName: ownerLastName || undefined,
-                    phone: ownerPhone || undefined,
-                    restaurantName: restaurantName || undefined,
-                    restaurantAddress: restaurantAddress || undefined,
-                    restaurantPhone: restaurantPhone || undefined,
-                  });
-                }}
-                className="space-y-4"
-              >
-                <div>
-                  <Label htmlFor="owner-email">Email *</Label>
-                  <Input
-                    id="owner-email"
-                    type="email"
-                    value={ownerEmail}
-                    onChange={(e) => setOwnerEmail(e.target.value)}
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="owner-first-name">First Name</Label>
-                  <Input
-                    id="owner-first-name"
-                    type="text"
-                    value={ownerFirstName}
-                    onChange={(e) => setOwnerFirstName(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="owner-last-name">Last Name</Label>
-                  <Input
-                    id="owner-last-name"
-                    type="text"
-                    value={ownerLastName}
-                    onChange={(e) => setOwnerLastName(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="owner-phone">Phone</Label>
-                  <Input
-                    id="owner-phone"
-                    type="tel"
-                    value={ownerPhone}
-                    onChange={(e) => setOwnerPhone(e.target.value)}
-                  />
-                </div>
-
-                <div className="border-t pt-4 mt-4">
-                  <p className="text-sm font-semibold mb-3 text-muted-foreground">
-                    Optional Restaurant Details
-                  </p>
-                  <div className="space-y-3">
+              {/* Create Restaurant Owner */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Store className="w-5 h-5" />
+                    Create Restaurant Owner
+                  </CardTitle>
+                  <CardDescription>
+                    Create restaurant owner account with optional restaurant
+                    shell
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      createRestaurantOwner.mutate({
+                        email: ownerEmail,
+                        firstName: ownerFirstName || undefined,
+                        lastName: ownerLastName || undefined,
+                        phone: ownerPhone || undefined,
+                        restaurantName: restaurantName || undefined,
+                        restaurantAddress: restaurantAddress || undefined,
+                        restaurantPhone: restaurantPhone || undefined,
+                      });
+                    }}
+                    className="space-y-4"
+                  >
                     <div>
-                      <Label htmlFor="restaurant-name">Restaurant Name</Label>
+                      <Label htmlFor="owner-email">Email *</Label>
                       <Input
-                        id="restaurant-name"
-                        type="text"
-                        value={restaurantName}
-                        onChange={(e) => setRestaurantName(e.target.value)}
+                        id="owner-email"
+                        type="email"
+                        value={ownerEmail}
+                        onChange={(e) => setOwnerEmail(e.target.value)}
+                        required
                       />
                     </div>
                     <div>
-                      <Label htmlFor="restaurant-address">Address</Label>
+                      <Label htmlFor="owner-first-name">First Name</Label>
                       <Input
-                        id="restaurant-address"
+                        id="owner-first-name"
                         type="text"
-                        value={restaurantAddress}
-                        onChange={(e) => setRestaurantAddress(e.target.value)}
+                        value={ownerFirstName}
+                        onChange={(e) => setOwnerFirstName(e.target.value)}
                       />
                     </div>
                     <div>
-                      <Label htmlFor="restaurant-phone">Phone</Label>
+                      <Label htmlFor="owner-last-name">Last Name</Label>
                       <Input
-                        id="restaurant-phone"
+                        id="owner-last-name"
+                        type="text"
+                        value={ownerLastName}
+                        onChange={(e) => setOwnerLastName(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="owner-phone">Phone</Label>
+                      <Input
+                        id="owner-phone"
                         type="tel"
-                        value={restaurantPhone}
-                        onChange={(e) => setRestaurantPhone(e.target.value)}
+                        value={ownerPhone}
+                        onChange={(e) => setOwnerPhone(e.target.value)}
                       />
                     </div>
-                  </div>
-                </div>
 
-                <Button
-                  type="submit"
-                  className="w-full"
-                  disabled={createRestaurantOwner.isPending || !ownerEmail}
-                >
-                  {createRestaurantOwner.isPending
-                    ? "Creating..."
-                    : "Create Restaurant Owner"}
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
+                    <div className="border-t pt-4 mt-4">
+                      <p className="text-sm font-semibold mb-3 text-muted-foreground">
+                        Optional Restaurant Details
+                      </p>
+                      <div className="space-y-3">
+                        <div>
+                          <Label htmlFor="restaurant-name">
+                            Restaurant Name
+                          </Label>
+                          <Input
+                            id="restaurant-name"
+                            type="text"
+                            value={restaurantName}
+                            onChange={(e) => setRestaurantName(e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="restaurant-address">Address</Label>
+                          <Input
+                            id="restaurant-address"
+                            type="text"
+                            value={restaurantAddress}
+                            onChange={(e) =>
+                              setRestaurantAddress(e.target.value)
+                            }
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="restaurant-phone">Phone</Label>
+                          <Input
+                            id="restaurant-phone"
+                            type="tel"
+                            value={restaurantPhone}
+                            onChange={(e) => setRestaurantPhone(e.target.value)}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <Button
+                      type="submit"
+                      className="w-full"
+                      disabled={createRestaurantOwner.isPending || !ownerEmail}
+                    >
+                      {createRestaurantOwner.isPending
+                        ? "Creating..."
+                        : "Create Restaurant Owner"}
+                    </Button>
+                  </form>
+                </CardContent>
+              </Card>
             </div>
           </TabsContent>
 
@@ -612,7 +625,3 @@ export default function StaffDashboard() {
     </div>
   );
 }
-
-
-
-

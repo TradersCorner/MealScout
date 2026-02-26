@@ -627,66 +627,6 @@ export default function HostLocationManager({
                   <Button
                     size="sm"
                     onClick={() => {
-                      const breakfast = coerceCents(
-                        pricingEdits.parkingPassBreakfastPriceCents,
-                      );
-                      const lunch = coerceCents(pricingEdits.parkingPassLunchPriceCents);
-                      const dinner = coerceCents(
-                        pricingEdits.parkingPassDinnerPriceCents,
-                      );
-                      const filled = [
-                        { key: "Breakfast", value: breakfast },
-                        { key: "Lunch", value: lunch },
-                        { key: "Dinner", value: dinner },
-                      ];
-                      const filledCount = filled.filter((slot) => slot.value > 0).length;
-                      const daily = coerceCents(pricingEdits.parkingPassDailyPriceCents);
-                      const dailyOnlySelected = Boolean(pricingEdits._dailyOnlySelected);
-
-                      if (dailyOnlySelected && filledCount > 0) {
-                        toast({
-                          title: "Daily-only conflicts with slots",
-                          description:
-                            "Uncheck Daily only or clear Breakfast/Lunch/Dinner prices.",
-                          variant: "destructive",
-                        });
-                        return;
-                      }
-
-                      if (filledCount === 0 && daily > 0 && !dailyOnlySelected) {
-                        toast({
-                          title: "Choose pricing mode",
-                          description:
-                            "If you only want a daily price, check Daily only. Otherwise add Breakfast, Lunch, and Dinner slot prices.",
-                          variant: "destructive",
-                        });
-                        return;
-                      }
-
-                      if (dailyOnlySelected && daily <= 0) {
-                        toast({
-                          title: "Daily price required",
-                          description:
-                            "Enter a Daily price when Daily only is enabled.",
-                          variant: "destructive",
-                        });
-                        return;
-                      }
-
-                      if (filledCount > 0 && filledCount < 3) {
-                        const missing = filled
-                          .filter((slot) => slot.value <= 0)
-                          .map((slot) => slot.key);
-                        toast({
-                          title: "Missing slot prices",
-                          description: `Please set prices for ${missing.join(
-                            ", ",
-                          )}, or use Daily only for all-day parking.`,
-                          variant: "destructive",
-                        });
-                        return;
-                      }
-
                       updateHostDefaults.mutate({
                         hostId: host.id,
                         updates: {

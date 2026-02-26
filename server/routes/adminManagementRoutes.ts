@@ -4819,8 +4819,6 @@ export function registerAdminManagementRoutes(app: Express) {
           req.body?.parkingPassMonthlyPriceCents !== undefined ||
           req.body?.parkingPassDailyOnly !== undefined;
 
-        const dailyOnlySelected = Boolean(req.body?.parkingPassDailyOnly);
-
         let derivedBreakfastCents = parkingPassBreakfastPriceCents;
         let derivedLunchCents = parkingPassLunchPriceCents;
         let derivedDinnerCents = parkingPassDinnerPriceCents;
@@ -4829,61 +4827,45 @@ export function registerAdminManagementRoutes(app: Express) {
         let derivedMonthlyCents = parkingPassMonthlyPriceCents;
 
         if (wantsHostPricingFieldsUpdate) {
-          const breakfast = Number(derivedBreakfastCents ?? 0) || 0;
-          const lunch = Number(derivedLunchCents ?? 0) || 0;
-          const dinner = Number(derivedDinnerCents ?? 0) || 0;
-          const daily = Number(derivedDailyCents ?? 0) || 0;
+          const slotSum =
+            (Number(derivedBreakfastCents ?? 0) || 0) +
+            (Number(derivedLunchCents ?? 0) || 0) +
+            (Number(derivedDinnerCents ?? 0) || 0);
 
-          const filledSlots = [breakfast, lunch, dinner].filter(
-            (v) => v > 0,
-          ).length;
-          const slotSum = breakfast + lunch + dinner;
+          const dailyProvided = req.body?.parkingPassDailyPriceCents !== undefined;
+          const weeklyProvided = req.body?.parkingPassWeeklyPriceCents !== undefined;
+          const monthlyProvided = req.body?.parkingPassMonthlyPriceCents !== undefined;
 
-          if (dailyOnlySelected) {
-            if (filledSlots > 0) {
-              return res.status(400).json({
-                message:
-                  "Daily-only pricing cannot be combined with Breakfast/Lunch/Dinner slot prices. Clear slot prices or uncheck Daily-only.",
-              });
-            }
-            if (daily <= 0) {
-              return res.status(400).json({
-                message:
-                  "Daily price is required when Daily-only pricing is enabled.",
-              });
-            }
-            derivedDailyCents = daily;
-            if (req.body?.parkingPassWeeklyPriceCents === undefined) {
-              derivedWeeklyCents = daily * 7;
-            }
-            if (req.body?.parkingPassMonthlyPriceCents === undefined) {
-              derivedMonthlyCents = daily * 30;
-            }
-          } else {
-            if (filledSlots > 0 && filledSlots < 3) {
-              return res.status(400).json({
-                message:
-                  "Missing slot prices. Set Breakfast, Lunch, and Dinner prices, or enable Daily-only for all-day parking.",
-              });
-            }
+          const effectiveDaily = dailyProvided
+            ? Number(derivedDailyCents ?? 0)
+            : slotSum > 0
+              ? slotSum
+              : Number(derivedDailyCents ?? 0);
 
-            if (filledSlots === 0 && daily > 0) {
-              return res.status(400).json({
-                message:
-                  "Daily price requires a pricing mode. Either set Breakfast/Lunch/Dinner slot prices or enable Daily-only.",
-              });
-            }
+          derivedDailyCents = Math.max(0, Math.round(effectiveDaily || 0));
 
-            if (filledSlots === 3) {
-              const effectiveDaily = daily > 0 ? daily : slotSum;
-              derivedDailyCents = effectiveDaily;
-              if (req.body?.parkingPassWeeklyPriceCents === undefined) {
-                derivedWeeklyCents = effectiveDaily * 7;
-              }
-              if (req.body?.parkingPassMonthlyPriceCents === undefined) {
-                derivedMonthlyCents = effectiveDaily * 30;
-              }
-            }
+          if (!weeklyProvided) {
+            derivedWeeklyCents =
+              derivedDailyCents > 0 ? derivedDailyCents * 7 : Number(derivedWeeklyCents ?? 0);
+          }
+          if (!monthlyProvided) {
+            derivedMonthlyCents =
+              derivedDailyCents > 0 ? derivedDailyCents * 30 : Number(derivedMonthlyCents ?? 0);
+          }
+
+          const hasAnyPrice = [
+            Number(derivedBreakfastCents ?? 0) || 0,
+            Number(derivedLunchCents ?? 0) || 0,
+            Number(derivedDinnerCents ?? 0) || 0,
+            Number(derivedDailyCents ?? 0) || 0,
+            Number(derivedWeeklyCents ?? 0) || 0,
+            Number(derivedMonthlyCents ?? 0) || 0,
+          ].some((value) => value > 0);
+
+          if (!hasAnyPrice) {
+            return res.status(400).json({
+              message: "Set at least one parking pass price greater than zero.",
+            });
           }
         }
 

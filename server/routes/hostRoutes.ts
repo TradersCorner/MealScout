@@ -1369,13 +1369,6 @@ export function registerHostRoutes(app: Express) {
         parsedBreakfast?.provided ||
         parsedLunch?.provided ||
         parsedDinner?.provided;
-      if (hasPricingUpdates || anyMealPriceProvided) {
-        if (nextSlotSum <= 0) {
-          return res.status(400).json({
-            message: "At least one slot price is required.",
-          });
-        }
-      }
 
       const oldSlotSum =
         currentBreakfastCents + currentLunchCents + currentDinnerCents;
@@ -1414,36 +1407,55 @@ export function registerHostRoutes(app: Express) {
             nextDinnerCents > 0 ? nextDinnerCents : null;
         }
 
-        // Daily + host base price always follow the meal-slot sum.
         const effectiveDaily =
           parsedDaily?.provided && parsedDaily.cents !== null
             ? parsedDaily.cents
-            : nextSlotSum;
-        updates.hostPriceCents = nextSlotSum;
-        updates.dailyPriceCents = effectiveDaily;
+            : parsedDaily?.provided && parsedDaily.cents === null
+              ? nextSlotSum
+              : nextSlotSum > 0
+                ? nextSlotSum
+                : Number(event.dailyPriceCents ?? 0);
+        const effectiveHostPrice =
+          nextSlotSum > 0 ? nextSlotSum : Math.max(0, Number(effectiveDaily || 0));
 
-        const hasMealChange = Boolean(anyMealPriceProvided);
-        const computedWeeklyDerived = effectiveDaily * 7;
-        const computedMonthlyDerived = effectiveDaily * 30;
+        const computedWeeklyDerived = Math.max(0, Number(effectiveDaily || 0)) * 7;
+        const computedMonthlyDerived = Math.max(0, Number(effectiveDaily || 0)) * 30;
 
-        if (parsedWeekly?.provided) {
-          // Null means "reset to derived".
-          updates.weeklyPriceCents =
-            parsedWeekly.cents === null
+        const effectiveWeekly =
+          parsedWeekly?.provided
+            ? parsedWeekly.cents === null
               ? computedWeeklyDerived
-              : parsedWeekly.cents;
-        } else if (hasMealChange && wasWeeklyDerived) {
-          updates.weeklyPriceCents = computedWeeklyDerived;
+              : parsedWeekly.cents
+            : computedWeeklyDerived > 0
+              ? computedWeeklyDerived
+              : Number(event.weeklyPriceCents ?? 0);
+
+        const effectiveMonthly =
+          parsedMonthly?.provided
+            ? parsedMonthly.cents === null
+              ? computedMonthlyDerived
+              : parsedMonthly.cents
+            : computedMonthlyDerived > 0
+              ? computedMonthlyDerived
+              : Number(event.monthlyPriceCents ?? 0);
+
+        const hasAnyPrice = [
+          nextSlotSum,
+          Number(effectiveDaily || 0),
+          Number(effectiveWeekly || 0),
+          Number(effectiveMonthly || 0),
+        ].some((value) => Number(value) > 0);
+
+        if (!hasAnyPrice) {
+          return res.status(400).json({
+            message: "Set at least one price greater than zero.",
+          });
         }
 
-        if (parsedMonthly?.provided) {
-          updates.monthlyPriceCents =
-            parsedMonthly.cents === null
-              ? computedMonthlyDerived
-              : parsedMonthly.cents;
-        } else if (hasMealChange && wasMonthlyDerived) {
-          updates.monthlyPriceCents = computedMonthlyDerived;
-        }
+        updates.hostPriceCents = effectiveHostPrice;
+        updates.dailyPriceCents = effectiveDaily;
+        updates.weeklyPriceCents = effectiveWeekly;
+        updates.monthlyPriceCents = effectiveMonthly;
       }
 
       // Validation: End time > Start time (if both provided)

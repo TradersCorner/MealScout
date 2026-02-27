@@ -64,8 +64,8 @@ From phase audit docs, these trigger classes did not show clear server-side trig
 
 - Added one-command runner: `npm run checklist:incidents`.
 - Local execution result (expected in current env):
-   - `validate:config` => PASS
-   - `test:incidents` => FAIL (missing `BREVO_API_KEY` / `INCIDENT_EMAIL_RECIPIENTS` and other notification env)
+  - `validate:config` => PASS
+  - `test:incidents` => FAIL (missing `BREVO_API_KEY` / `INCIDENT_EMAIL_RECIPIENTS` and other notification env)
 - Outcome: checklist command behavior is validated and ready for staging handoff execution.
 
 ## Data Retention Safeguard Added
@@ -96,10 +96,10 @@ From phase audit docs, these trigger classes did not show clear server-side trig
 - Added npm entrypoint: `npm run test:staff-rbac`.
 - Added copy-ready env template: `docs/RBAC_TEST_ENV.example`.
 - Required env for runtime RBAC validation:
-   - `RBAC_COOKIE_CUSTOMER`
-   - `RBAC_COOKIE_STAFF`
-   - `RBAC_COOKIE_ADMIN`
-   - `RBAC_BASE_URL` (optional; defaults to `http://localhost:5200`)
+  - `RBAC_COOKIE_CUSTOMER`
+  - `RBAC_COOKIE_STAFF`
+  - `RBAC_COOKIE_ADMIN`
+  - `RBAC_BASE_URL` (optional; defaults to `http://localhost:5200`)
 - Local execution now fails fast with explicit setup instructions when cookies are not provided.
 
 ## Unified Security Gate (2026-02-26)
@@ -110,8 +110,8 @@ From phase audit docs, these trigger classes did not show clear server-side trig
 - Added strict incident-only runner: `npm run checklist:incidents:strict` (enforces `CHECKLIST_REQUIRE_SMS=true` and `CHECKLIST_REQUIRE_SLACK=true`).
 - Added unified env template: `docs/SECURITY_CHECKLIST_ENV.example` (incident + RBAC + strict toggles).
 - It executes, in order:
-   - `npm run checklist:incidents`
-   - `npm run test:staff-rbac`
+  - `npm run checklist:incidents`
+  - `npm run test:staff-rbac`
 - Purpose: one-command staging gate for notification channels + RBAC verification before sign-off.
 - Render/server mode: set `CHECKLIST_SKIP_RBAC=true` to run incident validation only when RBAC session cookies are not available in that environment.
 - SMS is optional by default in checklist env validation; set `CHECKLIST_REQUIRE_SMS=true` when you want to enforce SMS readiness.
@@ -122,17 +122,17 @@ From phase audit docs, these trigger classes did not show clear server-side trig
 - Security checklist preflight hardening: RBAC runtime verification is now blocked before execution when required RBAC cookie env vars are missing (cleaner, less noisy fail output).
 - Operator guidance hardening: checklist failures now print mode-aware rerun commands (default/strict/prod) based on active checklist flags.
 - Local command validation completed:
-   - Incident checklist => FAIL (missing incident env)
-   - RBAC check => BLOCKED (missing RBAC cookies/env)
-   - Combined gate exits non-zero as designed until staging secrets/sessions are supplied.
+  - Incident checklist => FAIL (missing incident env)
+  - RBAC check => BLOCKED (missing RBAC cookies/env)
+  - Combined gate exits non-zero as designed until staging secrets/sessions are supplied.
 
 ## Security Gate Re-Validation (2026-02-26)
 
 - Re-ran `npm run checklist:security` after recent checklist script updates.
 - Current local result remains expected and unchanged:
-   - Incident checklist => FAIL (missing `BREVO_API_KEY`, `INCIDENT_EMAIL_RECIPIENTS`, `INCIDENT_SIGNATURE_SECRET`; incident workflow test is skipped due to failed config dependency)
-   - RBAC runtime check => BLOCKED on missing env (`RBAC_COOKIE_CUSTOMER`, `RBAC_COOKIE_STAFF`, `RBAC_COOKIE_ADMIN`)
-   - Combined gate => FAIL until staging secrets/sessions are populated.
+  - Incident checklist => FAIL (missing `BREVO_API_KEY`, `INCIDENT_EMAIL_RECIPIENTS`, `INCIDENT_SIGNATURE_SECRET`; incident workflow test is skipped due to failed config dependency)
+  - RBAC runtime check => BLOCKED on missing env (`RBAC_COOKIE_CUSTOMER`, `RBAC_COOKIE_STAFF`, `RBAC_COOKIE_ADMIN`)
+  - Combined gate => FAIL until staging secrets/sessions are populated.
 - Confirms latest script wiring and pass/fail behavior are stable.
 
 ## Staging Tri-Channel Validation Runbook (Ready)

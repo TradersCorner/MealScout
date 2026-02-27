@@ -1,0 +1,21 @@
+# Unified security checklist template
+# Copy these keys into your staging secret manager and set real values.
+# Do NOT commit real secrets/cookies.
+
+# Optional checklist toggles
+# Set true to enforce tri-channel readiness in checklist runs.
+CHECKLIST_REQUIRE_SMS=true
+CHECKLIST_REQUIRE_SLACK=true
+
+# Incident checklist environment
+BREVO_API_KEY=replace_with_brevo_api_key
+INCIDENT_EMAIL_RECIPIENTS=info.mealscout@gmail.com
+INCIDENT_SMS_RECIPIENTS=+15555550123,+15555550124
+SLACK_WEBHOOK_URL=https://hooks.slack.com/services/replace/with/real
+INCIDENT_SIGNATURE_SECRET=23784523483848238548234582854
+
+# RBAC runtime test environment
+RBAC_BASE_URL=http://localhost:5200
+RBAC_COOKIE_CUSTOMER=connect.sid=replace_with_customer_cookie
+RBAC_COOKIE_STAFF=connect.sid=replace_with_staff_cookie
+RBAC_COOKIE_ADMIN=connect.sid=replace_with_admin_cookie

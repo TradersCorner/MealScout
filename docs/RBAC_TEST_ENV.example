@@ -1,4 +1,5 @@
 # RBAC runtime test template
+# Preferred template: docs/SECURITY_CHECKLIST_ENV.example
 # Set these in your shell/session before running `npm run test:staff-rbac`.
 # Do NOT commit real cookies.
 

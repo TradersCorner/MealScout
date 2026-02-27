@@ -1,4 +1,5 @@
 # Incident tri-channel staging template
+# Preferred template: docs/SECURITY_CHECKLIST_ENV.example
 # Copy these keys into your staging secret manager and set real values.
 # Do NOT commit real secrets.
 

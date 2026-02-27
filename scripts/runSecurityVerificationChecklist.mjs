@@ -2,24 +2,29 @@
 
 import { spawnSync } from "node:child_process";
 
+const truthy = (value) =>
+  ["1", "true", "yes", "on"].includes(String(value || "").trim().toLowerCase());
+
 const allChecks = [
   {
     id: "incidents",
     title: "Incident tri-channel checklist",
     command: "npm",
     args: ["run", "checklist:incidents"],
+    blockOnMissingEnv: false,
   },
   {
     id: "rbac",
     title: "Staff RBAC runtime verification",
     command: "npm",
     args: ["run", "test:staff-rbac"],
+    blockOnMissingEnv: true,
   },
 ];
 
-const skipRbac = ["1", "true", "yes", "on"].includes(
-  String(process.env.CHECKLIST_SKIP_RBAC || "").trim().toLowerCase(),
-);
+const skipRbac = truthy(process.env.CHECKLIST_SKIP_RBAC);
+const requireSms = truthy(process.env.CHECKLIST_REQUIRE_SMS);
+const requireSlack = truthy(process.env.CHECKLIST_REQUIRE_SLACK);
 
 const checks = skipRbac
   ? allChecks.filter((check) => check.id !== "rbac")
@@ -30,40 +35,19 @@ const requiredEnvByCheck = {
     "BREVO_API_KEY",
     "INCIDENT_EMAIL_RECIPIENTS",
     "INCIDENT_SIGNATURE_SECRET",
+    ...(requireSms ? ["INCIDENT_SMS_RECIPIENTS"] : []),
+    ...(requireSlack ? ["SLACK_WEBHOOK_URL"] : []),
   ],
-  rbac: [
-    "RBAC_COOKIE_CUSTOMER",
-    "RBAC_COOKIE_STAFF",
-    "RBAC_COOKIE_ADMIN",
-  ],
+  rbac: ["RBAC_COOKIE_CUSTOMER", "RBAC_COOKIE_STAFF", "RBAC_COOKIE_ADMIN"],
 };
 
 const optionalEnvByCheck = {
-  incidents: ["INCIDENT_SMS_RECIPIENTS", "SLACK_WEBHOOK_URL"],
+  incidents: [
+    ...(requireSms ? [] : ["INCIDENT_SMS_RECIPIENTS"]),
+    ...(requireSlack ? [] : ["SLACK_WEBHOOK_URL"]),
+  ],
   rbac: ["RBAC_BASE_URL"],
 };
-
-const requireSms = ["1", "true", "yes", "on"].includes(
-  String(process.env.CHECKLIST_REQUIRE_SMS || "").trim().toLowerCase(),
-);
-
-const requireSlack = ["1", "true", "yes", "on"].includes(
-  String(process.env.CHECKLIST_REQUIRE_SLACK || "").trim().toLowerCase(),
-);
-
-if (requireSms) {
-  requiredEnvByCheck.incidents.push("INCIDENT_SMS_RECIPIENTS");
-  optionalEnvByCheck.incidents = optionalEnvByCheck.incidents.filter(
-    (name) => name !== "INCIDENT_SMS_RECIPIENTS",
-  );
-}
-
-if (requireSlack) {
-  requiredEnvByCheck.incidents.push("SLACK_WEBHOOK_URL");
-  optionalEnvByCheck.incidents = optionalEnvByCheck.incidents.filter(
-    (name) => name !== "SLACK_WEBHOOK_URL",
-  );
-}
 
 const getMissing = (names) =>
   names.filter((name) => {
@@ -71,17 +55,20 @@ const getMissing = (names) =>
     return !value || String(value).trim().length === 0;
   });
 
+const missingByCheck = Object.fromEntries(
+  checks.map((check) => [check.id, getMissing(requiredEnvByCheck[check.id] || [])]),
+);
+
 const printEnvSummary = () => {
   console.log("Environment readiness snapshot:");
 
   for (const check of checks) {
-    const required = requiredEnvByCheck[check.id] || [];
     const optional = optionalEnvByCheck[check.id] || [];
-    const missing = getMissing(required);
+    const missing = missingByCheck[check.id] || [];
     const missingOptional = getMissing(optional);
 
     if (!missing.length) {
-      console.log(`- ${check.title}: ✅ env ready`);
+      console.log(`- ${check.title}: OK env ready`);
       if (missingOptional.length) {
         console.log(
           `  - Optional not set: ${missingOptional.join(", ")} (defaults apply)`,
@@ -90,16 +77,51 @@ const printEnvSummary = () => {
       continue;
     }
 
-    console.log(`- ${check.title}: ⚠ missing env (${missing.length})`);
+    console.log(`- ${check.title}: MISSING env (${missing.length})`);
     for (const name of missing) {
       console.log(`  - ${name}`);
     }
   }
 };
 
+const getRerunCommand = () => {
+  if (skipRbac && requireSms && requireSlack) {
+    return "cross-env CHECKLIST_SKIP_RBAC=true CHECKLIST_REQUIRE_SMS=true CHECKLIST_REQUIRE_SLACK=true npm run checklist:security";
+  }
+  if (skipRbac) {
+    return "npm run checklist:security:prod";
+  }
+  if (requireSms && requireSlack) {
+    return "npm run checklist:security:strict";
+  }
+  if (requireSms || requireSlack) {
+    const env = [];
+    if (requireSms) env.push("CHECKLIST_REQUIRE_SMS=true");
+    if (requireSlack) env.push("CHECKLIST_REQUIRE_SLACK=true");
+    return `cross-env ${env.join(" ")} npm run checklist:security`;
+  }
+  return "npm run checklist:security";
+};
+
 const runCheck = (check) => {
-  console.log(`\n▶ ${check.title}`);
-  console.log(`   $ ${check.command} ${check.args.join(" ")}`);
+  const missing = missingByCheck[check.id] || [];
+
+  if (check.blockOnMissingEnv && missing.length) {
+    console.log(`\n> ${check.title}`);
+    console.log("  Blocked by missing required env:");
+    for (const name of missing) {
+      console.log(`  - ${name}`);
+    }
+    return {
+      ...check,
+      passed: false,
+      blocked: true,
+      exitCode: 1,
+    };
+  }
+
+  console.log(`\n> ${check.title}`);
+  console.log(`  $ ${check.command} ${check.args.join(" ")}`);
 
   const result = spawnSync(check.command, check.args, {
     shell: process.platform === "win32",
@@ -108,7 +130,7 @@ const runCheck = (check) => {
   });
 
   const passed = result.status === 0;
-  console.log(`   ${passed ? "✅ PASS" : "❌ FAIL"}`);
+  console.log(`  ${passed ? "PASS" : "FAIL"}`);
 
   return {
     ...check,
@@ -140,23 +162,19 @@ const main = () => {
   console.log("Checklist Summary");
   console.log("=".repeat(66));
 
-  let hasFailure = false;
+  const hasFailure = results.some((result) => !result.passed);
   for (const result of results) {
-    console.log(`- ${result.title}: ${result.passed ? "PASS" : "FAIL"}`);
-    if (!result.passed) {
-      hasFailure = true;
-    }
+    const status = result.blocked ? "BLOCKED (missing env)" : result.passed ? "PASS" : "FAIL";
+    console.log(`- ${result.title}: ${status}`);
   }
 
   if (!hasFailure) {
-    console.log("\n✅ Security verification checklist passed.");
+    console.log("\nOK Security verification checklist passed.");
     process.exit(0);
   }
 
-  console.log("\n❌ Security verification checklist failed.");
-  console.log(
-    "   Populate missing env/secrets, then rerun: npm run checklist:security",
-  );
+  console.log("\nFAIL Security verification checklist failed.");
+  console.log(`  Populate missing env/secrets, then rerun: ${getRerunCommand()}`);
   process.exit(1);
 };
 

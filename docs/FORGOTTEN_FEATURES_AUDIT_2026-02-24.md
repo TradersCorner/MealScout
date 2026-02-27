@@ -106,6 +106,9 @@ From phase audit docs, these trigger classes did not show clear server-side trig
 
 - Added combined runner: `npm run checklist:security`.
 - Added production-friendly runner: `npm run checklist:security:prod` (auto-sets `CHECKLIST_SKIP_RBAC=true`).
+- Added strict tri-channel runner: `npm run checklist:security:strict` (enforces `CHECKLIST_REQUIRE_SMS=true` and `CHECKLIST_REQUIRE_SLACK=true`).
+- Added strict incident-only runner: `npm run checklist:incidents:strict` (enforces `CHECKLIST_REQUIRE_SMS=true` and `CHECKLIST_REQUIRE_SLACK=true`).
+- Added unified env template: `docs/SECURITY_CHECKLIST_ENV.example` (incident + RBAC + strict toggles).
 - It executes, in order:
    - `npm run checklist:incidents`
    - `npm run test:staff-rbac`
@@ -115,15 +118,28 @@ From phase audit docs, these trigger classes did not show clear server-side trig
 - Slack is optional by default in checklist env validation; set `CHECKLIST_REQUIRE_SLACK=true` when you want to enforce Slack readiness.
 - Readiness summary refined so `RBAC_BASE_URL` is treated as optional (default applies) and no longer counted as a required missing env.
 - Render shell compatibility hardening: critical checklist scripts now invoke `npx --yes tsx` so they run even when `tsx` is not locally installed in production runtime images.
+- Incident checklist sequencing hardening: `validate:config` now runs in enforced incident-env mode during checklist execution, and incident workflow tests are dependency-gated (skipped when config validation fails).
+- Security checklist preflight hardening: RBAC runtime verification is now blocked before execution when required RBAC cookie env vars are missing (cleaner, less noisy fail output).
+- Operator guidance hardening: checklist failures now print mode-aware rerun commands (default/strict/prod) based on active checklist flags.
 - Local command validation completed:
    - Incident checklist => FAIL (missing incident env)
-   - RBAC check => FAIL (missing RBAC cookies/env)
+   - RBAC check => BLOCKED (missing RBAC cookies/env)
    - Combined gate exits non-zero as designed until staging secrets/sessions are supplied.
+
+## Security Gate Re-Validation (2026-02-26)
+
+- Re-ran `npm run checklist:security` after recent checklist script updates.
+- Current local result remains expected and unchanged:
+   - Incident checklist => FAIL (missing `BREVO_API_KEY`, `INCIDENT_EMAIL_RECIPIENTS`, `INCIDENT_SIGNATURE_SECRET`; incident workflow test is skipped due to failed config dependency)
+   - RBAC runtime check => BLOCKED on missing env (`RBAC_COOKIE_CUSTOMER`, `RBAC_COOKIE_STAFF`, `RBAC_COOKIE_ADMIN`)
+   - Combined gate => FAIL until staging secrets/sessions are populated.
+- Confirms latest script wiring and pass/fail behavior are stable.
 
 ## Staging Tri-Channel Validation Runbook (Ready)
 
 1. **Set required incident env in staging**
-   - Copy baseline keys from `docs/INCIDENT_STAGING_ENV.example` and inject real values via staging secret manager.
+   - Preferred: copy `docs/SECURITY_CHECKLIST_ENV.example` and inject real values via staging secret manager.
+   - Alternate (incident-only): copy baseline keys from `docs/INCIDENT_STAGING_ENV.example`.
    - `BREVO_API_KEY`
    - `INCIDENT_EMAIL_RECIPIENTS`
    - `INCIDENT_SIGNATURE_SECRET`
@@ -132,6 +148,8 @@ From phase audit docs, these trigger classes did not show clear server-side trig
 
 2. **Run config and incident harness in staging shell**
    - Optional full gate: `npm run checklist:security`
+   - Optional strict full gate (enforce Slack + SMS): `npm run checklist:security:strict`
+   - Optional strict incident-only gate (enforce Slack + SMS): `npm run checklist:incidents:strict`
    - `npm run checklist:incidents` (recommended: runs both checks and prints pass/fail summary)
    - `npm run validate:config`
    - `npm run test:incidents`

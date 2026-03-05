@@ -3,7 +3,7 @@ import { db } from "../db";
 import { cities, events, hosts, restaurants, truckManualSchedules } from "@shared/schema";
 import { and, eq, gte, ilike, inArray, isNotNull, lte, ne, or, sql } from "drizzle-orm";
 import { buildSlotDateTimes, intervalOverlaps, resolveTimeIntent, type TimeIntent } from "../services/timeIntent";
-import { isSlotPublic, type PublicSlot } from "../services/publicSlotGate";
+import { getPublicSlotGateConfigFromEnv, isSlotPublic, type PublicSlot } from "../services/publicSlotGate";
 import { resolveCityTimeZone, usStateToTimeZone } from "../services/cityTimeZone";
 
 type TimeKey = "now" | "breakfast" | "lunch" | "dinner" | "tonight" | "this-weekend";
@@ -40,25 +40,24 @@ function makeEntitySlug(name: unknown, id: unknown): string {
   return slug ? `${slug}--${rawId}` : rawId;
 }
 
+function toDateKey(value: unknown): string | null {
+  if (value instanceof Date) {
+    const key = value.toISOString().split("T")[0];
+    return /^\d{4}-\d{2}-\d{2}$/.test(key) ? key : null;
+  }
+  const raw = String(value || "").trim();
+  if (!raw) return null;
+  const key = raw.includes("T") ? raw.split("T")[0] : raw;
+  return /^\d{4}-\d{2}-\d{2}$/.test(key) ? key : null;
+}
+
 
 function timeKeyToIntent(value: TimeKey): TimeIntent {
   return value as unknown as TimeIntent;
 }
 
 function getFreshnessGateConfig() {
-  const lookaheadHoursRaw = Number(process.env.PUBLIC_SLOT_LOOKAHEAD_HOURS ?? 24 * 7);
-  const ttlHoursRaw = Number(process.env.PUBLIC_SLOT_TTL_HOURS ?? 72);
-  const graceMinutesRaw = Number(process.env.PUBLIC_SLOT_GRACE_MINUTES ?? 30);
-  const lookaheadHours = Number.isFinite(lookaheadHoursRaw)
-    ? Math.max(0, Math.min(lookaheadHoursRaw, 24 * 30))
-    : 24 * 7;
-  const ttlHours = Number.isFinite(ttlHoursRaw)
-    ? Math.max(1, Math.min(ttlHoursRaw, 24 * 30))
-    : 72;
-  const graceMinutes = Number.isFinite(graceMinutesRaw)
-    ? Math.max(0, Math.min(graceMinutesRaw, 24 * 60))
-    : 30;
-  return { lookaheadHours, ttlHours, graceMinutes };
+  return getPublicSlotGateConfigFromEnv();
 }
 
 export function registerDiscoveryRoutes(app: Express) {
@@ -282,7 +281,7 @@ export function registerDiscoveryRoutes(app: Express) {
             : null;
         const schedule = {
           kind: row.kind,
-          date: row.date.toISOString(),
+          date: toDateKey(row.date) ?? new Date(row.date).toISOString().split("T")[0],
           startTime: row.startTime,
           endTime: row.endTime,
           lastConfirmedAt: row.lastConfirmedAtUtc.toISOString(),
@@ -442,7 +441,7 @@ export function registerDiscoveryRoutes(app: Express) {
         const truckPath = `/truck/${encodeURIComponent(makeEntitySlug(truckName, truckId))}`;
         const schedule = {
           kind: "booking" as const,
-          date: new Date(row.date).toISOString(),
+          date: toDateKey(row.date) ?? new Date(row.date).toISOString().split("T")[0],
           startTime: String(row.startTime || ""),
           endTime: String(row.endTime || ""),
           lastConfirmedAt: slot.lastConfirmedAtUtc.toISOString(),

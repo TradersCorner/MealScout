@@ -8,6 +8,22 @@ export type PublicSlot = {
   lastConfirmedAtUtc: Date;
 };
 
+export function getPublicSlotGateConfigFromEnv() {
+  const lookaheadHoursRaw = Number(process.env.PUBLIC_SLOT_LOOKAHEAD_HOURS ?? 24 * 7);
+  const ttlHoursRaw = Number(process.env.PUBLIC_SLOT_TTL_HOURS ?? 72);
+  const graceMinutesRaw = Number(process.env.PUBLIC_SLOT_GRACE_MINUTES ?? 30);
+  const lookaheadHours = Number.isFinite(lookaheadHoursRaw)
+    ? Math.max(0, Math.min(Math.floor(lookaheadHoursRaw), 24 * 30))
+    : 24 * 7;
+  const ttlHours = Number.isFinite(ttlHoursRaw)
+    ? Math.max(1, Math.min(Math.floor(ttlHoursRaw), 24 * 30))
+    : 72;
+  const graceMinutes = Number.isFinite(graceMinutesRaw)
+    ? Math.max(0, Math.min(Math.floor(graceMinutesRaw), 24 * 60))
+    : 30;
+  return { lookaheadHours, ttlHours, graceMinutes };
+}
+
 function minutes(ms: number) {
   return ms * 60 * 1000;
 }
@@ -61,4 +77,3 @@ export function isSlotPublic(params: {
 
   return true;
 }
-

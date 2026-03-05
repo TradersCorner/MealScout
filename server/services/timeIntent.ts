@@ -92,7 +92,7 @@ export function intervalOverlaps(params: {
 
 export function buildSlotDateTimes(params: {
   timeZone: string;
-  date: Date;
+  date: Date | string;
   startTime: string;
   endTime: string;
 }): { startUtc: Date; endUtc: Date } | null {
@@ -105,9 +105,23 @@ export function buildSlotDateTimes(params: {
   const em = Number(matchEnd[2]);
   if (![sh, sm, eh, em].every((n) => Number.isFinite(n))) return null;
 
-  const base = DateTime.fromJSDate(params.date, { zone: "utc" })
-    .setZone(params.timeZone)
-    .startOf("day");
+  const dateKey = (() => {
+    const raw = params.date as any;
+    if (raw instanceof Date) {
+      const iso = raw.toISOString();
+      const key = iso.split("T")[0];
+      return /^\d{4}-\d{2}-\d{2}$/.test(key) ? key : null;
+    }
+    const text = String(raw || "").trim();
+    if (!text) return null;
+    const key = text.includes("T") ? text.split("T")[0] : text;
+    return /^\d{4}-\d{2}-\d{2}$/.test(key) ? key : null;
+  })();
+  if (!dateKey) return null;
+
+  // IMPORTANT: treat schedule date as a *local calendar day* for the target timezone.
+  // Never derive the day by converting a JS Date from UTC -> local, or you'll get off-by-one around midnight.
+  const base = DateTime.fromISO(dateKey, { zone: params.timeZone }).startOf("day");
 
   let start = base.set({ hour: sh, minute: sm });
   let end = base.set({ hour: eh, minute: em });

@@ -13,7 +13,7 @@ import { isAuthenticated } from "../unifiedAuth";
 import { storage } from "../storage";
 import { emailService } from "../emailService";
 import { resolveCityTimeZoneSync } from "../services/cityTimeZone";
-import { isSlotPublic } from "../services/publicSlotGate";
+import { getPublicSlotGateConfigFromEnv, isSlotPublic } from "../services/publicSlotGate";
 import { buildSlotDateTimes } from "../services/timeIntent";
 import Stripe from "stripe";
 
@@ -28,6 +28,17 @@ const stripe = process.env.STRIPE_SECRET_KEY
  * - POST /api/bookings/:bookingId/cancel - Cancel a booking (non-refundable)
  */
 export function registerBookingRoutes(app: Express) {
+  const toDateKey = (value: unknown): string | null => {
+    if (value instanceof Date) {
+      const key = value.toISOString().split("T")[0];
+      return /^\d{4}-\d{2}-\d{2}$/.test(key) ? key : null;
+    }
+    const raw = String(value || "").trim();
+    if (!raw) return null;
+    const key = raw.includes("T") ? raw.split("T")[0] : raw;
+    return /^\d{4}-\d{2}-\d{2}$/.test(key) ? key : null;
+  };
+
   // Lookup booking state by Stripe PaymentIntent (used by the client to poll after payment confirmation).
   app.get(
     "/api/bookings/payment-intent/:paymentIntentId",
@@ -835,7 +846,7 @@ export function registerBookingRoutes(app: Express) {
           bookingRows.map((row: (typeof bookingRows)[number]) => row.eventId),
         );
 
-        const publicLookaheadHours = 24 * 30;
+        const gate = getPublicSlotGateConfigFromEnv();
         const isPublicBookingSlot = (row: (typeof bookingRows)[number]) => {
           const timeZone = resolveCityTimeZoneSync({
             city: (row.host as any)?.city ?? null,
@@ -864,7 +875,7 @@ export function registerBookingRoutes(app: Express) {
               endsAtUtc: interval.endUtc,
               lastConfirmedAtUtc,
             },
-            lookaheadHours: publicLookaheadHours,
+            ...gate,
           });
         };
 
@@ -895,7 +906,7 @@ export function registerBookingRoutes(app: Express) {
               endsAtUtc: interval.endUtc,
               lastConfirmedAtUtc,
             },
-            lookaheadHours: publicLookaheadHours,
+            ...gate,
           });
         };
 
@@ -913,7 +924,7 @@ export function registerBookingRoutes(app: Express) {
               slotType: row.slotType,
               event: {
                 id: row.event.id,
-                date: row.event.date,
+                date: toDateKey(row.event.date) ?? row.event.date,
                 startTime: row.event.startTime,
                 endTime: row.event.endTime,
                 status: row.event.status,
@@ -942,7 +953,7 @@ export function registerBookingRoutes(app: Express) {
               createdAt: row.createdAt,
               event: {
                 id: row.event.id,
-                date: row.event.date,
+                date: toDateKey(row.event.date) ?? row.event.date,
                 startTime: row.event.startTime,
                 endTime: row.event.endTime,
                 status: row.event.status,
@@ -985,7 +996,7 @@ export function registerBookingRoutes(app: Express) {
               endsAtUtc: interval.endUtc,
               lastConfirmedAtUtc,
             },
-            lookaheadHours: publicLookaheadHours,
+            ...gate,
           });
         };
 
@@ -999,7 +1010,7 @@ export function registerBookingRoutes(app: Express) {
             createdAt: entry.createdAt,
             manual: {
               id: entry.id,
-              date: entry.date,
+              date: toDateKey(entry.date) ?? entry.date,
               startTime: entry.startTime,
               endTime: entry.endTime,
               locationName: entry.locationName,

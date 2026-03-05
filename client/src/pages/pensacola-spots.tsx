@@ -4,6 +4,7 @@ import { apiUrl } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { parseISO } from "date-fns";
 
 type LeadListing = {
   teaserId: string;
@@ -123,7 +124,10 @@ export default function PensacolaSpots() {
                 {(data?.listings || []).map((item) => {
                   const price = formatMoney(item.startingAtCents);
                   const dateText = item.nextDate
-                    ? new Date(item.nextDate).toLocaleDateString()
+                    ? (item.nextDate.includes("T")
+                        ? new Date(item.nextDate)
+                        : parseISO(item.nextDate)
+                      ).toLocaleDateString()
                     : null;
                   const cardLocked = Boolean(item.locked);
                   return (

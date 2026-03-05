@@ -35,7 +35,7 @@ import { handleReportRequest, renderReportPdfForToken, requestReportSchema } fro
 import { buildSlotDateTimes } from "../services/timeIntent";
 import { resolveCityTimeZone } from "../services/cityTimeZone";
 import { isSlotPublic, type PublicSlot } from "../services/publicSlotGate";
-import { rateLimit } from "../rateLimiter";
+import { distributedRateLimit } from "../middleware/distributedRateLimit";
 
 export function registerEventRoutes(app: Express) {
   let parkingPassPublicFeedCache:
@@ -456,7 +456,9 @@ export function registerEventRoutes(app: Express) {
             String(host.state || row?.hostState || row?.state || "FL"),
           );
           const startingAtCents = minStartingPriceCents(row);
-          const nextDate = row?.date ? new Date(row.date).toISOString() : null;
+          const nextDate = row?.date
+            ? String(row.date instanceof Date ? row.date.toISOString().split("T")[0] : String(row.date).split("T")[0])
+            : null;
 
           const lat = host.latitude ?? row?.hostLatitude ?? row?.latitude;
           const lng = host.longitude ?? row?.hostLongitude ?? row?.longitude;
@@ -648,14 +650,28 @@ export function registerEventRoutes(app: Express) {
   });
 
   // Pensacola Report lead magnet: email capture -> send PDF link
-  const reportBurstLimiter = rateLimit(5, 5 * 60 * 1000, (req) => {
-    const ua = String(req.get?.("User-Agent") || "").slice(0, 80);
-    return `pensacola-report:burst:${req.ip}:${ua}`;
+  const reportBurstLimiter = distributedRateLimit({
+    scope: "pensacola-report:burst",
+    limit: 5,
+    windowMs: 5 * 60 * 1000,
+    key: (req) => {
+      const ua = String(req.get("User-Agent") || "").slice(0, 80);
+      return `${req.ip}:${ua}`;
+    },
   });
-  const reportDailyLimiter = rateLimit(30, 24 * 60 * 60 * 1000, (req) => `pensacola-report:day:${req.ip}`);
-  const reportEmailLimiter = rateLimit(3, 60 * 60 * 1000, (req) => {
-    const email = String(req.body?.email || "").trim().toLowerCase();
-    return email ? `pensacola-report:email:${email}` : `pensacola-report:email:missing:${req.ip}`;
+  const reportDailyLimiter = distributedRateLimit({
+    scope: "pensacola-report:day",
+    limit: 30,
+    windowMs: 24 * 60 * 60 * 1000,
+  });
+  const reportEmailLimiter = distributedRateLimit({
+    scope: "pensacola-report:email",
+    limit: 3,
+    windowMs: 60 * 60 * 1000,
+    key: (req) => {
+      const email = String((req as any).body?.email || "").trim().toLowerCase();
+      return email || String(req.ip || "unknown");
+    },
   });
 
   app.post("/api/public/pensacola/report/request", reportBurstLimiter, reportDailyLimiter, reportEmailLimiter, async (req: any, res) => {

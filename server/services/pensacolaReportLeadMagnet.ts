@@ -7,7 +7,7 @@ import {
   reportDownloadTokens,
   reportLeadSequenceSends,
 } from "@shared/schema";
-import { and, eq, gt, isNull } from "drizzle-orm";
+import { and, eq, gt, ilike, isNull } from "drizzle-orm";
 import { renderPensacolaReportPdfBuffer, buildPensacolaReportData } from "./pensacolaReportPdf";
 
 const SEQUENCE = "pensacola_report_v1";
@@ -53,24 +53,37 @@ export async function upsertPensacolaReportLead(params: {
   const existing = await db
     .select()
     .from(pensacolaReportLeads)
-    .where(eq(pensacolaReportLeads.email, email))
+    .where(ilike(pensacolaReportLeads.email, email))
     .limit(1)
     .then((rows: any[]) => rows[0] || null);
 
   if (existing) return existing;
 
-  const [created] = await db
-    .insert(pensacolaReportLeads)
-    .values({
-      email,
-      firstName,
-      source: "pensacola_report",
-      ip: params.ip || null,
-      userAgent: params.userAgent || null,
-    } as any)
-    .returning();
+  try {
+    const [created] = await db
+      .insert(pensacolaReportLeads)
+      .values({
+        email,
+        firstName,
+        source: "pensacola_report",
+        ip: params.ip || null,
+        userAgent: params.userAgent || null,
+      } as any)
+      .returning();
 
-  return created;
+    return created;
+  } catch (error: any) {
+    if (String(error?.code || "") === "23505") {
+      const row = await db
+        .select()
+        .from(pensacolaReportLeads)
+        .where(ilike(pensacolaReportLeads.email, email))
+        .limit(1)
+        .then((rows: any[]) => rows[0] || null);
+      if (row) return row;
+    }
+    throw error;
+  }
 }
 
 export async function createReportDownloadToken(leadId: string) {

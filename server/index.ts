@@ -1391,7 +1391,7 @@ app.use((req, res, next) => {
             return;
           }
           console.log(
-            `✅ Ops cleanup completed (idempotency=${result.idempotencyDeleted}, rateLimit=${result.rateLimitDeleted})`,
+            `✅ Ops cleanup completed (idempotency=${result.idempotencyDeleted}, rateLimit=${result.rateLimitDeleted}, reportTokens=${(result as any).reportTokensDeleted ?? 0})`,
           );
         };
 

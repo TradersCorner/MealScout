@@ -4,6 +4,7 @@ import { sql } from "drizzle-orm";
 type CleanupCounts = {
   idempotencyDeleted: number;
   rateLimitDeleted: number;
+  reportTokensDeleted: number;
 };
 
 type CleanupSnapshot = CleanupCounts & {
@@ -17,6 +18,7 @@ const state: CleanupSnapshot = {
   ok: true,
   idempotencyDeleted: 0,
   rateLimitDeleted: 0,
+  reportTokensDeleted: 0,
   startedAt: null,
   finishedAt: null,
   error: null,
@@ -41,6 +43,10 @@ export async function runOpsDataCleanup(): Promise<CleanupSnapshot> {
     "RATE_LIMIT_COUNTER_RETENTION_HOURS",
     48,
   );
+  const reportTokenGraceHours = readPositiveIntEnv(
+    "REPORT_DOWNLOAD_TOKEN_RETENTION_HOURS_AFTER_EXPIRY",
+    24,
+  );
 
   const startedAt = new Date();
   state.startedAt = startedAt.toISOString();
@@ -64,12 +70,23 @@ export async function runOpsDataCleanup(): Promise<CleanupSnapshot> {
       SELECT count(*)::int AS count FROM deleted;
     `);
 
+    const reportTokenResult: any = await db.execute(sql`
+      WITH deleted AS (
+        DELETE FROM report_download_tokens
+        WHERE expires_at < (now() - (${reportTokenGraceHours}::int * interval '1 hour'))
+        RETURNING 1
+      )
+      SELECT count(*)::int AS count FROM deleted;
+    `);
+
     const idempotencyDeleted = Number(idempotencyResult?.rows?.[0]?.count || 0);
     const rateLimitDeleted = Number(rateLimitResult?.rows?.[0]?.count || 0);
+    const reportTokensDeleted = Number(reportTokenResult?.rows?.[0]?.count || 0);
 
     state.ok = true;
     state.idempotencyDeleted = idempotencyDeleted;
     state.rateLimitDeleted = rateLimitDeleted;
+    state.reportTokensDeleted = reportTokensDeleted;
     state.finishedAt = new Date().toISOString();
     state.error = null;
     return getOpsCleanupSnapshot();
@@ -77,9 +94,9 @@ export async function runOpsDataCleanup(): Promise<CleanupSnapshot> {
     state.ok = false;
     state.idempotencyDeleted = 0;
     state.rateLimitDeleted = 0;
+    state.reportTokensDeleted = 0;
     state.finishedAt = new Date().toISOString();
     state.error = String(error?.message || error || "cleanup_failed");
     return getOpsCleanupSnapshot();
   }
 }
-

@@ -189,18 +189,14 @@ export async function handleReportRequest(params: {
     .limit(1);
 
   if (recentSend.length > 0) {
-    // Don't spam emails, but still allow the lead to download a fresh copy.
-    const { token } = await createReportDownloadToken(String(lead.id));
-    const downloadUrl = `${publicBaseUrl()}/api/public/pensacola/report/download?token=${encodeURIComponent(
-      token,
-    )}`;
-
     return {
       ok: true as const,
       leadId: lead.id,
-      emailed: false,
+      emailed: true,
       cooldownMinutes,
-      downloadUrl,
+      // The last email already contains a valid link. Avoid creating new tokens
+      // on every retry to prevent DB bloat.
+      downloadUrl: null,
     };
   }
 

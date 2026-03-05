@@ -39,6 +39,8 @@ export const normalizeUsStateAbbr = (value: string): string => {
     connecticut: "CT",
     delaware: "DE",
     florida: "FL",
+    flordia: "FL",
+    floridia: "FL",
     georgia: "GA",
     hawaii: "HI",
     idaho: "ID",

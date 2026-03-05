@@ -4152,6 +4152,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ownerId: user.id,
       });
 
+      // If this is a food truck profile, ensure the user account is a `food_truck` so booking is allowed.
+      if (String((restaurant as any)?.businessType || "") === "food_truck") {
+        const currentType = String((user as any)?.userType || "");
+        const allowedToPromote = ["customer", "restaurant_owner"].includes(
+          currentType,
+        );
+        if (allowedToPromote && currentType !== "food_truck") {
+          await storage.updateUserType(user.id, "food_truck");
+          user = (await storage.getUserById(user.id)) || user;
+        }
+      }
+
+      // If this is a Pensacola food truck, trigger the automated drip (step 1) immediately.
+      if (String((restaurant as any)?.businessType || "") === "food_truck") {
+        try {
+          const { maybeTriggerPensacolaFoodTruckDrip } = await import(
+            "./services/pensacolaFoodTruckDrip"
+          );
+          await maybeTriggerPensacolaFoodTruckDrip({ userId: user.id, restaurant });
+        } catch (error) {
+          console.warn("[drip] Unable to trigger Pensacola food truck drip:", error);
+        }
+      }
+
       // VAC-lite auto-verify (with fallback to manual verification request)
       try {
         const enabled =
@@ -6304,9 +6328,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const payload = Buffer.isBuffer(req.body)
         ? req.body.toString("utf8")
         : req.body;
-      // For development, we'll accept any webhook without signature verification
-      // In production, you should verify the webhook signature for security
-      if (process.env.NODE_ENV === "development") {
+      const forceVerify =
+        String(process.env.STRIPE_WEBHOOK_FORCE_VERIFY || "").toLowerCase() ===
+        "true";
+
+      // Default behavior:
+      // - development: accept JSON payloads without signature verification (fast local iteration)
+      // - non-development: require Stripe signature verification
+      // Optional hardening: set STRIPE_WEBHOOK_FORCE_VERIFY=true to require signatures in development too.
+      if (process.env.NODE_ENV === "development" && !forceVerify) {
         event = typeof payload === "string" ? JSON.parse(payload) : payload;
       } else {
         const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -9364,6 +9394,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("❌ Weekly Digest Cron Job Failed:", error);
     }
   });
+
+  // Automated drip: Pensacola food truck onboarding/upsell sequence
+  if (
+    String(process.env.PENSACOLA_FOOD_TRUCK_DRIP_ENABLED || "")
+      .trim()
+      .toLowerCase() === "true"
+  ) {
+    cron.schedule("*/30 * * * *", async () => {
+      try {
+        const { runPensacolaFoodTruckDripCron } = await import(
+          "./services/pensacolaFoodTruckDrip"
+        );
+        const result = await runPensacolaFoodTruckDripCron();
+        if ((result as any)?.sent) {
+          console.log("[drip] Pensacola food truck sequence sent:", result);
+        }
+      } catch (error) {
+        console.error("[drip] Pensacola food truck sequence failed:", error);
+      }
+    });
+  }
+
+  // Automated drip: Pensacola report leads (email capture funnel follow-ups)
+  if (
+    String(process.env.PENSACOLA_REPORT_ENABLED || "")
+      .trim()
+      .toLowerCase() === "true"
+  ) {
+    cron.schedule("*/30 * * * *", async () => {
+      try {
+        const { runPensacolaReportLeadDripCron } = await import(
+          "./services/pensacolaReportDrip"
+        );
+        const result = await runPensacolaReportLeadDripCron();
+        if ((result as any)?.sent) {
+          console.log("[drip] Pensacola report lead sequence sent:", result);
+        }
+      } catch (error) {
+        console.error("[drip] Pensacola report lead sequence failed:", error);
+      }
+    });
+  }
 
   // Schedule Parking Pass completion reminders (Monday 9:00 AM)
   cron.schedule("0 9 1 * *", async () => {

@@ -112,6 +112,8 @@ const SupplierDetailPage = lazy(() => import("@/pages/supplier-detail"));
 const SupplierDashboardPage = lazy(() => import("@/pages/supplier-dashboard"));
 const SupplyOrdersPage = lazy(() => import("@/pages/supply-orders"));
 const PublicProfilePage = lazy(() => import("@/pages/public-profile"));
+const PensacolaSpots = lazy(() => import("@/pages/pensacola-spots"));
+const PensacolaReport = lazy(() => import("@/pages/pensacola-report"));
 
 // Loading fallback component
 const PageLoader = () => (
@@ -155,6 +157,8 @@ const publicRoutePrefixes = [
   "/sitemap",
   "/status",
   "/golden-plate-winners",
+  "/pensacola/spots",
+  "/pensacola/report",
   "/p/",
   "/forgot-password",
   "/reset-password",
@@ -276,6 +280,8 @@ function Router() {
               path="/p/:profileType/:profileId/:profileSlug"
               component={PublicProfilePage}
             />
+            <Route path="/pensacola/spots" component={PensacolaSpots} />
+            <Route path="/pensacola/report" component={PensacolaReport} />
             <Route path="/parking-pass" component={ParkingPassPage} />
             <Route path="/forgot-password" component={ForgotPassword} />
             <Route path="/reset-password" component={ResetPassword} />
@@ -371,8 +377,10 @@ function Router() {
             <Route path="/host-signup" component={HostSignup} />
             <Route path="/event-signup" component={EventSignup} />
             <Route path="/events" component={EventsRouter} />
-            <Route path="/events/public" component={EventsPage} />
-            <Route path="/food-trucks/:citySlug" component={CityLanding} />
+             <Route path="/events/public" component={EventsPage} />
+             <Route path="/pensacola/spots" component={PensacolaSpots} />
+             <Route path="/pensacola/report" component={PensacolaReport} />
+             <Route path="/food-trucks/:citySlug" component={CityLanding} />
             <Route
               path="/food-trucks/:citySlug/:cuisineSlug"
               component={CityLanding}

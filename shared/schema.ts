@@ -4527,6 +4527,116 @@ export type InsertRequestLog = typeof requestLogs.$inferInsert;
 export type AdminDailyReport = typeof adminDailyReports.$inferSelect;
 export type InsertAdminDailyReport = typeof adminDailyReports.$inferInsert;
 
+// Email sequences (drip campaigns): idempotent send tracking
+export const emailSequenceSends = pgTable(
+  "email_sequence_sends",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    userId: varchar("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    sequence: varchar("sequence").notNull(),
+    step: integer("step").notNull(),
+    sentAt: timestamp("sent_at").defaultNow(),
+    metadata: jsonb("metadata"),
+  },
+  (table) => [
+    unique("uq_email_sequence_sends_user_sequence_step").on(
+      table.userId,
+      table.sequence,
+      table.step,
+    ),
+    index("idx_email_sequence_sends_sequence_step").on(
+      table.sequence,
+      table.step,
+      table.sentAt,
+    ),
+    index("idx_email_sequence_sends_user").on(table.userId, table.sentAt),
+  ],
+);
+
+export type EmailSequenceSend = typeof emailSequenceSends.$inferSelect;
+export type InsertEmailSequenceSend = typeof emailSequenceSends.$inferInsert;
+
+// Pensacola lead magnet: report leads + download tokens
+export const pensacolaReportLeads = pgTable(
+  "pensacola_report_leads",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    email: varchar("email").notNull(),
+    firstName: varchar("first_name"),
+    source: varchar("source").notNull().default("pensacola_report"),
+    ip: varchar("ip"),
+    userAgent: text("user_agent"),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (table) => [
+    unique("uq_pensacola_report_leads_email").on(table.email),
+    index("idx_pensacola_report_leads_created").on(table.createdAt),
+  ],
+);
+
+export const reportDownloadTokens = pgTable(
+  "report_download_tokens",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    leadId: varchar("lead_id")
+      .notNull()
+      .references(() => pensacolaReportLeads.id, { onDelete: "cascade" }),
+    tokenHash: text("token_hash").notNull(),
+    expiresAt: timestamp("expires_at").notNull(),
+    usedAt: timestamp("used_at"),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (table) => [
+    unique("uq_report_download_tokens_hash").on(table.tokenHash),
+    index("idx_report_download_tokens_lead").on(table.leadId, table.createdAt),
+    index("idx_report_download_tokens_expires").on(table.expiresAt),
+  ],
+);
+
+export type PensacolaReportLead = typeof pensacolaReportLeads.$inferSelect;
+export type InsertPensacolaReportLead = typeof pensacolaReportLeads.$inferInsert;
+export type ReportDownloadToken = typeof reportDownloadTokens.$inferSelect;
+export type InsertReportDownloadToken = typeof reportDownloadTokens.$inferInsert;
+
+export const reportLeadSequenceSends = pgTable(
+  "report_lead_sequence_sends",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    leadId: varchar("lead_id")
+      .notNull()
+      .references(() => pensacolaReportLeads.id, { onDelete: "cascade" }),
+    sequence: varchar("sequence").notNull(),
+    step: integer("step").notNull(),
+    sentAt: timestamp("sent_at").defaultNow(),
+    metadata: jsonb("metadata"),
+  },
+  (table) => [
+    unique("uq_report_lead_sequence_sends_lead_sequence_step").on(
+      table.leadId,
+      table.sequence,
+      table.step,
+    ),
+    index("idx_report_lead_sequence_sends_sequence_step").on(
+      table.sequence,
+      table.step,
+      table.sentAt,
+    ),
+  ],
+);
+
+export type ReportLeadSequenceSend = typeof reportLeadSequenceSends.$inferSelect;
+export type InsertReportLeadSequenceSend = typeof reportLeadSequenceSends.$inferInsert;
+
 export const socialPostQueue = pgTable(
   "social_post_queue",
   {

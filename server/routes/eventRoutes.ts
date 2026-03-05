@@ -29,12 +29,284 @@ import {
   isParkingPassPublicReady,
   normalizeUsStateAbbr,
 } from "../services/parkingPassQuality";
+import crypto from "crypto";
+import { handleReportRequest, renderReportPdfForToken, requestReportSchema } from "../services/pensacolaReportLeadMagnet";
 
 export function registerEventRoutes(app: Express) {
   let parkingPassPublicFeedCache:
     | { expiresAt: number; payload: any[] }
     | null = null;
   let parkingPassPublicFeedLastGood: { payload: any[] } | null = null;
+
+  const toTeaserId = (value: string) =>
+    crypto.createHash("sha256").update(value).digest("hex").slice(0, 16);
+
+  const isPensacola = (value: unknown) =>
+    String(value || "").trim().toLowerCase() === "pensacola";
+
+  const isFlorida = (value: unknown) =>
+    normalizeUsStateAbbr(String(value || "").trim()) === "FL";
+
+  const roundCoord = (value: unknown, digits: number) => {
+    const num = Number(value);
+    if (!Number.isFinite(num)) return null;
+    const factor = Math.pow(10, digits);
+    return Math.round(num * factor) / factor;
+  };
+
+  const minStartingPriceCents = (event: any): number | null => {
+    const centsValues: number[] = [];
+    for (const [key, raw] of Object.entries(event || {})) {
+      if (!key.toLowerCase().endsWith("pricecents")) continue;
+      const num = Number(raw);
+      if (Number.isFinite(num) && num > 0) centsValues.push(Math.floor(num));
+    }
+    if (centsValues.length === 0) return null;
+    return Math.min(...centsValues);
+  };
+
+  const redactParkingPassEventForGuest = (event: any) => {
+    const host = event?.host ? { ...(event.host as any) } : null;
+    const hostLat = host?.latitude ?? null;
+    const hostLng = host?.longitude ?? null;
+    if (host) {
+      host.businessName = "Verified host";
+      host.address = null;
+      host.phone = null;
+      host.email = null;
+      host.latitude = roundCoord(hostLat, 2);
+      host.longitude = roundCoord(hostLng, 2);
+    }
+
+    const redacted: any = { ...event, host };
+    if ("hostAddress" in redacted) redacted.hostAddress = null;
+    if ("address" in redacted) redacted.address = null;
+    if ("hostBusinessName" in redacted) redacted.hostBusinessName = "Verified host";
+    return redacted;
+  };
+
+  const buildParkingPassPublicFeed = async (): Promise<any[]> => {
+    // Include draft series here; the public-ready filter below controls visibility.
+    // This prevents "priced but still draft" series from disappearing from booking feeds.
+    const { occurrences } = await listParkingPassOccurrences({
+      horizonDays: 30,
+      includeDraft: true,
+    });
+
+    const payoutsEnabled = (event: any) =>
+      Boolean(
+        event?.host?.stripeConnectAccountId && event?.host?.stripeChargesEnabled,
+      );
+    const isPublicHostProfile = (host: any, event?: any) =>
+      isHostProfileMapEligible({
+        businessName: host?.businessName || event?.host?.businessName,
+        address: host?.address || event?.hostAddress || event?.address,
+        city: host?.city || event?.hostCity || event?.city,
+        state: host?.state || event?.hostState || event?.state,
+      });
+
+    // NOTE: Public feed must only show Parking Pass listings that have pricing
+    // and a clean, geocodable address. Draft/incomplete listings can exist
+    // but must not be returned here.
+    const virtualEvents = occurrences
+      .filter(
+        (event: any) =>
+          isParkingPassPublicReady(event) &&
+          isPublicHostProfile(event?.host, event),
+      )
+      .map((event: any) => ({
+        ...event,
+        paymentsEnabled: payoutsEnabled(event),
+        qualityFlags: computeParkingPassQualityFlags(event),
+      }));
+
+    const legacyUpcoming = await storage.getAllUpcomingEvents();
+    const legacyEvents = legacyUpcoming
+      .filter(
+        (event: any) =>
+          event?.eventType === "parking_pass" &&
+          isParkingPassPublicReady(event) &&
+          isPublicHostProfile(event?.host, event),
+      )
+      .map((event: any) => ({
+        ...event,
+        paymentsEnabled: payoutsEnabled(event),
+        qualityFlags: computeParkingPassQualityFlags(event),
+      }));
+
+    const dedupedById = new Map<string, any>();
+    for (const item of [...virtualEvents, ...legacyEvents]) {
+      dedupedById.set(item.id, item);
+    }
+    const parkingEvents = Array.from(dedupedById.values());
+
+    // Best-effort: ensure host coordinates exist so map pins can render.
+    // We intentionally cap work per request to avoid hammering geocoding providers.
+    const MAX_GEOCODE_PER_REQUEST = 30;
+    const seenHostIds = new Set<string>();
+    let geocodeCount = 0;
+
+    const candidateHosts: any[] = [];
+    for (const event of parkingEvents) {
+      const host: any = (event as any)?.host;
+      const hostId = String(host?.id || "").trim();
+      if (!hostId) continue;
+      if (seenHostIds.has(hostId)) continue;
+      seenHostIds.add(hostId);
+
+      const lat =
+        host.latitude !== null && host.latitude !== undefined
+          ? Number(host.latitude)
+          : NaN;
+      const lng =
+        host.longitude !== null && host.longitude !== undefined
+          ? Number(host.longitude)
+          : NaN;
+      const hasCoords =
+        Number.isFinite(lat) &&
+        Number.isFinite(lng) &&
+        Math.abs(lat) <= 90 &&
+        Math.abs(lng) <= 180;
+      if (hasCoords) continue;
+
+      candidateHosts.push(host);
+    }
+
+    for (
+      let index = 0;
+      index < candidateHosts.length && geocodeCount < MAX_GEOCODE_PER_REQUEST;
+      index += 1
+    ) {
+      const host: any = candidateHosts[index];
+      const addressParts = [host.address, host.city, host.state, "USA"]
+        .map((value: any) => String(value || "").trim())
+        .filter((value: string) => value.length > 0);
+      if (addressParts.length === 0) continue;
+
+      const geocodeAddress = addressParts.join(", ");
+      const coords = await forwardGeocode(geocodeAddress).catch(() => null);
+      if (!coords) continue;
+
+      geocodeCount += 1;
+
+      // Persist and patch the in-memory host so this response includes the coords.
+      try {
+        await storage.updateHostCoordinates(host.id, coords.lat, coords.lng);
+      } catch {
+        // Ignore persistence errors; response can still use computed coords.
+      }
+      host.latitude = coords.lat.toString();
+      host.longitude = coords.lng.toString();
+    }
+
+    // Do not drop listings just because coordinates are missing.
+    // Host locations can still render via /api/map/locations coords or client geocode fallback.
+    const eventIds = parkingEvents.map((event) => event.id);
+
+    const bookingRows =
+      eventIds.length > 0
+        ? await db
+            .select({
+              eventId: eventBookings.eventId,
+              spotNumber: eventBookings.spotNumber,
+              bookingConfirmedAt: eventBookings.bookingConfirmedAt,
+              slotType: eventBookings.slotType,
+              truckId: eventBookings.truckId,
+              truckName: restaurants.name,
+            })
+            .from(eventBookings)
+            .innerJoin(restaurants, eq(eventBookings.truckId, restaurants.id))
+            .where(inArray(eventBookings.eventId, eventIds))
+            .where(inArray(eventBookings.status, ["confirmed"]))
+            .orderBy(asc(eventBookings.bookingConfirmedAt))
+        : [];
+
+    const pendingCounts =
+      eventIds.length > 0
+        ? await db
+            .select({
+              eventId: eventBookings.eventId,
+              count: sql<number>`count(*)`,
+            })
+            .from(eventBookings)
+            .where(inArray(eventBookings.eventId, eventIds))
+            .where(inArray(eventBookings.status, ["pending"]))
+            .groupBy(eventBookings.eventId)
+        : [];
+
+    const pendingByEvent = new Map<string, number>();
+    for (const row of pendingCounts) {
+      pendingByEvent.set(row.eventId, Number(row.count || 0));
+    }
+
+    const bookingsByEvent = new Map<string, typeof bookingRows>();
+    for (const row of bookingRows) {
+      const list = bookingsByEvent.get(row.eventId) ?? [];
+      list.push(row);
+      bookingsByEvent.set(row.eventId, list);
+    }
+
+    const enhancedEvents = parkingEvents.map((event) => {
+      const rows = bookingsByEvent.get(event.id) ?? [];
+      const pending = pendingByEvent.get(event.id) ?? 0;
+      const maxSpots = event.maxTrucks ?? 1;
+
+      const usedSpotNumbers = new Set<number>();
+      for (const row of rows) {
+        if (row.spotNumber && row.spotNumber > 0) {
+          usedSpotNumbers.add(row.spotNumber);
+        }
+      }
+
+      let nextSpot = 1;
+      for (const row of rows) {
+        if (row.spotNumber && row.spotNumber > 0) {
+          continue;
+        }
+        while (usedSpotNumbers.has(nextSpot) && nextSpot <= maxSpots) {
+          nextSpot += 1;
+        }
+        if (nextSpot <= maxSpots) {
+          usedSpotNumbers.add(nextSpot);
+          nextSpot += 1;
+        }
+      }
+
+      const availableSpotNumbers: number[] = [];
+      for (let spot = 1; spot <= maxSpots; spot += 1) {
+        if (!usedSpotNumbers.has(spot)) {
+          availableSpotNumbers.push(spot);
+        }
+      }
+
+      const confirmedCount = rows.length;
+      const reservedCount = Math.min(confirmedCount + pending, maxSpots);
+      const availableCount = Math.max(0, maxSpots - reservedCount);
+      const trimmedAvailable = availableSpotNumbers.slice(0, availableCount);
+
+      return {
+        ...event,
+        spotCount: maxSpots,
+        bookedSpots: reservedCount,
+        availableSpotNumbers: trimmedAvailable,
+        bookings: rows.map((row: (typeof rows)[number]) => ({
+          truckId: row.truckId,
+          truckName: row.truckName,
+          slotType: row.slotType,
+          spotNumber: row.spotNumber,
+          bookingConfirmedAt: row.bookingConfirmedAt,
+        })),
+      };
+    });
+
+    parkingPassPublicFeedCache = {
+      payload: enhancedEvents,
+      expiresAt: Date.now() + 60_000,
+    };
+    parkingPassPublicFeedLastGood = { payload: enhancedEvents };
+
+    return enhancedEvents;
+  };
   // Get all upcoming events (public)
   app.get("/api/events/upcoming", async (req: any, res) => {
     try {
@@ -72,240 +344,186 @@ export function registerEventRoutes(app: Express) {
   app.get("/api/parking-pass", async (req: any, res) => {
     try {
       res.setHeader("Cache-Control", "public, max-age=60");
+      const isAuthed = Boolean(req.isAuthenticated?.() && req.user?.id);
       if (
         parkingPassPublicFeedCache &&
         parkingPassPublicFeedCache.expiresAt > Date.now()
       ) {
-        return res.json(parkingPassPublicFeedCache.payload);
+        const payload = parkingPassPublicFeedCache.payload;
+        return res.json(isAuthed ? payload : payload.map(redactParkingPassEventForGuest));
       }
-      // Include draft series here; the public-ready filter below controls visibility.
-      // This prevents "priced but still draft" series from disappearing from booking feeds.
-      const { occurrences } = await listParkingPassOccurrences({
-        horizonDays: 30,
-        includeDraft: true,
-      });
-
-      const payoutsEnabled = (event: any) =>
-        Boolean(
-          event?.host?.stripeConnectAccountId && event?.host?.stripeChargesEnabled,
-        );
-      const isPublicHostProfile = (host: any, event?: any) =>
-        isHostProfileMapEligible({
-          businessName: host?.businessName || event?.host?.businessName,
-          address: host?.address || event?.hostAddress || event?.address,
-          city: host?.city || event?.hostCity || event?.city,
-          state: host?.state || event?.hostState || event?.state,
-        });
-
-      // NOTE: Public feed must only show Parking Pass listings that have pricing
-      // and a clean, geocodable address. Draft/incomplete listings can exist
-      // but must not be returned here.
-      const virtualEvents = occurrences
-        .filter(
-          (event: any) =>
-            isParkingPassPublicReady(event) && isPublicHostProfile(event?.host, event),
-        )
-        .map((event: any) => ({
-          ...event,
-          paymentsEnabled: payoutsEnabled(event),
-          qualityFlags: computeParkingPassQualityFlags(event),
-        }));
-
-      const legacyUpcoming = await storage.getAllUpcomingEvents();
-      const legacyEvents = legacyUpcoming
-        .filter(
-          (event: any) =>
-            event?.eventType === "parking_pass" &&
-            isParkingPassPublicReady(event) &&
-            isPublicHostProfile(event?.host, event),
-        )
-        .map((event: any) => ({
-          ...event,
-          paymentsEnabled: payoutsEnabled(event),
-          qualityFlags: computeParkingPassQualityFlags(event),
-        }));
-
-      const dedupedById = new Map<string, any>();
-      for (const item of [...virtualEvents, ...legacyEvents]) {
-        dedupedById.set(item.id, item);
-      }
-      const parkingEvents = Array.from(dedupedById.values());
-
-      // Best-effort: ensure host coordinates exist so map pins can render.
-      // We intentionally cap work per request to avoid hammering geocoding providers.
-      const MAX_GEOCODE_PER_REQUEST = 30;
-      const seenHostIds = new Set<string>();
-      let geocodeCount = 0;
-
-      const candidateHosts: any[] = [];
-      for (const event of parkingEvents) {
-        const host: any = (event as any)?.host;
-        const hostId = String(host?.id || "").trim();
-        if (!hostId) continue;
-        if (seenHostIds.has(hostId)) continue;
-        seenHostIds.add(hostId);
-
-        const lat =
-          host.latitude !== null && host.latitude !== undefined
-            ? Number(host.latitude)
-            : NaN;
-        const lng =
-          host.longitude !== null && host.longitude !== undefined
-            ? Number(host.longitude)
-            : NaN;
-        const hasCoords =
-          Number.isFinite(lat) &&
-          Number.isFinite(lng) &&
-          Math.abs(lat) <= 90 &&
-          Math.abs(lng) <= 180;
-        if (hasCoords) continue;
-
-        candidateHosts.push(host);
-      }
-
-      for (
-        let index = 0;
-        index < candidateHosts.length && geocodeCount < MAX_GEOCODE_PER_REQUEST;
-        index += 1
-      ) {
-        const host: any = candidateHosts[index];
-        const addressParts = [host.address, host.city, host.state, "USA"]
-          .map((value: any) => String(value || "").trim())
-          .filter((value: string) => value.length > 0);
-        if (addressParts.length === 0) continue;
-
-        const geocodeAddress = addressParts.join(", ");
-        const coords = await forwardGeocode(geocodeAddress).catch(() => null);
-        if (!coords) continue;
-
-        geocodeCount += 1;
-
-        // Persist and patch the in-memory host so this response includes the coords.
-        try {
-          await storage.updateHostCoordinates(host.id, coords.lat, coords.lng);
-        } catch {
-          // Ignore persistence errors; response can still use computed coords.
-        }
-        host.latitude = coords.lat.toString();
-        host.longitude = coords.lng.toString();
-      }
-
-      // Do not drop listings just because coordinates are missing.
-      // Host locations can still render via /api/map/locations coords or client geocode fallback.
-      const eventIds = parkingEvents.map((event) => event.id);
-
-      const bookingRows =
-        eventIds.length > 0
-          ? await db
-              .select({
-                eventId: eventBookings.eventId,
-                spotNumber: eventBookings.spotNumber,
-                bookingConfirmedAt: eventBookings.bookingConfirmedAt,
-                slotType: eventBookings.slotType,
-                truckId: eventBookings.truckId,
-                truckName: restaurants.name,
-              })
-              .from(eventBookings)
-              .innerJoin(
-                restaurants,
-                eq(eventBookings.truckId, restaurants.id),
-              )
-              .where(inArray(eventBookings.eventId, eventIds))
-              .where(inArray(eventBookings.status, ["confirmed"]))
-              .orderBy(asc(eventBookings.bookingConfirmedAt))
-          : [];
-
-      const pendingCounts =
-        eventIds.length > 0
-          ? await db
-              .select({
-                eventId: eventBookings.eventId,
-                count: sql<number>`count(*)`,
-              })
-              .from(eventBookings)
-              .where(inArray(eventBookings.eventId, eventIds))
-              .where(inArray(eventBookings.status, ["pending"]))
-              .groupBy(eventBookings.eventId)
-          : [];
-
-      const pendingByEvent = new Map<string, number>();
-      for (const row of pendingCounts) {
-        pendingByEvent.set(row.eventId, Number(row.count || 0));
-      }
-
-      const bookingsByEvent = new Map<string, typeof bookingRows>();
-      for (const row of bookingRows) {
-        const list = bookingsByEvent.get(row.eventId) ?? [];
-        list.push(row);
-        bookingsByEvent.set(row.eventId, list);
-      }
-
-      const enhancedEvents = parkingEvents.map((event) => {
-        const rows = bookingsByEvent.get(event.id) ?? [];
-        const pending = pendingByEvent.get(event.id) ?? 0;
-        const maxSpots = event.maxTrucks ?? 1;
-
-        const usedSpotNumbers = new Set<number>();
-        for (const row of rows) {
-          if (row.spotNumber && row.spotNumber > 0) {
-            usedSpotNumbers.add(row.spotNumber);
-          }
-        }
-
-        let nextSpot = 1;
-        for (const row of rows) {
-          if (row.spotNumber && row.spotNumber > 0) {
-            continue;
-          }
-          while (usedSpotNumbers.has(nextSpot) && nextSpot <= maxSpots) {
-            nextSpot += 1;
-          }
-          if (nextSpot <= maxSpots) {
-            usedSpotNumbers.add(nextSpot);
-            nextSpot += 1;
-          }
-        }
-
-        const availableSpotNumbers: number[] = [];
-        for (let spot = 1; spot <= maxSpots; spot += 1) {
-          if (!usedSpotNumbers.has(spot)) {
-            availableSpotNumbers.push(spot);
-          }
-        }
-
-        const confirmedCount = rows.length;
-        const reservedCount = Math.min(confirmedCount + pending, maxSpots);
-        const availableCount = Math.max(0, maxSpots - reservedCount);
-        const trimmedAvailable = availableSpotNumbers.slice(0, availableCount);
-
-        return {
-          ...event,
-          spotCount: maxSpots,
-          bookedSpots: reservedCount,
-          availableSpotNumbers: trimmedAvailable,
-          bookings: rows.map((row: (typeof rows)[number]) => ({
-            truckId: row.truckId,
-            truckName: row.truckName,
-            slotType: row.slotType,
-            spotNumber: row.spotNumber,
-            bookingConfirmedAt: row.bookingConfirmedAt,
-          })),
-        };
-      });
-
-      parkingPassPublicFeedCache = {
-        payload: enhancedEvents,
-        expiresAt: Date.now() + 60_000,
-      };
-      parkingPassPublicFeedLastGood = { payload: enhancedEvents };
-      res.json(enhancedEvents);
+      const enhancedEvents = await buildParkingPassPublicFeed();
+      res.json(isAuthed ? enhancedEvents : enhancedEvents.map(redactParkingPassEventForGuest));
     } catch (error: any) {
       console.error("Error fetching parking pass listings:", error);
       if (parkingPassPublicFeedLastGood?.payload) {
         res.setHeader("X-MealScout-Stale", "1");
-        return res.json(parkingPassPublicFeedLastGood.payload);
+        const isAuthed = Boolean(req.isAuthenticated?.() && req.user?.id);
+        const payload = parkingPassPublicFeedLastGood.payload;
+        return res.json(isAuthed ? payload : payload.map(redactParkingPassEventForGuest));
       }
       res.status(200).json([]);
+    }
+  });
+
+  // Lead-magnet feed (Pensacola): redact exact host details unless logged in.
+  app.get("/api/public/pensacola/parking-pass-leads", async (req: any, res) => {
+    try {
+      res.setHeader("Cache-Control", "public, max-age=60");
+      const isAuthed = Boolean(req.isAuthenticated?.() && req.user?.id);
+
+      const feed =
+        parkingPassPublicFeedCache && parkingPassPublicFeedCache.expiresAt > Date.now()
+          ? parkingPassPublicFeedCache.payload
+          : await buildParkingPassPublicFeed();
+
+      const pensacolaEvents = (Array.isArray(feed) ? feed : []).filter((row: any) => {
+        const host = row?.host || {};
+        const city = host.city ?? row?.hostCity ?? row?.city;
+        const state = host.state ?? row?.hostState ?? row?.state;
+        return isPensacola(city) && isFlorida(state);
+      });
+
+      // One card per host location: pick the soonest upcoming occurrence per host.
+      const byHost = new Map<string, any>();
+      for (const row of pensacolaEvents) {
+        const hostId = String(row?.host?.id || "").trim();
+        if (!hostId) continue;
+        const existing = byHost.get(hostId);
+        if (!existing) {
+          byHost.set(hostId, row);
+          continue;
+        }
+        const existingDate = new Date(existing?.date || 0).getTime();
+        const nextDate = new Date(row?.date || 0).getTime();
+        if (Number.isFinite(nextDate) && nextDate > 0 && nextDate < existingDate) {
+          byHost.set(hostId, row);
+        }
+      }
+
+      const limitRaw = Number(process.env.PENSACOLA_LEAD_LOCATIONS_LIMIT ?? 20);
+      const limit = Number.isFinite(limitRaw)
+        ? Math.max(1, Math.min(limitRaw, 200))
+        : 20;
+
+      const listings = Array.from(byHost.values())
+        .slice(0, limit)
+        .map((row: any) => {
+          const host = row?.host || {};
+          const teaserId = toTeaserId(
+            String(row?.id || host?.id || JSON.stringify(row || {})),
+          );
+          const city = String(host.city || row?.hostCity || row?.city || "Pensacola");
+          const state = normalizeUsStateAbbr(
+            String(host.state || row?.hostState || row?.state || "FL"),
+          );
+          const startingAtCents = minStartingPriceCents(row);
+          const nextDate = row?.date ? new Date(row.date).toISOString() : null;
+
+          const lat = host.latitude ?? row?.hostLatitude ?? row?.latitude;
+          const lng = host.longitude ?? row?.hostLongitude ?? row?.longitude;
+
+          if (!isAuthed) {
+            return {
+              teaserId,
+              locked: true,
+              city,
+              state,
+              latitude: roundCoord(lat, 2),
+              longitude: roundCoord(lng, 2),
+              startingAtCents,
+              nextDate,
+            };
+          }
+
+          return {
+            teaserId,
+            locked: false,
+            passId: String(row?.id || ""),
+            hostName: String(
+              host.businessName ||
+                row?.hostBusinessName ||
+                row?.businessName ||
+                "Host",
+            ),
+            address: String(host.address || row?.hostAddress || row?.address || ""),
+            city,
+            state,
+            latitude: roundCoord(lat, 6),
+            longitude: roundCoord(lng, 6),
+            startingAtCents,
+            nextDate,
+          };
+        });
+
+      res.json({
+        city: "Pensacola",
+        state: "FL",
+        totalLocations: byHost.size,
+        locked: !isAuthed,
+        listings,
+      });
+    } catch (error) {
+      console.error("[pensacola-leads] Error building lead feed:", error);
+      res.json({
+        city: "Pensacola",
+        state: "FL",
+        totalLocations: 0,
+        locked: true,
+        listings: [],
+      });
+    }
+  });
+
+  // Pensacola Report lead magnet: email capture -> send PDF link
+  app.post("/api/public/pensacola/report/request", async (req: any, res) => {
+    try {
+      const parsed = requestReportSchema.parse(req.body);
+      const result = await handleReportRequest({
+        email: parsed.email,
+        firstName: parsed.firstName || null,
+        ip: String(req.ip || ""),
+        userAgent: String(req.get("User-Agent") || ""),
+      });
+
+      if (!result.ok && result.code === "disabled") {
+        return res.status(503).json({ ok: false, message: "Report is temporarily unavailable." });
+      }
+
+      return res.json({
+        ok: true,
+        leadId: (result as any).leadId,
+        emailed: (result as any).emailed ?? false,
+      });
+    } catch (error: any) {
+      if (error?.name === "ZodError") {
+        return res.status(400).json({ ok: false, message: "Valid email is required." });
+      }
+      console.error("[pensacola-report] request failed:", error);
+      return res.status(500).json({ ok: false, message: "Unable to send report right now." });
+    }
+  });
+
+  // Pensacola Report download: serve PDF by token (no auth required)
+  app.get("/api/public/pensacola/report/download", async (req: any, res) => {
+    try {
+      const token = String(req.query?.token || "").trim();
+      if (!token) {
+        return res.status(400).send("Missing token");
+      }
+
+      const result = await renderReportPdfForToken(token);
+      if (!result.ok) {
+        return res.status(400).send("Invalid or expired link");
+      }
+
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", "attachment; filename=\"pensacola-food-truck-report.pdf\"");
+      res.setHeader("Cache-Control", "no-store");
+      return res.status(200).send(result.pdf);
+    } catch (error) {
+      console.error("[pensacola-report] download failed:", error);
+      return res.status(500).send("Unable to generate report");
     }
   });
 

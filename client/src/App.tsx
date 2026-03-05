@@ -19,6 +19,7 @@ import Home from "@/pages/home";
 const CustomerSignup = lazy(() => import("@/pages/customer-signup"));
 const RestaurantSignup = lazy(() => import("@/pages/restaurant-signup"));
 const CityLanding = lazy(() => import("@/pages/city-landing"));
+const CityDiscoveryPage = lazy(() => import("@/pages/city-discovery"));
 const DealCreation = lazy(() => import("@/pages/deal-creation"));
 const DealEdit = lazy(() => import("@/pages/deal-edit"));
 const DealDetail = lazy(() => import("@/pages/deal-detail"));
@@ -59,7 +60,10 @@ const EmptyCountyExperience = lazy(
 );
 const CategoryPage = lazy(() => import("@/pages/category"));
 const FeaturedDealsPage = lazy(() => import("@/pages/deals-featured"));
+const DealsCityPage = lazy(() => import("@/pages/deals-city"));
 const RestaurantDetail = lazy(() => import("@/pages/restaurant-detail"));
+const LocationDetailPage = lazy(() => import("@/pages/location-detail"));
+const LocationDiscoveryPage = lazy(() => import("@/pages/location-discovery"));
 const NotificationsPage = lazy(() => import("@/pages/profile/notifications"));
 const SettingsPage = lazy(() => import("@/pages/profile/settings"));
 const AddressesPage = lazy(() => import("@/pages/profile/addresses"));
@@ -97,6 +101,7 @@ const TruckDiscovery = lazy(() => import("@/pages/truck-discovery"));
 const EventSignup = lazy(() => import("@/pages/event-signup"));
 const EventsPage = lazy(() => import("@/pages/events"));
 const EventsRouter = lazy(() => import("@/pages/events-router"));
+const EventDetailPage = lazy(() => import("@/pages/event-detail"));
 const ForRestaurants = lazy(() => import("@/pages/for-restaurants"));
 const ForBars = lazy(() => import("@/pages/for-bars"));
 const ForHosts = lazy(() => import("@/pages/for-hosts"));
@@ -239,12 +244,23 @@ function Router() {
             <Route path="/map" component={MapPage} />
             <Route path="/suppliers" component={SuppliersPage} />
             <Route path="/suppliers/:supplierId" component={SupplierDetailPage} />
+            <Route path="/supplier/:slug" component={SupplierDetailPage} />
             <Route path="/video" component={VideoPage} />
             <Route path="/video/:id" component={VideoDetailPage} />
             <Route path="/category/:category" component={CategoryPage} />
+            <Route path="/cuisine/:type" component={CategoryPage} />
             <Route path="/deals" component={FeaturedDealsPage} />
             <Route path="/deals/featured" component={FeaturedDealsPage} />
+            <Route path="/deals/:city" component={DealsCityPage} />
             <Route path="/restaurant/:id" component={RestaurantDetail} />
+            <Route path="/truck/:slug" component={RestaurantDetail} />
+            <Route path="/bar/:slug" component={RestaurantDetail} />
+            <Route path="/location/:slug" component={LocationDetailPage} />
+            <Route path="/location/:slug/food-trucks" component={LocationDetailPage} />
+            <Route path="/location/:slug/food-trucks-now" component={LocationDiscoveryPage} />
+            <Route path="/location/:slug/food-trucks-tonight" component={LocationDiscoveryPage} />
+            <Route path="/city/:city" component={CityLanding} />
+            <Route path="/city/:city/:mode" component={CityDiscoveryPage} />
             <Route path="/terms-of-service" component={TermsOfService} />
             <Route path="/privacy-policy" component={PrivacyPolicy} />
             <Route path="/data-deletion" component={DataDeletion} />
@@ -262,6 +278,7 @@ function Router() {
             <Route path="/event-signup" component={EventSignup} />
             <Route path="/events" component={EventsRouter} />
             <Route path="/events/public" component={EventsPage} />
+            <Route path="/event/:slug" component={EventDetailPage} />
             <Route path="/dashboard" component={DashboardRouter} />
             <Route path="/food-trucks/:citySlug" component={CityLanding} />
             <Route
@@ -328,6 +345,7 @@ function Router() {
             <Route path="/map" component={MapPage} />
             <Route path="/suppliers" component={SuppliersPage} />
             <Route path="/suppliers/:supplierId" component={SupplierDetailPage} />
+            <Route path="/supplier/:slug" component={SupplierDetailPage} />
             <Route path="/supply/orders" component={SupplyOrdersPage} />
             <Route path="/video" component={VideoPage} />
             <Route path="/favorites" component={Favorites} />
@@ -363,9 +381,19 @@ function Router() {
             <Route path="/admin/affiliates" component={AdminAffiliateManagement} />
             <Route path="/admin/switcher" component={DashboardSwitcherPage} />
             <Route path="/category/:category" component={CategoryPage} />
+            <Route path="/cuisine/:type" component={CategoryPage} />
             <Route path="/deals" component={FeaturedDealsPage} />
             <Route path="/deals/featured" component={FeaturedDealsPage} />
+            <Route path="/deals/:city" component={DealsCityPage} />
             <Route path="/restaurant/:id" component={RestaurantDetail} />
+            <Route path="/truck/:slug" component={RestaurantDetail} />
+            <Route path="/bar/:slug" component={RestaurantDetail} />
+            <Route path="/location/:slug" component={LocationDetailPage} />
+            <Route path="/location/:slug/food-trucks" component={LocationDetailPage} />
+            <Route path="/location/:slug/food-trucks-now" component={LocationDiscoveryPage} />
+            <Route path="/location/:slug/food-trucks-tonight" component={LocationDiscoveryPage} />
+            <Route path="/city/:city" component={CityLanding} />
+            <Route path="/city/:city/:mode" component={CityDiscoveryPage} />
             <Route path="/terms-of-service" component={TermsOfService} />
             <Route path="/privacy-policy" component={PrivacyPolicy} />
             <Route path="/data-deletion" component={DataDeletion} />
@@ -378,6 +406,7 @@ function Router() {
             <Route path="/event-signup" component={EventSignup} />
             <Route path="/events" component={EventsRouter} />
              <Route path="/events/public" component={EventsPage} />
+             <Route path="/event/:slug" component={EventDetailPage} />
              <Route path="/pensacola/spots" component={PensacolaSpots} />
              <Route path="/pensacola/report" component={PensacolaReport} />
              <Route path="/food-trucks/:citySlug" component={CityLanding} />

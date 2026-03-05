@@ -17,6 +17,7 @@ import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { formatRelativeTime } from "@/lib/relative-time";
 
 export type ParkingScheduleItem = {
   id: string;
@@ -29,6 +30,7 @@ export type ParkingScheduleItem = {
   type: "booking" | "manual" | "accepted_interest";
   slotLabel?: string | null;
   isPublic?: boolean | null;
+  lastConfirmedAt?: string | Date | null;
   manualId?: string;
   bookingId?: string;
   hostId?: string;
@@ -289,6 +291,12 @@ export function ParkingScheduleCalendar({
                           : ""}
                         {item.slotLabel ? ` | ${item.slotLabel}` : ""}
                       </p>
+                      {item.lastConfirmedAt ? (
+                        <p className="mt-1 text-[11px] text-muted-foreground">
+                          Last confirmed:{" "}
+                          {formatRelativeTime(item.lastConfirmedAt) ?? "unknown"}
+                        </p>
+                      ) : null}
                     </div>
                     {allowManualEdits &&
                       item.type === "manual" &&

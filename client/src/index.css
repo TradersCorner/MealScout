@@ -979,6 +979,16 @@
     border-top: 1px solid rgba(15, 23, 42, 0.12);
   }
 
+  /* Ensure popups/tooltips render above map controls (attribution was overlapping popups). */
+  .leaflet-pane.leaflet-popup-pane {
+    z-index: 1100 !important;
+  }
+
+  .leaflet-top,
+  .leaflet-bottom {
+    z-index: 900 !important;
+  }
+
   .theme-night .filter-pill {
     background: rgba(0, 0, 0, 0.55);
     color: #ffffff;

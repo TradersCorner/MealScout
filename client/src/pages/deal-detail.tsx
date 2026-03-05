@@ -13,6 +13,7 @@ import DealShareModal from "@/components/deal-share-modal";
 import { BackHeader } from "@/components/back-header";
 import { Tag, ArrowLeft } from "lucide-react";
 import { SEOHead } from "@/components/seo-head";
+import { extractUuidFromSlug } from "@/lib/seo-slug";
 
 interface Deal {
   id: string;
@@ -41,7 +42,9 @@ interface Restaurant {
 }
 
 export default function DealDetail() {
-  const { id: dealId } = useParams();
+  const params = useParams() as Record<string, string | undefined>;
+  const dealParam = params.id || params.slug || "";
+  const dealId = extractUuidFromSlug(dealParam) || dealParam;
   const { user, isAuthenticated } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();

@@ -10,6 +10,7 @@ import {
 } from "../unifiedAuth";
 import {
   eventBookings,
+  events,
   eventSeries,
   hosts,
   insertEventInterestSchema,
@@ -31,6 +32,9 @@ import {
 } from "../services/parkingPassQuality";
 import crypto from "crypto";
 import { handleReportRequest, renderReportPdfForToken, requestReportSchema } from "../services/pensacolaReportLeadMagnet";
+import { buildSlotDateTimes } from "../services/timeIntent";
+import { resolveCityTimeZone } from "../services/cityTimeZone";
+import { isSlotPublic, type PublicSlot } from "../services/publicSlotGate";
 
 export function registerEventRoutes(app: Express) {
   let parkingPassPublicFeedCache:
@@ -41,11 +45,43 @@ export function registerEventRoutes(app: Express) {
   const toTeaserId = (value: string) =>
     crypto.createHash("sha256").update(value).digest("hex").slice(0, 16);
 
-  const isPensacola = (value: unknown) =>
-    String(value || "").trim().toLowerCase() === "pensacola";
+  const normalizeLoose = (value: unknown) => String(value || "").trim().toLowerCase();
+  const normalizeStateToken = (value: unknown) =>
+    normalizeLoose(value).replace(/[^a-z]/g, "");
 
-  const isFlorida = (value: unknown) =>
-    normalizeUsStateAbbr(String(value || "").trim()) === "FL";
+  const isPensacola = (value: unknown) => {
+    const raw = normalizeLoose(value);
+    if (!raw) return false;
+    if (raw === "pensacola") return true;
+    // Accept common variants like "Pensacola, FL", "Pensacola Beach", etc.
+    return raw.includes("pensacola");
+  };
+
+  const isFlorida = (value: unknown) => {
+    const abbr = normalizeUsStateAbbr(String(value || "").trim());
+    if (abbr === "FL") return true;
+    const token = normalizeStateToken(value);
+    if (!token) return false;
+    if (token === "fl" || token === "fla") return true;
+    // Common misspellings: flordia, floridia, etc.
+    return token.startsWith("florid") || token.startsWith("flord");
+  };
+
+  const isFloridaLoose = (value: unknown) => {
+    const raw = normalizeLoose(value);
+    if (!raw) return false;
+    if (isFlorida(raw)) return true;
+    const token = normalizeStateToken(raw);
+    if (token === "fl" || token === "fla") return true;
+    return (
+      raw.includes(", fl") ||
+      raw.includes(" fl ") ||
+      raw.endsWith(" fl") ||
+      raw.includes(" florida") ||
+      raw.includes(" flordia") ||
+      raw.includes(" floridia")
+    );
+  };
 
   const roundCoord = (value: unknown, digits: number) => {
     const num = Number(value);
@@ -381,7 +417,8 @@ export function registerEventRoutes(app: Express) {
         const host = row?.host || {};
         const city = host.city ?? row?.hostCity ?? row?.city;
         const state = host.state ?? row?.hostState ?? row?.state;
-        return isPensacola(city) && isFlorida(state);
+        const address = host.address ?? row?.hostAddress ?? row?.address;
+        return (isPensacola(city) || isPensacola(address)) && (isFlorida(state) || isFloridaLoose(address));
       });
 
       // One card per host location: pick the soonest upcoming occurrence per host.
@@ -475,6 +512,140 @@ export function registerEventRoutes(app: Express) {
     }
   });
 
+  // Public event detail (crawler-friendly JSON for /event/:slug pages).
+  app.get("/api/public/events/:eventId", async (req: any, res) => {
+    try {
+      const eventId = String(req.params.eventId || "").trim();
+      if (!eventId) return res.status(400).json({ message: "eventId required" });
+
+      const [row] = await db
+        .select({
+          id: events.id,
+          hostId: events.hostId,
+          name: events.name,
+          description: events.description,
+          eventType: events.eventType,
+          date: events.date,
+          startTime: events.startTime,
+          endTime: events.endTime,
+          status: events.status,
+          lastConfirmedAt: events.lastConfirmedAt,
+          updatedAt: events.updatedAt,
+          maxTrucks: events.maxTrucks,
+          bookedRestaurantId: events.bookedRestaurantId,
+          hostName: hosts.businessName,
+          hostAddress: hosts.address,
+          hostCity: hosts.city,
+          hostState: hosts.state,
+          hostLatitude: hosts.latitude,
+          hostLongitude: hosts.longitude,
+          truckName: restaurants.name,
+          truckCuisineType: restaurants.cuisineType,
+          truckCity: restaurants.city,
+          truckState: restaurants.state,
+        })
+        .from(events)
+        .innerJoin(hosts, eq(events.hostId, hosts.id))
+        .leftJoin(restaurants, eq(events.bookedRestaurantId, restaurants.id))
+        .where(eq(events.id, eventId))
+        .limit(1);
+
+      if (!row) return res.status(404).json({ message: "Event not found" });
+
+      const toSlug = (value: string | null | undefined) =>
+        String(value || "")
+          .toLowerCase()
+          .trim()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/(^-|-$)+/g, "")
+          .slice(0, 80);
+
+      const baseUrl = String(process.env.PUBLIC_BASE_URL || "https://www.mealscout.us").replace(
+        /\/+$/,
+        "",
+      );
+
+      const title =
+        row.name ||
+        `${row.hostName || "Host"} ${row.eventType === "parking_pass" ? "Parking Pass" : "Event"}`;
+      const slug = `${toSlug(title) || row.id}--${row.id}`;
+      const canonicalUrl = `${baseUrl}/event/${encodeURIComponent(slug)}`;
+
+      const timeZone = await resolveCityTimeZone({ city: row.hostCity, state: row.hostState });
+      const dt = buildSlotDateTimes({
+        timeZone,
+        date: new Date(row.date as any),
+        startTime: String(row.startTime || ""),
+        endTime: String(row.endTime || ""),
+      });
+
+      const now = new Date();
+      const lastConfirmedAtUtc = new Date(row.lastConfirmedAt || row.updatedAt || row.date || Date.now());
+      const slot: PublicSlot | null = dt
+        ? {
+            source: "parking_pass_booking",
+            status: row.bookedRestaurantId ? "confirmed" : "tentative",
+            startsAtUtc: dt.startUtc,
+            endsAtUtc: dt.endUtc,
+            lastConfirmedAtUtc,
+          }
+        : null;
+      const gateOk = slot ? isSlotPublic({ slot, now }) : false;
+      const ended = dt ? dt.endUtc.getTime() < now.getTime() : false;
+
+      const hostSlug = `${toSlug(row.hostName) || row.hostId}--${row.hostId}`;
+      const hostPath = `/location/${encodeURIComponent(hostSlug)}`;
+
+      const truckPath =
+        row.bookedRestaurantId && row.truckName
+          ? `/truck/${encodeURIComponent(`${toSlug(row.truckName) || row.bookedRestaurantId}--${row.bookedRestaurantId}`)}`
+          : null;
+
+      res.setHeader("Cache-Control", "public, max-age=60");
+      res.json({
+        id: row.id,
+        title,
+        description: row.description || null,
+        date: row.date ? new Date(row.date as any).toISOString() : null,
+        startTime: row.startTime,
+        endTime: row.endTime,
+        timeZone,
+        startsAtUtc: dt ? dt.startUtc.toISOString() : null,
+        endsAtUtc: dt ? dt.endUtc.toISOString() : null,
+        lastConfirmedAtUtc: lastConfirmedAtUtc.toISOString(),
+        isPublic: gateOk,
+        ended,
+        noIndex: ended || !gateOk,
+        status: row.status,
+        maxTrucks: row.maxTrucks,
+        host: {
+          id: row.hostId,
+          name: row.hostName,
+          address: row.hostAddress,
+          city: row.hostCity,
+          state: row.hostState,
+          latitude: row.hostLatitude,
+          longitude: row.hostLongitude,
+          path: hostPath,
+        },
+        truck: row.bookedRestaurantId
+          ? {
+              id: row.bookedRestaurantId,
+              name: row.truckName,
+              cuisineType: row.truckCuisineType || null,
+              city: row.truckCity || null,
+              state: row.truckState || null,
+              path: truckPath,
+            }
+          : null,
+        canonicalUrl,
+      });
+    } catch (error: any) {
+      console.error("[public-event] error:", error);
+      res.status(500).json({ message: "Unable to load event" });
+    }
+  });
+
   // Pensacola Report lead magnet: email capture -> send PDF link
   app.post("/api/public/pensacola/report/request", async (req: any, res) => {
     try {
@@ -494,6 +665,7 @@ export function registerEventRoutes(app: Express) {
         ok: true,
         leadId: (result as any).leadId,
         emailed: (result as any).emailed ?? false,
+        downloadUrl: (result as any).downloadUrl ?? null,
       });
     } catch (error: any) {
       if (error?.name === "ZodError") {

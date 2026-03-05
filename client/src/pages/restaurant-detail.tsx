@@ -38,6 +38,7 @@ import {
   ParkingScheduleCalendar,
   type ParkingScheduleItem,
 } from "@/components/parking-schedule-calendar";
+import { extractUuidFromSlug } from "@/lib/seo-slug";
 
 const toSlug = (value: string | null | undefined) =>
   String(value || "")
@@ -48,7 +49,8 @@ const toSlug = (value: string | null | undefined) =>
     .slice(0, 80);
 
 export default function RestaurantDetailPage() {
-  const { id: restaurantId } = useParams();
+  const params = useParams() as Record<string, string | undefined>;
+  const restaurantId = params.id || extractUuidFromSlug(params.slug);
   const { user } = useAuth();
   const { toast } = useToast();
   const [isSubmittingBooking, setIsSubmittingBooking] = useState(false);
@@ -128,6 +130,7 @@ export default function RestaurantDetailPage() {
             .join(", "),
           type: "manual" as const,
           isPublic: true,
+          lastConfirmedAt: item.manual.lastConfirmedAt || item.createdAt || null,
         };
       }
 
@@ -143,6 +146,11 @@ export default function RestaurantDetailPage() {
           ? formatSlotSummary(String(item.slotType))
           : null,
         isPublic: true,
+        lastConfirmedAt:
+          item.event.lastConfirmedAt ||
+          item.bookingConfirmedAt ||
+          item.createdAt ||
+          null,
       };
     });
   const formatSlotSummary = (value: string) =>

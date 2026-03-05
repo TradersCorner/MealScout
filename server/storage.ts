@@ -2958,11 +2958,13 @@ export class DatabaseStorage implements IStorage {
   async createTruckManualSchedule(
     schedule: InsertTruckManualSchedule,
   ): Promise<TruckManualSchedule> {
+    const now = new Date();
     const [created] = await db
       .insert(truckManualSchedules)
       .values({
         ...schedule,
-        updatedAt: new Date(),
+        lastConfirmedAt: now,
+        updatedAt: now,
       })
       .returning();
     return created;

@@ -17,6 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Minus, Plus, Truck } from "lucide-react";
 import { SupplierOrderPaymentModal } from "@/components/supply/supplier-order-payment-modal";
 import { useAuth } from "@/hooks/useAuth";
+import { extractUuidFromSlug } from "@/lib/seo-slug";
 
 type Supplier = {
   id: string;
@@ -53,7 +54,9 @@ type Restaurant = {
 const formatMoney = (cents: number) => `$${(Number(cents || 0) / 100).toFixed(2)}`;
 
 export default function SupplierDetailPage() {
-  const { supplierId } = useParams();
+  const params = useParams() as Record<string, string | undefined>;
+  const supplierParam = params.supplierId || params.slug || "";
+  const supplierId = extractUuidFromSlug(supplierParam) || supplierParam;
   const { toast } = useToast();
   const { user, isAuthenticated } = useAuth();
   const queryClient = useQueryClient();

@@ -12,6 +12,9 @@ import { eq, and, or, desc, gte, inArray } from "drizzle-orm";
 import { isAuthenticated } from "../unifiedAuth";
 import { storage } from "../storage";
 import { emailService } from "../emailService";
+import { usStateToTimeZone } from "../services/cityTimeZone";
+import { isSlotPublic } from "../services/publicSlotGate";
+import { buildSlotDateTimes } from "../services/timeIntent";
 import Stripe from "stripe";
 
 const stripe = process.env.STRIPE_SECRET_KEY
@@ -832,34 +835,100 @@ export function registerBookingRoutes(app: Express) {
           bookingRows.map((row: (typeof bookingRows)[number]) => row.eventId),
         );
 
+        const publicLookaheadHours = 24 * 30;
+        const isPublicBookingSlot = (row: (typeof bookingRows)[number]) => {
+          const timeZone = usStateToTimeZone(String((row.host as any)?.state || ""));
+          const interval = buildSlotDateTimes({
+            timeZone,
+            date: new Date(row.event.date as any),
+            startTime: String(row.event.startTime || ""),
+            endTime: String(row.event.endTime || ""),
+          });
+          if (!interval) return false;
+          const lastConfirmedAtUtc = new Date(
+            (row.event as any).lastConfirmedAt ??
+              row.bookingConfirmedAt ??
+              row.createdAt ??
+              (row.event as any).updatedAt ??
+              row.event.date ??
+              Date.now(),
+          );
+          return isSlotPublic({
+            slot: {
+              source: "parking_pass_booking",
+              status: row.status === "confirmed" ? "confirmed" : "tentative",
+              startsAtUtc: interval.startUtc,
+              endsAtUtc: interval.endUtc,
+              lastConfirmedAtUtc,
+            },
+            lookaheadHours: publicLookaheadHours,
+          });
+        };
+
+        const isPublicAcceptedSlot = (row: (typeof acceptedInterestRows)[number]) => {
+          const timeZone = usStateToTimeZone(String((row.host as any)?.state || ""));
+          const interval = buildSlotDateTimes({
+            timeZone,
+            date: new Date(row.event.date as any),
+            startTime: String(row.event.startTime || ""),
+            endTime: String(row.event.endTime || ""),
+          });
+          if (!interval) return false;
+          const lastConfirmedAtUtc = new Date(
+            (row.event as any).lastConfirmedAt ??
+              row.createdAt ??
+              (row.event as any).updatedAt ??
+              row.event.date ??
+              Date.now(),
+          );
+          return isSlotPublic({
+            slot: {
+              source: "parking_pass_booking",
+              status: "confirmed",
+              startsAtUtc: interval.startUtc,
+              endsAtUtc: interval.endUtc,
+              lastConfirmedAtUtc,
+            },
+            lookaheadHours: publicLookaheadHours,
+          });
+        };
+
         const schedule = [
-          ...bookingRows.map((row: (typeof bookingRows)[number]) => ({
-            type: "booking",
-            status: row.status,
-            createdAt: row.createdAt,
-            bookingConfirmedAt: row.bookingConfirmedAt,
-            bookingId: row.bookingId,
-            slotType: row.slotType,
-            event: {
-              id: row.event.id,
-              date: row.event.date,
-              startTime: row.event.startTime,
-              endTime: row.event.endTime,
-              status: row.event.status,
-              hostPriceCents: row.event.hostPriceCents,
-              requiresPayment: row.event.requiresPayment,
-            },
-            host: {
-              id: row.host.id,
-              businessName: row.host.businessName,
-              address: row.host.address,
-              locationType: row.host.locationType,
-            },
-          })),
+          ...bookingRows
+            .filter((row: (typeof bookingRows)[number]) =>
+              includePending ? true : isPublicBookingSlot(row),
+            )
+            .map((row: (typeof bookingRows)[number]) => ({
+              type: "booking",
+              status: row.status,
+              createdAt: row.createdAt,
+              bookingConfirmedAt: row.bookingConfirmedAt,
+              bookingId: row.bookingId,
+              slotType: row.slotType,
+              event: {
+                id: row.event.id,
+                date: row.event.date,
+                startTime: row.event.startTime,
+                endTime: row.event.endTime,
+                status: row.event.status,
+                hostPriceCents: row.event.hostPriceCents,
+                requiresPayment: row.event.requiresPayment,
+                lastConfirmedAt: (row.event as any).lastConfirmedAt ?? null,
+              },
+              host: {
+                id: row.host.id,
+                businessName: row.host.businessName,
+                address: row.host.address,
+                locationType: row.host.locationType,
+              },
+            })),
           ...acceptedInterestRows
             .filter(
               (row: (typeof acceptedInterestRows)[number]) =>
                 !bookingEventIds.has(row.eventId),
+            )
+            .filter((row: (typeof acceptedInterestRows)[number]) =>
+              includePending ? true : isPublicAcceptedSlot(row),
             )
             .map((row: (typeof acceptedInterestRows)[number]) => ({
               type: "accepted_interest",
@@ -873,6 +942,7 @@ export function registerBookingRoutes(app: Express) {
                 status: row.event.status,
                 hostPriceCents: row.event.hostPriceCents,
                 requiresPayment: row.event.requiresPayment,
+                lastConfirmedAt: (row.event as any).lastConfirmedAt ?? null,
               },
               host: {
                 businessName: row.host.businessName,
@@ -883,9 +953,37 @@ export function registerBookingRoutes(app: Express) {
         ];
 
         const manualEntries = await storage.getTruckManualSchedules(truckId);
+        const isPublicManualSlot = (entry: (typeof manualEntries)[number]) => {
+          const timeZone = usStateToTimeZone(String((entry as any)?.state || ""));
+          const interval =
+            entry.startTime && entry.endTime
+              ? buildSlotDateTimes({
+                  timeZone,
+                  date: new Date(entry.date as any),
+                  startTime: String(entry.startTime || ""),
+                  endTime: String(entry.endTime || ""),
+                })
+              : null;
+          if (!interval) return false;
+          const lastConfirmedAtUtc = new Date(
+            (entry as any).lastConfirmedAt ?? entry.createdAt ?? entry.date ?? Date.now(),
+          );
+          return isSlotPublic({
+            slot: {
+              source: "manual",
+              status: "confirmed",
+              startsAtUtc: interval.startUtc,
+              endsAtUtc: interval.endUtc,
+              lastConfirmedAtUtc,
+            },
+            lookaheadHours: publicLookaheadHours,
+          });
+        };
+
         const manualSchedule = manualEntries
           .filter((entry) => entry.isPublic)
           .filter((entry) => entry.date >= today)
+          .filter((entry) => (includePending ? true : isPublicManualSlot(entry)))
           .map((entry) => ({
             type: "manual",
             status: "manual",
@@ -900,6 +998,7 @@ export function registerBookingRoutes(app: Express) {
               city: entry.city,
               state: entry.state,
               notes: entry.notes,
+              lastConfirmedAt: (entry as any).lastConfirmedAt ?? null,
             },
           }));
 

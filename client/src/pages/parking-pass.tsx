@@ -55,6 +55,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import ShareButton from "@/components/share-button";
 import { initFacebookSDK, postToFacebook } from "@/lib/facebook";
+import { formatRelativeTime } from "@/lib/relative-time";
 import {
   ParkingScheduleCalendar,
   type ParkingScheduleItem,
@@ -108,6 +109,7 @@ interface ParkingPassListing {
   status: string;
   requiresPayment?: boolean;
   paymentsEnabled?: boolean;
+  lastConfirmedAt?: string | null;
   maxTrucks?: number;
   spotCount?: number;
   bookedSpots?: number;
@@ -5285,6 +5287,22 @@ export default function ParkingPassPage() {
                                   <p className="text-[color:var(--text-muted)]">
                                     {availability}
                                   </p>
+                                  {(() => {
+                                    const lastConfirmedAt =
+                                      listingForDate?.lastConfirmedAt ??
+                                      displayListing?.lastConfirmedAt ??
+                                      null;
+                                    const relative =
+                                      lastConfirmedAt
+                                        ? formatRelativeTime(lastConfirmedAt)
+                                        : null;
+                                    if (!relative) return null;
+                                    return (
+                                      <p className="text-[11px] text-[color:var(--text-muted)]">
+                                        Last confirmed: {relative}
+                                      </p>
+                                    );
+                                  })()}
                                   {listingForDate && slotOptions.length > 0 ? (
                                     <div className="space-y-2">
                                       <div className="grid grid-cols-2 gap-2">

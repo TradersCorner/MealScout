@@ -110,7 +110,7 @@ export async function sendReportEmail(params: {
     <html>
       <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #111827;">
         <div style="max-width: 640px; margin: 0 auto; padding: 24px;">
-          <h2 style="margin: 0 0 12px 0;">Hi ${name} — here’s your report</h2>
+          <h2 style="margin: 0 0 12px 0;">Hi ${name} &mdash; here&apos;s your report</h2>
           <p style="margin: 0 0 12px 0;">
             Download the PDF here (link expires in ${tokenTtlHours()} hours):
           </p>
@@ -126,14 +126,21 @@ export async function sendReportEmail(params: {
             <a href="${signupUrl}">${signupUrl}</a>
           </p>
           <p style="margin-top: 24px; color:#6b7280; font-size: 12px;">
-            MealScout · Pensacola
+            MealScout &middot; Pensacola
           </p>
         </div>
       </body>
     </html>
   `;
 
-  await emailService.sendBasicEmail(String(params.lead.email), subject, html);
+  // Use category "account" so it still sends when EMAIL_NOTIFICATIONS_MODE=account_only.
+  return emailService.sendBasicEmail(
+    String(params.lead.email),
+    subject,
+    html,
+    undefined,
+    "account",
+  );
 }
 
 export async function handleReportRequest(params: {
@@ -155,31 +162,61 @@ export async function handleReportRequest(params: {
     : 30;
   const cutoff = new Date(Date.now() - cooldownMinutes * 60 * 1000);
 
-  const recent = await db
-    .select({ id: reportDownloadTokens.id })
-    .from(reportDownloadTokens)
-    .where(and(eq(reportDownloadTokens.leadId, lead.id), gt(reportDownloadTokens.createdAt, cutoff)))
+  const recentSend = await db
+    .select({ id: reportLeadSequenceSends.id })
+    .from(reportLeadSequenceSends)
+    .where(
+      and(
+        eq(reportLeadSequenceSends.leadId, String(lead.id)),
+        eq(reportLeadSequenceSends.sequence, SEQUENCE),
+        eq(reportLeadSequenceSends.step, 1),
+        gt(reportLeadSequenceSends.sentAt, cutoff),
+      ),
+    )
     .limit(1);
 
-  if (recent.length > 0) {
-    return { ok: true as const, leadId: lead.id, emailed: false, cooldownMinutes };
+  if (recentSend.length > 0) {
+    // Don't spam emails, but still allow the lead to download a fresh copy.
+    const { token } = await createReportDownloadToken(String(lead.id));
+    const downloadUrl = `${publicBaseUrl()}/api/public/pensacola/report/download?token=${encodeURIComponent(
+      token,
+    )}`;
+
+    return {
+      ok: true as const,
+      leadId: lead.id,
+      emailed: false,
+      cooldownMinutes,
+      downloadUrl,
+    };
   }
 
   const { token } = await createReportDownloadToken(String(lead.id));
-  await sendReportEmail({ lead, token });
+  const emailed = await sendReportEmail({ lead, token });
 
-  // Mark step 1 sent for the drip (idempotent).
-  await db
-    .insert(reportLeadSequenceSends)
-    .values({
-      leadId: String(lead.id),
-      sequence: SEQUENCE,
-      step: 1,
-      metadata: { kind: "lead", leadId: lead.id },
-    } as any)
-    .onConflictDoNothing();
+  if (emailed) {
+    // Mark step 1 sent for the drip (idempotent).
+    await db
+      .insert(reportLeadSequenceSends)
+      .values({
+        leadId: String(lead.id),
+        sequence: SEQUENCE,
+        step: 1,
+        metadata: { kind: "lead", leadId: lead.id },
+      } as any)
+      .onConflictDoNothing();
+  }
 
-  return { ok: true as const, leadId: lead.id, emailed: true };
+  const downloadUrl = `${publicBaseUrl()}/api/public/pensacola/report/download?token=${encodeURIComponent(
+    token,
+  )}`;
+
+  return {
+    ok: true as const,
+    leadId: lead.id,
+    emailed,
+    downloadUrl,
+  };
 }
 
 export async function renderReportPdfForToken(token: string) {

@@ -7,22 +7,28 @@ import { VideoTranscript } from "@/components/video-transcript";
 import { MinimalFAQ } from "@/components/seo-faq";
 import { SEOHead } from "@/components/seo-head";
 import { generateVideoSchema } from "@/lib/schema-helpers";
+import { extractUuidFromSlug, makeEntitySlug } from "@/lib/seo-slug";
 import { Video, MapPin, User, Calendar, Heart, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import ShareButton from "@/components/share-button";
 
 export default function VideoDetailPage() {
-  const { id: videoId } = useParams();
+  const params = useParams() as Record<string, string | undefined>;
+  const videoParam = params.id || params.slug || "";
+  const videoId = extractUuidFromSlug(videoParam) || videoParam;
 
   const { data: video, isLoading } = useQuery({
     queryKey: ["/api/stories", videoId],
     enabled: !!videoId,
   });
 
+  const restaurantId =
+    (video as any)?.restaurantId ?? (video as any)?.story?.restaurantId ?? null;
+
   const { data: restaurant } = useQuery({
-    queryKey: ["/api/restaurants", (video as any)?.restaurantId],
-    enabled: !!(video as any)?.restaurantId,
+    queryKey: ["/api/restaurants", restaurantId],
+    enabled: !!restaurantId,
   });
 
   // Track video view
@@ -63,7 +69,7 @@ export default function VideoDetailPage() {
     );
   }
 
-  const videoData = video as any;
+  const videoData = ((video as any)?.story ?? video) as any;
   const restaurantData = restaurant as any;
   const videoTitle = videoData.title || "Food Recommendation";
   const videoDescription =
@@ -72,6 +78,7 @@ export default function VideoDetailPage() {
   const creatorName =
     videoData.creatorName ||
     videoData.username ||
+    (video as any)?.creator?.username ||
     (videoData.user && (videoData.user.firstName || videoData.user.lastName)
       ? `${videoData.user.firstName || ""} ${
           videoData.user.lastName || ""
@@ -79,6 +86,21 @@ export default function VideoDetailPage() {
       : "MealScout Creator");
   const restaurantName = restaurantData?.name || "";
   const location = restaurantData?.address || "";
+
+  const canonicalSlug = makeEntitySlug(videoTitle, videoData.id || videoId);
+  const canonicalPath = `/video/${canonicalSlug}`;
+
+  const expiresAtMs = videoData.expiresAt
+    ? new Date(videoData.expiresAt).getTime()
+    : Number.NaN;
+  const noIndex = Boolean(
+    videoData.deletedAt ||
+      videoData.status !== "ready" ||
+      videoData.isApproved === false ||
+      (Number.isFinite(expiresAtMs) && expiresAtMs <= Date.now()) ||
+      !videoData.videoUrl ||
+      !videoData.transcriptSource,
+  );
 
   // Generate VideoObject schema
   const videoSchema = generateVideoSchema({
@@ -125,8 +147,9 @@ export default function VideoDetailPage() {
         keywords={`${videoTitle}, ${videoData.cuisine || "food"} video, ${
           restaurantName || "food recommendation"
         }, local food`}
-        canonicalUrl={`https://www.mealscout.us/video/${videoId}`}
+        canonicalUrl={`https://www.mealscout.us${canonicalPath}`}
         schemaData={videoSchema}
+        noIndex={noIndex}
       />
 
       <BackHeader
@@ -170,7 +193,7 @@ export default function VideoDetailPage() {
           )}
           <div className="mt-3">
             <ShareButton
-              url={`/video/${videoId}`}
+              url={canonicalPath}
               title={videoTitle}
               description={videoDescription}
               size="sm"

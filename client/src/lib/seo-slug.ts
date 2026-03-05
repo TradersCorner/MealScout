@@ -1,0 +1,27 @@
+const UUID_RE =
+  /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
+
+export function extractUuidFromSlug(value: unknown): string | null {
+  const raw = String(value || "").trim();
+  if (!raw) return null;
+  const match = raw.match(UUID_RE);
+  return match ? match[0] : null;
+}
+
+export function toSeoSlug(value: unknown): string {
+  return String(value || "")
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)+/g, "")
+    .slice(0, 80);
+}
+
+export function makeEntitySlug(name: unknown, id: unknown): string {
+  const slug = toSeoSlug(name);
+  const uuid = extractUuidFromSlug(id);
+  if (slug && uuid) return `${slug}--${uuid}`;
+  if (uuid) return uuid;
+  return slug || String(id || "").trim();
+}
+

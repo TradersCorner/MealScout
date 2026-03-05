@@ -1,7 +1,7 @@
 import { createRoot } from "react-dom/client";
 import App from "./App";
-import "./index.css";
 import "leaflet/dist/leaflet.css";
+import "./index.css";
 
 function shouldEnablePwaRuntime() {
   if (typeof window === "undefined") return false;

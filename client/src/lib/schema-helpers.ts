@@ -42,6 +42,27 @@ interface VideoRecommendation {
   creatorName?: string;
 }
 
+interface PlaceEntity {
+  id: string;
+  name: string;
+  url?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  latitude?: number | string | null;
+  longitude?: number | string | null;
+}
+
+interface EventEntity {
+  id: string;
+  name: string;
+  description?: string | null;
+  startDate: string;
+  endDate?: string | null;
+  url?: string;
+  location?: PlaceEntity;
+}
+
 /**
  * Generate FoodEstablishment schema for restaurant pages
  */
@@ -191,6 +212,57 @@ export function generateItemListSchema(
       ...(item.url && { url: item.url }),
     })),
   };
+}
+
+export function generatePlaceSchema(place: PlaceEntity) {
+  const schema: any = {
+    "@context": "https://schema.org",
+    "@type": "Place",
+    name: place.name,
+    identifier: place.id,
+    ...(place.url ? { url: place.url } : {}),
+  };
+
+  if (place.address || place.city) {
+    schema.address = {
+      "@type": "PostalAddress",
+      ...(place.address ? { streetAddress: place.address } : {}),
+      ...(place.city ? { addressLocality: place.city } : {}),
+      ...(place.state ? { addressRegion: place.state } : {}),
+      addressCountry: "US",
+    };
+  }
+
+  const lat = place.latitude != null ? Number(place.latitude) : null;
+  const lng = place.longitude != null ? Number(place.longitude) : null;
+  if (Number.isFinite(lat) && Number.isFinite(lng)) {
+    schema.geo = {
+      "@type": "GeoCoordinates",
+      latitude: lat,
+      longitude: lng,
+    };
+  }
+
+  return schema;
+}
+
+export function generateEventSchema(event: EventEntity) {
+  const schema: any = {
+    "@context": "https://schema.org",
+    "@type": "Event",
+    name: event.name,
+    identifier: event.id,
+    startDate: event.startDate,
+    ...(event.url ? { url: event.url } : {}),
+  };
+
+  if (event.endDate) schema.endDate = event.endDate;
+  if (event.description) schema.description = event.description;
+  if (event.location) {
+    schema.location = generatePlaceSchema(event.location);
+  }
+
+  return schema;
 }
 
 /**

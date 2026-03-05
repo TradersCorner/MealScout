@@ -295,6 +295,12 @@ export async function listParkingPassOccurrences(options?: {
         weeklyPriceCents,
         monthlyPriceCents,
         requiresPayment: true,
+        lastConfirmedAt:
+          override?.updatedAt ??
+          override?.createdAt ??
+          (series as any).publishedAt ??
+          (series as any).updatedAt ??
+          null,
         stripeProductId: override?.stripeProductId ?? null,
         stripePriceId: override?.stripePriceId ?? null,
         unbookedNotificationSentAt: override?.unbookedNotificationSentAt ?? null,

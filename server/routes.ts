@@ -36,6 +36,7 @@ import {
 } from "./services/parkingPassQuality";
 import { registerOpenCallSeriesRoutes } from "./routes/openCallSeriesRoutes";
 import { registerEventRoutes } from "./routes/eventRoutes";
+import { registerDiscoveryRoutes } from "./routes/discoveryRoutes";
 import { registerEventCoordinatorRoutes } from "./routes/eventCoordinatorRoutes";
 import { registerAdminManagementRoutes } from "./routes/adminManagementRoutes";
 import { registerGeoAdRoutes } from "./routes/geoAdRoutes";
@@ -207,10 +208,13 @@ import {
   eq,
   sql,
   gte,
+  lte,
   desc,
   like,
+  ilike,
   asc,
   isNotNull,
+  ne,
   lt,
   isNull,
   or,
@@ -2752,6 +2756,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Truck Discovery
   registerEventRoutes(app);
+  registerDiscoveryRoutes(app);
   registerEventCoordinatorRoutes(app);
 
   // Booking Management
@@ -5607,6 +5612,91 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching featured deals:", error);
       res.status(500).json({ message: "Failed to fetch featured deals" });
+    }
+  });
+
+  // City-indexed deals: freshness-first (only active, in-window deals).
+  app.get("/api/public/deals/city/:citySlug", async (req, res) => {
+    try {
+      const { cities, deals, restaurants } = await import("@shared/schema");
+      const citySlug = String(req.params.citySlug || "").trim().toLowerCase();
+      if (!citySlug) return res.status(400).json({ message: "City slug required" });
+
+      const [city] = await db.select().from(cities).where(eq(cities.slug, citySlug)).limit(1);
+      if (!city) return res.status(404).json({ message: "City not found" });
+
+      const now = new Date();
+      const cityName = String(city.name || "").trim();
+      const cityLike = `%${cityName}%`;
+
+      const rows = await db
+        .select({
+          id: deals.id,
+          title: deals.title,
+          description: deals.description,
+          imageUrl: deals.imageUrl,
+          startDate: deals.startDate,
+          endDate: deals.endDate,
+          discountValue: deals.discountValue,
+          dealType: deals.dealType,
+          restaurantId: restaurants.id,
+          restaurantName: restaurants.name,
+          cuisineType: restaurants.cuisineType,
+          restaurantCity: restaurants.city,
+          restaurantState: restaurants.state,
+          isFoodTruck: restaurants.isFoodTruck,
+          businessType: restaurants.businessType,
+          updatedAt: deals.updatedAt,
+        })
+        .from(deals)
+        .innerJoin(restaurants, eq(deals.restaurantId, restaurants.id))
+        .where(
+          and(
+            eq(deals.isActive, true),
+            lte(deals.startDate, now),
+            or(isNull(deals.endDate), gte(deals.endDate, now)),
+            or(ilike(restaurants.city, cityLike), ilike(restaurants.address, cityLike)),
+          ),
+        )
+        .orderBy(desc(deals.updatedAt))
+        .limit(500);
+
+      const baseUrl = resolveSitemapSiteUrl();
+      const payload = rows.map((row: any) => ({
+        id: row.id,
+        title: row.title,
+        description: row.description,
+        imageUrl: row.imageUrl,
+        startDate: row.startDate ? new Date(row.startDate).toISOString() : null,
+        endDate: row.endDate ? new Date(row.endDate).toISOString() : null,
+        dealType: row.dealType,
+        discountValue: row.discountValue,
+        dealPath: `/deal/${encodeURIComponent(`${toSlug(row.title) || row.id}--${row.id}`)}`,
+        restaurant: {
+          id: row.restaurantId,
+          name: row.restaurantName,
+          cuisineType: row.cuisineType || null,
+          city: row.restaurantCity || null,
+          state: row.restaurantState || null,
+          entityPath:
+            row.businessType === "bar"
+              ? `/bar/${encodeURIComponent(`${toSlug(row.restaurantName) || row.restaurantId}--${row.restaurantId}`)}`
+              : `/truck/${encodeURIComponent(`${toSlug(row.restaurantName) || row.restaurantId}--${row.restaurantId}`)}`,
+        },
+        updatedAt: row.updatedAt ? new Date(row.updatedAt).toISOString() : null,
+      }));
+
+      res.setHeader("Cache-Control", "public, max-age=120");
+      res.json({
+        city: { name: city.name, slug: city.slug, state: city.state || null },
+        generatedAt: new Date().toISOString(),
+        totalDeals: payload.length,
+        canonicalUrl: `${baseUrl}/deals/${encodeURIComponent(city.slug)}`,
+        deals: payload,
+      });
+    } catch (error) {
+      console.error("[deals-city] error:", error);
+      res.status(500).json({ message: "Unable to load city deals" });
     }
   });
 
@@ -8499,6 +8589,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return dt.toISOString();
   };
 
+  const sendUrlsetXml = (
+    res: any,
+    params: { baseUrl: string; entries: Array<{ loc: string; lastmod?: unknown }> },
+  ) => {
+    const lastmodByLoc = new Map<string, string | null>();
+    const normalizeSitemapLoc = (loc: string): string | null => {
+      const value = String(loc || "").trim();
+      if (!value) return null;
+      try {
+        const parsed = new URL(value);
+        const bareHost = parsed.hostname.toLowerCase().replace(/^www\./, "");
+        if (bareHost !== "mealscout.us") return null;
+        parsed.protocol = "https:";
+        parsed.hostname = "www.mealscout.us";
+        parsed.hash = "";
+        parsed.search = "";
+        return parsed.toString();
+      } catch {
+        return null;
+      }
+    };
+    const mergeUrl = (loc: string, lastmod?: unknown) => {
+      const normalized = normalizeSitemapLoc(loc);
+      if (!normalized) return;
+      const next = toIsoDateOrNull(lastmod);
+      const existing = lastmodByLoc.get(normalized) || null;
+      if (!existing) {
+        lastmodByLoc.set(normalized, next);
+        return;
+      }
+      if (!next) return;
+      if (new Date(next).getTime() > new Date(existing).getTime()) {
+        lastmodByLoc.set(normalized, next);
+      }
+    };
+
+    for (const entry of params.entries) {
+      mergeUrl(entry.loc, entry.lastmod);
+    }
+
+    const urls = Array.from(lastmodByLoc.entries())
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([loc, lastmod]) => ({ loc, lastmod }));
+
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls
+      .map(
+        (entry) =>
+          `  <url><loc>${entry.loc}</loc>${entry.lastmod ? `<lastmod>${entry.lastmod}</lastmod>` : ""}</url>`,
+      )
+      .join("\n")}\n</urlset>`;
+
+    res.setHeader("Content-Type", "application/xml; charset=utf-8");
+    res.setHeader(
+      "Cache-Control",
+      "public, max-age=300, s-maxage=1800, stale-while-revalidate=86400",
+    );
+    res.send(xml);
+  };
+
   // Dynamic sitemap.xml (proxied by Vercel)
   app.get("/sitemap.xml", async (_req, res) => {
     try {
@@ -8720,13 +8869,508 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Split sitemaps (Zillow/Yelp-style): entity + discovery pages.
+  app.get("/sitemap-trucks.xml", async (_req, res) => {
+    try {
+      const baseUrl = resolveSitemapSiteUrl();
+      const rows = await db
+        .select({
+          id: restaurants.id,
+          name: restaurants.name,
+          updatedAt: restaurants.updatedAt,
+          isFoodTruck: restaurants.isFoodTruck,
+          businessType: restaurants.businessType,
+        })
+        .from(restaurants)
+        .where(eq(restaurants.isActive, true))
+        .orderBy(desc(restaurants.updatedAt))
+        .limit(50000);
+
+      const entries = rows
+        .filter((row: any) => Boolean(row.isFoodTruck) || row.businessType === "food_truck")
+        .map((row: any) => ({
+          loc: `${baseUrl}/truck/${encodeURIComponent(`${toSlug(row.name) || row.id}--${row.id}`)}`,
+          lastmod: row.updatedAt,
+        }));
+
+      sendUrlsetXml(res, { baseUrl, entries });
+    } catch (e) {
+      console.error("sitemap-trucks failed", e);
+      res.status(500).send("<error>failed</error>");
+    }
+  });
+
+  app.get("/sitemap-bars.xml", async (_req, res) => {
+    try {
+      const baseUrl = resolveSitemapSiteUrl();
+      const rows = await db
+        .select({
+          id: restaurants.id,
+          name: restaurants.name,
+          updatedAt: restaurants.updatedAt,
+          businessType: restaurants.businessType,
+        })
+        .from(restaurants)
+        .where(eq(restaurants.isActive, true))
+        .orderBy(desc(restaurants.updatedAt))
+        .limit(50000);
+
+      const entries = rows
+        .filter((row: any) => row.businessType === "bar")
+        .map((row: any) => ({
+          loc: `${baseUrl}/bar/${encodeURIComponent(`${toSlug(row.name) || row.id}--${row.id}`)}`,
+          lastmod: row.updatedAt,
+        }));
+
+      sendUrlsetXml(res, { baseUrl, entries });
+    } catch (e) {
+      console.error("sitemap-bars failed", e);
+      res.status(500).send("<error>failed</error>");
+    }
+  });
+
+  app.get("/sitemap-locations.xml", async (_req, res) => {
+    try {
+      const { events } = await import("@shared/schema");
+      const baseUrl = resolveSitemapSiteUrl();
+
+      const ttlHoursRaw = Number(process.env.PUBLIC_SLOT_TTL_HOURS ?? 72);
+      const lookaheadHoursRaw = Number(process.env.PUBLIC_SLOT_LOOKAHEAD_HOURS ?? 24 * 7);
+      const ttlHours = Number.isFinite(ttlHoursRaw) ? Math.max(1, Math.min(ttlHoursRaw, 24 * 30)) : 72;
+      const lookaheadHours = Number.isFinite(lookaheadHoursRaw)
+        ? Math.max(1, Math.min(lookaheadHoursRaw, 24 * 30))
+        : 24 * 7;
+      const now = new Date();
+      const cutoff = new Date(now.getTime() - ttlHours * 60 * 60 * 1000);
+      const windowStart = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+      const windowEnd = new Date(now.getTime() + lookaheadHours * 60 * 60 * 1000);
+
+      const eligibleHostIds = await db
+        .select({ hostId: events.hostId })
+        .from(events)
+        .where(
+          and(
+            isNotNull(events.bookedRestaurantId),
+            ne(events.status, "cancelled"),
+            gte(events.date, windowStart),
+            lte(events.date, windowEnd),
+            gte(events.lastConfirmedAt, cutoff),
+          ),
+        )
+        .groupBy(events.hostId)
+        .limit(50000)
+        .then((rows: any[]) => rows.map((r) => String(r.hostId)));
+
+      const rows =
+        eligibleHostIds.length === 0
+          ? []
+          : await db
+              .select({
+                id: hosts.id,
+                name: hosts.businessName,
+                updatedAt: hosts.updatedAt,
+              })
+              .from(hosts)
+              .where(inArray(hosts.id, eligibleHostIds))
+              .orderBy(desc(hosts.updatedAt))
+              .limit(50000);
+
+      const entries = rows.map((row: any) => ({
+        loc: `${baseUrl}/location/${encodeURIComponent(`${toSlug(row.name) || row.id}--${row.id}`)}`,
+        lastmod: row.updatedAt,
+      }));
+
+      sendUrlsetXml(res, { baseUrl, entries });
+    } catch (e) {
+      console.error("sitemap-locations failed", e);
+      res.status(500).send("<error>failed</error>");
+    }
+  });
+
+  app.get("/sitemap-cities.xml", async (_req, res) => {
+    try {
+      const { cities, events, hosts, truckManualSchedules } = await import("@shared/schema");
+      const baseUrl = resolveSitemapSiteUrl();
+      const rows = await db.select().from(cities).orderBy(desc(cities.createdAt));
+
+      const ttlHoursRaw = Number(process.env.PUBLIC_SLOT_TTL_HOURS ?? 72);
+      const lookaheadHoursRaw = Number(process.env.PUBLIC_SLOT_LOOKAHEAD_HOURS ?? 24 * 7);
+      const ttlHours = Number.isFinite(ttlHoursRaw) ? Math.max(1, Math.min(ttlHoursRaw, 24 * 30)) : 72;
+      const lookaheadHours = Number.isFinite(lookaheadHoursRaw)
+        ? Math.max(1, Math.min(lookaheadHoursRaw, 24 * 30))
+        : 24 * 7;
+      const now = new Date();
+      const cutoff = new Date(now.getTime() - ttlHours * 60 * 60 * 1000);
+      const windowStart = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+      const windowEnd = new Date(now.getTime() + lookaheadHours * 60 * 60 * 1000);
+
+      const entries: Array<{ loc: string; lastmod?: unknown }> = [];
+      for (const row of rows as any[]) {
+        const slug = String(row.slug || "").trim();
+        const cityName = String(row.name || "").trim();
+        if (!slug || !cityName) continue;
+        const cityLike = `%${cityName}%`;
+
+        const hasTruck = await db
+          .select({ id: restaurants.id })
+          .from(restaurants)
+          .where(
+            and(
+              eq(restaurants.isActive, true),
+              or(eq(restaurants.isFoodTruck, true), eq(restaurants.businessType, "food_truck")),
+              or(ilike(restaurants.city, cityLike), ilike(restaurants.address, cityLike)),
+            ),
+          )
+          .limit(1);
+
+        const hasEvent = await db
+          .select({ id: events.id })
+          .from(events)
+          .innerJoin(hosts, eq(events.hostId, hosts.id))
+          .where(
+            and(
+              isNotNull(events.bookedRestaurantId),
+              ne(events.status, "cancelled"),
+              gte(events.date, windowStart),
+              lte(events.date, windowEnd),
+              gte(events.lastConfirmedAt, cutoff),
+              or(ilike(hosts.city, cityLike), ilike(hosts.address, cityLike)),
+            ),
+          )
+          .limit(1);
+
+        const hasManual = await db
+          .select({ id: truckManualSchedules.id })
+          .from(truckManualSchedules)
+          .where(
+            and(
+              eq(truckManualSchedules.isPublic, true),
+              gte(truckManualSchedules.date, windowStart),
+              lte(truckManualSchedules.date, windowEnd),
+              gte(truckManualSchedules.lastConfirmedAt, cutoff),
+              or(ilike(truckManualSchedules.city, cityLike), ilike(truckManualSchedules.address, cityLike)),
+            ),
+          )
+          .limit(1);
+
+        if (hasTruck.length === 0 && hasEvent.length === 0 && hasManual.length === 0) continue;
+
+        entries.push({
+          loc: `${baseUrl}/city/${encodeURIComponent(slug)}`,
+          lastmod: row.createdAt,
+        });
+      }
+      sendUrlsetXml(res, { baseUrl, entries });
+    } catch (e) {
+      console.error("sitemap-cities failed", e);
+      res.status(500).send("<error>failed</error>");
+    }
+  });
+
+  app.get("/sitemap-cuisines.xml", async (_req, res) => {
+    try {
+      const baseUrl = resolveSitemapSiteUrl();
+      const rows = await db
+        .select({
+          cuisineType: restaurants.cuisineType,
+          updatedAt: restaurants.updatedAt,
+        })
+        .from(restaurants)
+        .where(eq(restaurants.isActive, true))
+        .orderBy(desc(restaurants.updatedAt))
+        .limit(50000);
+
+      const lastmodByCuisine = new Map<string, string | null>();
+      for (const row of rows as any[]) {
+        const slug = toSlug(row.cuisineType || "");
+        if (!slug) continue;
+        const next = toIsoDateOrNull(row.updatedAt);
+        const existing = lastmodByCuisine.get(slug) || null;
+        if (!existing) {
+          lastmodByCuisine.set(slug, next);
+          continue;
+        }
+        if (!next) continue;
+        if (new Date(next).getTime() > new Date(existing).getTime()) {
+          lastmodByCuisine.set(slug, next);
+        }
+      }
+
+      const entries = Array.from(lastmodByCuisine.entries()).map(([slug, lastmod]) => ({
+        loc: `${baseUrl}/cuisine/${encodeURIComponent(slug)}`,
+        lastmod,
+      }));
+
+      sendUrlsetXml(res, { baseUrl, entries });
+    } catch (e) {
+      console.error("sitemap-cuisines failed", e);
+      res.status(500).send("<error>failed</error>");
+    }
+  });
+
+  app.get("/sitemap-time-pages.xml", async (_req, res) => {
+    try {
+      const { cities, events, hosts, truckManualSchedules } = await import("@shared/schema");
+      const baseUrl = resolveSitemapSiteUrl();
+      const rows = await db.select().from(cities).orderBy(desc(cities.createdAt));
+      const modes = [
+        "food-trucks-now",
+        "food-trucks-breakfast",
+        "food-trucks-lunch",
+        "food-trucks-dinner",
+        "food-trucks-tonight",
+        "food-trucks-this-weekend",
+      ];
+      const ttlHoursRaw = Number(process.env.PUBLIC_SLOT_TTL_HOURS ?? 72);
+      const lookaheadHoursRaw = Number(process.env.PUBLIC_SLOT_LOOKAHEAD_HOURS ?? 24 * 7);
+      const ttlHours = Number.isFinite(ttlHoursRaw) ? Math.max(1, Math.min(ttlHoursRaw, 24 * 30)) : 72;
+      const lookaheadHours = Number.isFinite(lookaheadHoursRaw)
+        ? Math.max(1, Math.min(lookaheadHoursRaw, 24 * 30))
+        : 24 * 7;
+      const now = new Date();
+      const cutoff = new Date(now.getTime() - ttlHours * 60 * 60 * 1000);
+      const windowStart = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+      const windowEnd = new Date(now.getTime() + lookaheadHours * 60 * 60 * 1000);
+
+      const entries: Array<{ loc: string; lastmod?: unknown }> = [];
+      for (const row of rows as any[]) {
+        const slug = String(row.slug || "").trim();
+        if (!slug) continue;
+        const cityName = String(row.name || "").trim();
+        if (!cityName) continue;
+        const cityLike = `%${cityName}%`;
+
+        const hasEvent = await db
+          .select({ id: events.id })
+          .from(events)
+          .innerJoin(hosts, eq(events.hostId, hosts.id))
+          .where(
+            and(
+              isNotNull(events.bookedRestaurantId),
+              ne(events.status, "cancelled"),
+              gte(events.date, windowStart),
+              lte(events.date, windowEnd),
+              gte(events.lastConfirmedAt, cutoff),
+              or(ilike(hosts.city, cityLike), ilike(hosts.address, cityLike)),
+            ),
+          )
+          .limit(1);
+
+        const hasManual = await db
+          .select({ id: truckManualSchedules.id })
+          .from(truckManualSchedules)
+          .where(
+            and(
+              eq(truckManualSchedules.isPublic, true),
+              gte(truckManualSchedules.date, windowStart),
+              lte(truckManualSchedules.date, windowEnd),
+              gte(truckManualSchedules.lastConfirmedAt, cutoff),
+              or(ilike(truckManualSchedules.city, cityLike), ilike(truckManualSchedules.address, cityLike)),
+            ),
+          )
+          .limit(1);
+
+        if (hasEvent.length === 0 && hasManual.length === 0) continue;
+        for (const mode of modes) {
+          entries.push({
+            loc: `${baseUrl}/city/${encodeURIComponent(slug)}/${encodeURIComponent(mode)}`,
+            lastmod: row.createdAt,
+          });
+        }
+      }
+      sendUrlsetXml(res, { baseUrl, entries });
+    } catch (e) {
+      console.error("sitemap-time-pages failed", e);
+      res.status(500).send("<error>failed</error>");
+    }
+  });
+
+  app.get("/sitemap-events.xml", async (_req, res) => {
+    try {
+      const { events, hosts } = await import("@shared/schema");
+      const baseUrl = resolveSitemapSiteUrl();
+      const ttlHoursRaw = Number(process.env.PUBLIC_SLOT_TTL_HOURS ?? 72);
+      const lookaheadHoursRaw = Number(process.env.PUBLIC_SLOT_LOOKAHEAD_HOURS ?? 24 * 7);
+      const ttlHours = Number.isFinite(ttlHoursRaw) ? Math.max(1, Math.min(ttlHoursRaw, 24 * 30)) : 72;
+      const lookaheadHours = Number.isFinite(lookaheadHoursRaw)
+        ? Math.max(1, Math.min(lookaheadHoursRaw, 24 * 30))
+        : 24 * 7;
+      const now = new Date();
+      const cutoff = new Date(now.getTime() - ttlHours * 60 * 60 * 1000);
+      const windowStart = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+      const windowEnd = new Date(now.getTime() + lookaheadHours * 60 * 60 * 1000);
+
+      const rows = await db
+        .select({
+          id: events.id,
+          name: events.name,
+          hostName: hosts.businessName,
+          date: events.date,
+          startTime: events.startTime,
+          endTime: events.endTime,
+          status: events.status,
+          lastConfirmedAt: events.lastConfirmedAt,
+          updatedAt: events.updatedAt,
+        })
+        .from(events)
+        .innerJoin(hosts, eq(events.hostId, hosts.id))
+        .where(
+          and(
+            isNotNull(events.bookedRestaurantId),
+            ne(events.status, "cancelled"),
+            gte(events.date, windowStart),
+            lte(events.date, windowEnd),
+            gte(events.lastConfirmedAt, cutoff),
+          ),
+        )
+        .orderBy(desc(events.updatedAt))
+        .limit(50000);
+
+      const entries = rows.map((row: any) => {
+        const title = row.name || row.hostName || row.id;
+        const slug = `${toSlug(title) || row.id}--${row.id}`;
+        return {
+          loc: `${baseUrl}/event/${encodeURIComponent(slug)}`,
+          lastmod: row.updatedAt,
+        };
+      });
+
+      sendUrlsetXml(res, { baseUrl, entries });
+    } catch (e) {
+      console.error("sitemap-events failed", e);
+      res.status(500).send("<error>failed</error>");
+    }
+  });
+
+  app.get("/sitemap-deals.xml", async (_req, res) => {
+    try {
+      const { deals } = await import("@shared/schema");
+      const baseUrl = resolveSitemapSiteUrl();
+      const now = new Date();
+      const rows = await db
+        .select({ id: deals.id, title: deals.title, updatedAt: deals.updatedAt })
+        .from(deals)
+        .where(
+          and(
+            eq(deals.isActive, true),
+            lte(deals.startDate, now),
+            or(isNull(deals.endDate), gte(deals.endDate, now)),
+          ),
+        )
+        .orderBy(desc(deals.updatedAt))
+        .limit(50000);
+
+      const entries = rows.map((row: any) => ({
+        loc: `${baseUrl}/deal/${encodeURIComponent(`${toSlug(row.title) || row.id}--${row.id}`)}`,
+        lastmod: row.updatedAt,
+      }));
+
+      sendUrlsetXml(res, { baseUrl, entries });
+    } catch (e) {
+      console.error("sitemap-deals failed", e);
+      res.status(500).send("<error>failed</error>");
+    }
+  });
+
+  app.get("/sitemap-suppliers.xml", async (_req, res) => {
+    try {
+      const baseUrl = resolveSitemapSiteUrl();
+      const rows = await db
+        .select({
+          id: suppliers.id,
+          name: suppliers.businessName,
+          updatedAt: suppliers.updatedAt,
+        })
+        .from(suppliers)
+        .where(eq(suppliers.isActive, true))
+        .orderBy(desc(suppliers.updatedAt))
+        .limit(50000);
+
+      const entries = rows.map((row: any) => ({
+        loc: `${baseUrl}/supplier/${encodeURIComponent(`${toSlug(row.name) || row.id}--${row.id}`)}`,
+        lastmod: row.updatedAt,
+      }));
+
+      sendUrlsetXml(res, { baseUrl, entries });
+    } catch (e) {
+      console.error("sitemap-suppliers failed", e);
+      res.status(500).send("<error>failed</error>");
+    }
+  });
+
+  app.get("/sitemap-videos.xml", async (_req, res) => {
+    try {
+      const { videoStories } = await import("@shared/schema");
+      const baseUrl = resolveSitemapSiteUrl();
+      const now = new Date();
+      const rows = await db
+        .select({
+          id: videoStories.id,
+          title: videoStories.title,
+          createdAt: videoStories.createdAt,
+          status: videoStories.status,
+          isApproved: videoStories.isApproved,
+          deletedAt: videoStories.deletedAt,
+          expiresAt: videoStories.expiresAt,
+          transcriptSource: videoStories.transcriptSource,
+        })
+        .from(videoStories)
+        .where(
+          and(
+            eq(videoStories.status, "ready"),
+            eq(videoStories.isApproved, true),
+            isNull(videoStories.deletedAt),
+            gte(videoStories.expiresAt, now),
+            isNotNull(videoStories.transcriptSource),
+          ),
+        )
+        .orderBy(desc(videoStories.createdAt))
+        .limit(50000);
+
+      const entries = rows.map((row: any) => ({
+        loc: `${baseUrl}/video/${encodeURIComponent(`${toSlug(row.title) || row.id}--${row.id}`)}`,
+        lastmod: row.createdAt,
+      }));
+
+      sendUrlsetXml(res, { baseUrl, entries });
+    } catch (e) {
+      console.error("sitemap-videos failed", e);
+      res.status(500).send("<error>failed</error>");
+    }
+  });
+
   app.get("/robots.txt", async (_req, res) => {
     try {
       const baseUrl = resolveSitemapSiteUrl();
       const robots = [
         "User-agent: *",
-        "Allow: /",
+        "Allow: /truck/",
+        "Allow: /location/",
+        "Allow: /city/",
+        "Allow: /event/",
+        "Allow: /cuisine/",
+        "Allow: /deal/",
+        "Allow: /bar/",
+        "Allow: /supplier/",
+        "Allow: /video/",
+        "",
+        "Disallow: /dashboard",
+        "Disallow: /admin",
+        "Disallow: /api",
+        "Disallow: /vendor-dashboard",
+        "Disallow: /supplier-portal",
+        "",
         `Sitemap: ${baseUrl}/sitemap.xml`,
+        `Sitemap: ${baseUrl}/sitemap-trucks.xml`,
+        `Sitemap: ${baseUrl}/sitemap-bars.xml`,
+        `Sitemap: ${baseUrl}/sitemap-locations.xml`,
+        `Sitemap: ${baseUrl}/sitemap-cities.xml`,
+        `Sitemap: ${baseUrl}/sitemap-cuisines.xml`,
+        `Sitemap: ${baseUrl}/sitemap-time-pages.xml`,
+        `Sitemap: ${baseUrl}/sitemap-events.xml`,
+        `Sitemap: ${baseUrl}/sitemap-deals.xml`,
+        `Sitemap: ${baseUrl}/sitemap-suppliers.xml`,
+        `Sitemap: ${baseUrl}/sitemap-videos.xml`,
         "",
       ].join("\n");
       res.setHeader("Content-Type", "text/plain; charset=utf-8");

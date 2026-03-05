@@ -100,7 +100,7 @@ export default function PensacolaSpots() {
             <CardHeader>
               <CardTitle>
                 {isLoading
-                  ? "Loading spots…"
+                  ? "Loading spots..."
                   : data
                     ? `${data.totalLocations} locations in ${data.city}, ${data.state}`
                     : "Spots"}
@@ -196,4 +196,3 @@ export default function PensacolaSpots() {
     </div>
   );
 }
-

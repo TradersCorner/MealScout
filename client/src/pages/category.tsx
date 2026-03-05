@@ -98,7 +98,8 @@ const categoryConfig = {
 const lower = (value?: string) => String(value || "").toLowerCase();
 
 export default function CategoryPage() {
-  const { category } = useParams();
+  const params = useParams() as Record<string, string | undefined>;
+  const category = params.category || params.type || "";
   const categoryKey = category as keyof typeof categoryConfig;
   const config = category ? categoryConfig[categoryKey] : null;
 

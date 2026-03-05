@@ -9,11 +9,13 @@ export const cities = pgTable(
     name: varchar("name").notNull(),
     slug: varchar("slug").notNull(),
     state: varchar("state"),
+    timezone: varchar("timezone"),
     createdAt: timestamp("created_at").defaultNow(),
   },
   (table) => [
     index("idx_cities_slug").on(table.slug),
     index("idx_cities_name_state").on(table.name, table.state),
+    index("idx_cities_timezone").on(table.timezone),
   ],
 );
 import {
@@ -3085,6 +3087,7 @@ export const events = pgTable(
     stripeProductId: varchar("stripe_product_id"),
     stripePriceId: varchar("stripe_price_id"),
     unbookedNotificationSentAt: timestamp("unbooked_notification_sent_at"),
+    lastConfirmedAt: timestamp("last_confirmed_at"),
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at").defaultNow(),
   },
@@ -3097,6 +3100,7 @@ export const events = pgTable(
     index("idx_events_type").on(table.eventType),
     index("idx_events_booked_restaurant").on(table.bookedRestaurantId),
     index("idx_events_requires_payment").on(table.requiresPayment),
+    index("idx_events_last_confirmed").on(table.lastConfirmedAt),
   ],
 );
 
@@ -3239,11 +3243,13 @@ export const truckManualSchedules = pgTable(
     state: varchar("state"),
     notes: text("notes"),
     isPublic: boolean("is_public").default(true),
+    lastConfirmedAt: timestamp("last_confirmed_at"),
       createdAt: timestamp("created_at").defaultNow(),
       updatedAt: timestamp("updated_at").defaultNow(),
     },
     (table) => [
       index("idx_truck_manual_schedule_truck").on(table.truckId, table.date),
+      index("idx_truck_manual_schedule_last_confirmed").on(table.lastConfirmedAt),
     ],
   );
 

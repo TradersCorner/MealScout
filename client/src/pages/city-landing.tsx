@@ -68,9 +68,9 @@ function fetchCity(slug: string) {
 }
 
 export default function CityLanding() {
-  const params = useParams<{ citySlug: string; cuisineSlug?: string }>();
-  const citySlug = params.citySlug;
-  const cuisineSlug = params.cuisineSlug || "";
+  const params = useParams() as Record<string, string | undefined>;
+  const citySlug = String(params.citySlug || params.city || "").trim();
+  const cuisineSlug = String(params.cuisineSlug || "").trim();
   const cuisineNeedle = deslug(cuisineSlug);
 
   const { data, isLoading, error } = useQuery({

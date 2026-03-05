@@ -11,12 +11,16 @@ export default function PensacolaReport() {
     "idle",
   );
   const [message, setMessage] = useState<string>("");
+  const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
+  const [emailed, setEmailed] = useState<boolean | null>(null);
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!email.trim()) return;
     setStatus("submitting");
     setMessage("");
+    setDownloadUrl(null);
+    setEmailed(null);
 
     try {
       const res = await fetch(apiUrl("/api/public/pensacola/report/request"), {
@@ -32,9 +36,17 @@ export default function PensacolaReport() {
         throw new Error(payload?.message || `Request failed (status=${res.status})`);
       }
       setStatus("sent");
-      setMessage(
-        "Check your email for the PDF download link. (If you don’t see it, check spam/promotions.)",
-      );
+      setDownloadUrl(payload?.downloadUrl || null);
+      setEmailed(typeof payload?.emailed === "boolean" ? payload.emailed : null);
+      if (payload?.downloadUrl) {
+        setMessage(
+          payload?.emailed === false
+            ? "Email delivery is currently unavailable."
+            : "We emailed you a PDF download link. If you don't see it (spam/promotions), use the download button below.",
+        );
+      } else {
+        setMessage("Check your email for the PDF download link. (If you don't see it, check spam/promotions.)");
+      }
     } catch (err: any) {
       setStatus("error");
       setMessage(err?.message || "Unable to send report right now.");
@@ -84,7 +96,7 @@ export default function PensacolaReport() {
 
                 <div className="flex gap-2 flex-wrap items-center">
                   <Button type="submit" disabled={status === "submitting"}>
-                    {status === "submitting" ? "Sending…" : "Email me the report"}
+                    {status === "submitting" ? "Sending..." : "Email me the report"}
                   </Button>
                   <Button variant="outline" asChild>
                     <a href="/pensacola/spots">See spots instead</a>
@@ -102,6 +114,25 @@ export default function PensacolaReport() {
                     {message}
                   </div>
                 ) : null}
+
+                {status === "sent" && downloadUrl ? (
+                  <div className="text-sm">
+                    <a
+                      href={downloadUrl}
+                      className="underline font-medium"
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Download the PDF
+                    </a>
+                    {emailed === false ? (
+                      <span className="text-muted-foreground">
+                        {" "}
+                        (email not sent)
+                      </span>
+                    ) : null}
+                  </div>
+                ) : null}
               </form>
             </CardContent>
           </Card>
@@ -110,4 +141,3 @@ export default function PensacolaReport() {
     </div>
   );
 }
-

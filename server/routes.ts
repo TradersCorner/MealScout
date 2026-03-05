@@ -435,9 +435,7 @@ const isNearbyEventsEnabled = (accountSettings: unknown) => {
     typeof settings.notifications.topics === "object"
       ? (settings.notifications.topics as Record<string, any>)
       : null;
-  return typeof topics?.nearbyEvents === "boolean"
-    ? topics.nearbyEvents
-    : true;
+  return typeof topics?.nearbyEvents === "boolean" ? topics.nearbyEvents : true;
 };
 
 const getNearbyDealRadiusKm = (accountSettings: unknown) => {
@@ -486,7 +484,10 @@ async function notifyNearbyDealSubscribers(params: {
     .from(users)
     .innerJoin(
       userAddresses,
-      and(eq(userAddresses.userId, users.id), eq(userAddresses.isDefault, true)),
+      and(
+        eq(userAddresses.userId, users.id),
+        eq(userAddresses.isDefault, true),
+      ),
     )
     .where(
       and(
@@ -4167,12 +4168,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // If this is a Pensacola food truck, trigger the automated drip (step 1) immediately.
       if (String((restaurant as any)?.businessType || "") === "food_truck") {
         try {
-          const { maybeTriggerPensacolaFoodTruckDrip } = await import(
-            "./services/pensacolaFoodTruckDrip"
-          );
-          await maybeTriggerPensacolaFoodTruckDrip({ userId: user.id, restaurant });
+          const { maybeTriggerPensacolaFoodTruckDrip } =
+            await import("./services/pensacolaFoodTruckDrip");
+          await maybeTriggerPensacolaFoodTruckDrip({
+            userId: user.id,
+            restaurant,
+          });
         } catch (error) {
-          console.warn("[drip] Unable to trigger Pensacola food truck drip:", error);
+          console.warn(
+            "[drip] Unable to trigger Pensacola food truck drip:",
+            error,
+          );
         }
       }
 
@@ -6964,9 +6970,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
             if (bookingConfirmed) {
               try {
-                const { recordHostBookingEarnings } = await import(
-                  "./hostEarningsService"
-                );
+                const { recordHostBookingEarnings } =
+                  await import("./hostEarningsService");
                 await recordHostBookingEarnings(
                   earnedEntries.map((entry) => ({
                     ...entry,
@@ -7079,7 +7084,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
 
             const maxTrucksByEventId = new Map<string, number>();
-            const bookingEventsById = new Map<string, (typeof bookingEvents)[number]>();
+            const bookingEventsById = new Map<
+              string,
+              (typeof bookingEvents)[number]
+            >();
             for (const row of bookingEvents) {
               maxTrucksByEventId.set(row.id, row.maxTrucks ?? 1);
               bookingEventsById.set(row.id, row);
@@ -7107,10 +7115,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
               const confirmedCount = confirmedByEventId.get(eventId) ?? 0;
               const maxTrucks = maxTrucksByEventId.get(eventId) ?? 1;
               const newlyConfirmed = newlyConfirmedByEventId.get(eventId) ?? 0;
-              const previousCount = Math.max(0, confirmedCount - newlyConfirmed);
+              const previousCount = Math.max(
+                0,
+                confirmedCount - newlyConfirmed,
+              );
               const previousFillRate =
                 maxTrucks > 0 ? previousCount / maxTrucks : 0;
-              const currentFillRate = maxTrucks > 0 ? confirmedCount / maxTrucks : 0;
+              const currentFillRate =
+                maxTrucks > 0 ? confirmedCount / maxTrucks : 0;
               const crossedWarningThreshold =
                 previousFillRate < 0.8 && currentFillRate >= 0.8;
               const crossedFullThreshold =
@@ -9403,9 +9415,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   ) {
     cron.schedule("*/30 * * * *", async () => {
       try {
-        const { runPensacolaFoodTruckDripCron } = await import(
-          "./services/pensacolaFoodTruckDrip"
-        );
+        const { runPensacolaFoodTruckDripCron } =
+          await import("./services/pensacolaFoodTruckDrip");
         const result = await runPensacolaFoodTruckDripCron();
         if ((result as any)?.sent) {
           console.log("[drip] Pensacola food truck sequence sent:", result);
@@ -9424,9 +9435,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   ) {
     cron.schedule("*/30 * * * *", async () => {
       try {
-        const { runPensacolaReportLeadDripCron } = await import(
-          "./services/pensacolaReportDrip"
-        );
+        const { runPensacolaReportLeadDripCron } =
+          await import("./services/pensacolaReportDrip");
         const result = await runPensacolaReportLeadDripCron();
         if ((result as any)?.sent) {
           console.log("[drip] Pensacola report lead sequence sent:", result);
@@ -9553,7 +9563,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ? new Date(`${fromDateRaw}T00:00:00.000Z`)
           : null;
         const toDateExclusive = /^\d{4}-\d{2}-\d{2}$/.test(toDateRaw)
-          ? new Date(new Date(`${toDateRaw}T00:00:00.000Z`).getTime() + 86400000)
+          ? new Date(
+              new Date(`${toDateRaw}T00:00:00.000Z`).getTime() + 86400000,
+            )
           : null;
 
         const filters: any[] = [];
@@ -9581,14 +9593,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         const [totalsRow] = await db
           .select({
-            pending:
-              sql<number>`coalesce(sum(case when ${hostPayoutRequests.status} = 'pending' then 1 else 0 end), 0)`,
-            approved:
-              sql<number>`coalesce(sum(case when ${hostPayoutRequests.status} = 'approved' then 1 else 0 end), 0)`,
-            paid:
-              sql<number>`coalesce(sum(case when ${hostPayoutRequests.status} = 'paid' then 1 else 0 end), 0)`,
-            rejected:
-              sql<number>`coalesce(sum(case when ${hostPayoutRequests.status} = 'rejected' then 1 else 0 end), 0)`,
+            pending: sql<number>`coalesce(sum(case when ${hostPayoutRequests.status} = 'pending' then 1 else 0 end), 0)`,
+            approved: sql<number>`coalesce(sum(case when ${hostPayoutRequests.status} = 'approved' then 1 else 0 end), 0)`,
+            paid: sql<number>`coalesce(sum(case when ${hostPayoutRequests.status} = 'paid' then 1 else 0 end), 0)`,
+            rejected: sql<number>`coalesce(sum(case when ${hostPayoutRequests.status} = 'rejected' then 1 else 0 end), 0)`,
           })
           .from(hostPayoutRequests);
 
@@ -9614,8 +9622,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             status: hostPayoutRequests.status,
             notes: hostPayoutRequests.notes,
             reviewedByUserId: hostPayoutRequests.reviewedByUserId,
-            reviewedByEmail:
-              sql<string>`(select u.email from users u where u.id = ${hostPayoutRequests.reviewedByUserId} limit 1)`,
+            reviewedByEmail: sql<string>`(select u.email from users u where u.id = ${hostPayoutRequests.reviewedByUserId} limit 1)`,
             reviewedAt: hostPayoutRequests.reviewedAt,
             paidAt: hostPayoutRequests.paidAt,
             createdAt: hostPayoutRequests.createdAt,
@@ -9682,7 +9689,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     async (req: any, res) => {
       try {
         const requestId = String(req.params.requestId || "").trim();
-        const nextStatus = String(req.body?.status || "").trim().toLowerCase();
+        const nextStatus = String(req.body?.status || "")
+          .trim()
+          .toLowerCase();
         const notes =
           typeof req.body?.notes === "string" && req.body.notes.trim()
             ? req.body.notes.trim()
@@ -9692,9 +9701,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(400).json({ message: "Request ID is required" });
         }
 
-        if (!["approved", "rejected", "paid", "cancelled"].includes(nextStatus)) {
+        if (
+          !["approved", "rejected", "paid", "cancelled"].includes(nextStatus)
+        ) {
           return res.status(400).json({
-            message: "Status must be one of: approved, rejected, paid, cancelled",
+            message:
+              "Status must be one of: approved, rejected, paid, cancelled",
           });
         }
 
@@ -9771,7 +9783,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
 
-        const { getHostEarningsSummary } = await import("./hostEarningsService");
+        const { getHostEarningsSummary } =
+          await import("./hostEarningsService");
         const summary = await getHostEarningsSummary(existing.hostId);
 
         res.json({ ok: true, request: updated, summary });
@@ -9811,7 +9824,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ? new Date(`${fromDateRaw}T00:00:00.000Z`)
           : null;
         const toDateExclusive = /^\d{4}-\d{2}-\d{2}$/.test(toDateRaw)
-          ? new Date(new Date(`${toDateRaw}T00:00:00.000Z`).getTime() + 86400000)
+          ? new Date(
+              new Date(`${toDateRaw}T00:00:00.000Z`).getTime() + 86400000,
+            )
           : null;
 
         const filters: any[] = [];
@@ -9845,8 +9860,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             status: hostPayoutRequests.status,
             notes: hostPayoutRequests.notes,
             reviewedByUserId: hostPayoutRequests.reviewedByUserId,
-            reviewedByEmail:
-              sql<string>`(select u.email from users u where u.id = ${hostPayoutRequests.reviewedByUserId} limit 1)`,
+            reviewedByEmail: sql<string>`(select u.email from users u where u.id = ${hostPayoutRequests.reviewedByUserId} limit 1)`,
             reviewedAt: hostPayoutRequests.reviewedAt,
             paidAt: hostPayoutRequests.paidAt,
             createdAt: hostPayoutRequests.createdAt,
@@ -9894,8 +9908,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
               sanitizeCSV(row.requesterEmail || ""),
               sanitizeCSV(amountUsd),
               sanitizeCSV(row.status || ""),
-              sanitizeCSV(row.createdAt ? new Date(row.createdAt).toISOString() : ""),
-              sanitizeCSV(row.reviewedAt ? new Date(row.reviewedAt).toISOString() : ""),
+              sanitizeCSV(
+                row.createdAt ? new Date(row.createdAt).toISOString() : "",
+              ),
+              sanitizeCSV(
+                row.reviewedAt ? new Date(row.reviewedAt).toISOString() : "",
+              ),
               sanitizeCSV(row.reviewedByEmail || row.reviewedByUserId || ""),
               sanitizeCSV(row.paidAt ? new Date(row.paidAt).toISOString() : ""),
               sanitizeCSV(address),

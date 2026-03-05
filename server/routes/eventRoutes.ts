@@ -35,6 +35,7 @@ import { handleReportRequest, renderReportPdfForToken, requestReportSchema } fro
 import { buildSlotDateTimes } from "../services/timeIntent";
 import { resolveCityTimeZone } from "../services/cityTimeZone";
 import { isSlotPublic, type PublicSlot } from "../services/publicSlotGate";
+import { rateLimit } from "../rateLimiter";
 
 export function registerEventRoutes(app: Express) {
   let parkingPassPublicFeedCache:
@@ -647,7 +648,17 @@ export function registerEventRoutes(app: Express) {
   });
 
   // Pensacola Report lead magnet: email capture -> send PDF link
-  app.post("/api/public/pensacola/report/request", async (req: any, res) => {
+  const reportBurstLimiter = rateLimit(5, 5 * 60 * 1000, (req) => {
+    const ua = String(req.get?.("User-Agent") || "").slice(0, 80);
+    return `pensacola-report:burst:${req.ip}:${ua}`;
+  });
+  const reportDailyLimiter = rateLimit(30, 24 * 60 * 60 * 1000, (req) => `pensacola-report:day:${req.ip}`);
+  const reportEmailLimiter = rateLimit(3, 60 * 60 * 1000, (req) => {
+    const email = String(req.body?.email || "").trim().toLowerCase();
+    return email ? `pensacola-report:email:${email}` : `pensacola-report:email:missing:${req.ip}`;
+  });
+
+  app.post("/api/public/pensacola/report/request", reportBurstLimiter, reportDailyLimiter, reportEmailLimiter, async (req: any, res) => {
     try {
       const parsed = requestReportSchema.parse(req.body);
       const result = await handleReportRequest({

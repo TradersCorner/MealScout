@@ -12,7 +12,7 @@ import { eq, and, or, desc, gte, inArray } from "drizzle-orm";
 import { isAuthenticated } from "../unifiedAuth";
 import { storage } from "../storage";
 import { emailService } from "../emailService";
-import { usStateToTimeZone } from "../services/cityTimeZone";
+import { resolveCityTimeZoneSync } from "../services/cityTimeZone";
 import { isSlotPublic } from "../services/publicSlotGate";
 import { buildSlotDateTimes } from "../services/timeIntent";
 import Stripe from "stripe";
@@ -837,7 +837,10 @@ export function registerBookingRoutes(app: Express) {
 
         const publicLookaheadHours = 24 * 30;
         const isPublicBookingSlot = (row: (typeof bookingRows)[number]) => {
-          const timeZone = usStateToTimeZone(String((row.host as any)?.state || ""));
+          const timeZone = resolveCityTimeZoneSync({
+            city: (row.host as any)?.city ?? null,
+            state: (row.host as any)?.state ?? null,
+          });
           const interval = buildSlotDateTimes({
             timeZone,
             date: new Date(row.event.date as any),
@@ -866,7 +869,10 @@ export function registerBookingRoutes(app: Express) {
         };
 
         const isPublicAcceptedSlot = (row: (typeof acceptedInterestRows)[number]) => {
-          const timeZone = usStateToTimeZone(String((row.host as any)?.state || ""));
+          const timeZone = resolveCityTimeZoneSync({
+            city: (row.host as any)?.city ?? null,
+            state: (row.host as any)?.state ?? null,
+          });
           const interval = buildSlotDateTimes({
             timeZone,
             date: new Date(row.event.date as any),
@@ -954,7 +960,10 @@ export function registerBookingRoutes(app: Express) {
 
         const manualEntries = await storage.getTruckManualSchedules(truckId);
         const isPublicManualSlot = (entry: (typeof manualEntries)[number]) => {
-          const timeZone = usStateToTimeZone(String((entry as any)?.state || ""));
+          const timeZone = resolveCityTimeZoneSync({
+            city: (entry as any)?.city ?? null,
+            state: (entry as any)?.state ?? null,
+          });
           const interval =
             entry.startTime && entry.endTime
               ? buildSlotDateTimes({

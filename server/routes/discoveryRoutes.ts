@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { db } from "../db";
 import { cities, events, hosts, restaurants, truckManualSchedules } from "@shared/schema";
-import { and, eq, gte, ilike, inArray, isNotNull, lte, ne, or } from "drizzle-orm";
+import { and, eq, gte, ilike, inArray, isNotNull, lte, ne, or, sql } from "drizzle-orm";
 import { buildSlotDateTimes, intervalOverlaps, resolveTimeIntent, type TimeIntent } from "../services/timeIntent";
 import { isSlotPublic, type PublicSlot } from "../services/publicSlotGate";
 import { resolveCityTimeZone, usStateToTimeZone } from "../services/cityTimeZone";
@@ -382,7 +382,10 @@ export function registerDiscoveryRoutes(app: Express) {
             ne(events.status, "cancelled"),
             gte(events.date, windowStart),
             lte(events.date, windowEnd),
-            gte(events.lastConfirmedAt, cutoff),
+            gte(
+              sql`COALESCE(${events.lastConfirmedAt}, ${events.updatedAt}, ${events.date}::timestamp)`,
+              cutoff,
+            ),
           ),
         )
         .limit(5000);

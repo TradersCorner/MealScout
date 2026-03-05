@@ -24,12 +24,12 @@ export function usStateToTimeZone(state: string | null | undefined): string {
     "TN",
     "TX",
     "WI",
-    "FL", // Pensacola + early rollout; override per-city via cities.timezone.
   ]);
   const eastern = new Set([
     "CT",
     "DC",
     "DE",
+    "FL",
     "GA",
     "IN",
     "MA",
@@ -56,13 +56,33 @@ export function usStateToTimeZone(state: string | null | undefined): string {
   return "America/Chicago";
 }
 
+const FL_PANHANDLE_CITY_HINT =
+  /\b(pensacola|gulf\s*breeze|navarre|pace|milton|cantonment|crestview|niceville|fort\s*walton|destin|panama\s*city|lynn\s*haven)\b/i;
+
+export function resolveCityTimeZoneSync(params: {
+  city?: string | null;
+  state?: string | null;
+}): string {
+  const city = String(params.city || "").trim();
+  const state = String(params.state || "").trim().toUpperCase();
+
+  if (state === "FL") {
+    // Most of Florida is Eastern. The far-west panhandle is Central.
+    return city && FL_PANHANDLE_CITY_HINT.test(city)
+      ? "America/Chicago"
+      : "America/New_York";
+  }
+
+  return usStateToTimeZone(state);
+}
+
 export async function resolveCityTimeZone(params: {
   city?: string | null;
   state?: string | null;
 }): Promise<string> {
   const city = String(params.city || "").trim();
   const state = String(params.state || "").trim().toUpperCase();
-  if (!city) return usStateToTimeZone(state);
+  if (!city) return resolveCityTimeZoneSync({ city, state });
 
   // Prefer exact slug match where possible, but city pages often store plain names.
   const cityLike = `%${city}%`;
@@ -79,6 +99,5 @@ export async function resolveCityTimeZone(params: {
 
   const tz = String(rows?.[0]?.timezone || "").trim();
   if (tz) return tz;
-  return usStateToTimeZone(state || rows?.[0]?.state);
+  return resolveCityTimeZoneSync({ city, state: state || rows?.[0]?.state });
 }
-

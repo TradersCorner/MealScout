@@ -4581,7 +4581,7 @@ export const pensacolaReportLeads = pgTable(
     createdAt: timestamp("created_at").defaultNow(),
   },
   (table) => [
-    unique("uq_pensacola_report_leads_email").on(table.email),
+    // DB enforces case-insensitive uniqueness via an index on lower(email) (see migrations/076_pensacola_report_leads.sql).
     index("idx_pensacola_report_leads_created").on(table.createdAt),
   ],
 );

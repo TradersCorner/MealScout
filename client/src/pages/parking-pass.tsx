@@ -5648,7 +5648,12 @@ export default function ParkingPassPage() {
                               {isActive && listingForDate && (
                                 <Button
                                   size="sm"
-                                  onClick={() => handleBookSelected(listingForDate)}
+                                  type="button"
+                                  onClick={(event) => {
+                                    event.preventDefault();
+                                    event.stopPropagation();
+                                    handleBookSelected(listingForDate);
+                                  }}
                                   disabled={selectedSlots.length === 0}
                                 >
                                   Add to cart
@@ -5900,7 +5905,12 @@ export default function ParkingPassPage() {
                             {isActive && listingForDate && (
                               <Button
                                 size="sm"
-                                onClick={() => handleBookSelected(listingForDate)}
+                                type="button"
+                                onClick={(event) => {
+                                  event.preventDefault();
+                                  event.stopPropagation();
+                                  handleBookSelected(listingForDate);
+                                }}
                                 disabled={!canBook || selectedSlots.length === 0}
                               >
                                 Add to cart
@@ -5943,7 +5953,15 @@ export default function ParkingPassPage() {
                         Separate charges per host.
                       </p>
                     </div>
-                    <Button size="sm" onClick={startCheckout}>
+                    <Button
+                      size="sm"
+                      type="button"
+                      onClick={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        startCheckout();
+                      }}
+                    >
                       Checkout {cartItems.length}
                     </Button>
                   </div>
@@ -6214,7 +6232,12 @@ export default function ParkingPassPage() {
                               </p>
                               <Button
                                 size="sm"
-                                onClick={() => handleBookSelected(activeListingForDate)}
+                                type="button"
+                                onClick={(event) => {
+                                  event.preventDefault();
+                                  event.stopPropagation();
+                                  handleBookSelected(activeListingForDate);
+                                }}
                                 disabled={
                                   (selectedSlotsByListing[activeListingForDate.id] || [])
                                     .length === 0
@@ -6246,7 +6269,15 @@ export default function ParkingPassPage() {
                   ${(cartTotals.totalCents / 100).toFixed(2)}
                 </p>
               </div>
-              <Button size="sm" type="button" onClick={startCheckout}>
+              <Button
+                size="sm"
+                type="button"
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  startCheckout();
+                }}
+              >
                 Checkout
               </Button>
             </div>

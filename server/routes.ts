@@ -2010,7 +2010,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
         parts.push("USA");
         return parts.join(", ");
       };
-      const MAX_GEOCODE_PER_REQUEST = 25;
+      const MAX_GEOCODE_PER_REQUEST =
+        Math.max(0, Number(process.env.MAP_LOCATIONS_MAX_GEOCODE || 0) || 0) ||
+        (process.env.NODE_ENV === "production" ? 5 : 25);
+      const GEOCODE_BUDGET_MS =
+        Math.max(0, Number(process.env.MAP_LOCATIONS_GEOCODE_BUDGET_MS || 0) || 0) ||
+        (process.env.NODE_ENV === "production" ? 1500 : 5000);
+      const GEOCODE_TIMEOUT_MS =
+        Math.max(0, Number(process.env.MAP_LOCATIONS_GEOCODE_TIMEOUT_MS || 0) || 0) ||
+        (process.env.NODE_ENV === "production" ? 750 : 2000);
+      const MAX_REVERSE_GEOCODE_PER_REQUEST =
+        Math.max(
+          0,
+          Number(process.env.MAP_LOCATIONS_MAX_REVERSE_GEOCODE || 0) || 0,
+        ) || (process.env.NODE_ENV === "production" ? 2 : 10);
+      const withTimeout = async <T,>(promise: Promise<T>, timeoutMs: number) => {
+        if (timeoutMs <= 0) return promise;
+        return await Promise.race([
+          promise,
+          new Promise<T>((_resolve, reject) =>
+            setTimeout(() => reject(new Error("timeout")), timeoutMs),
+          ),
+        ]);
+      };
       type PendingGeocode = {
         address: string;
         onResolved: Array<(coords: { lat: number; lng: number }) => void>;
@@ -2207,9 +2229,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         target.longitude = coords.lng.toString();
       };
 
-      // Fix-up guard: avoid persisting/returning obviously wrong coordinates when a state is known.
-      const MAX_COORD_MISMATCH_FIXES = 10;
+      // Optional fix-up guard: this is expensive (reverse geocoding) so keep it off in prod by default.
+      const MAX_COORD_MISMATCH_FIXES =
+        Math.max(
+          0,
+          Number(process.env.MAP_LOCATIONS_MAX_COORD_MISMATCH_FIXES || 0) || 0,
+        ) || (process.env.NODE_ENV === "production" ? 0 : 10);
       let mismatchFixes = 0;
+      let reverseGeocodeChecks = 0;
+      const deadline = Date.now() + GEOCODE_BUDGET_MS;
 
       for (const host of hostLocations) {
         const lat = parseCoord(host.latitude);
@@ -2219,14 +2247,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
           lat !== null &&
           lng !== null &&
           expectedState &&
+          Date.now() <= deadline &&
+          reverseGeocodeChecks < MAX_REVERSE_GEOCODE_PER_REQUEST &&
           mismatchFixes < MAX_COORD_MISMATCH_FIXES
         ) {
-          const reversed = await reverseGeocode(lat, lng).catch(() => null);
+          reverseGeocodeChecks += 1;
+          const reversed = await withTimeout(
+            reverseGeocode(lat, lng),
+            GEOCODE_TIMEOUT_MS,
+          ).catch(() => null);
           const reversedState = normalizeUsStateAbbr(
             String(reversed?.state || "").trim(),
           );
           if (reversedState && reversedState !== expectedState) {
             mismatchFixes += 1;
+            if (Date.now() > deadline) {
+              continue;
+            }
 
             // Try to re-geocode with a more explicit query and only accept it if the reverse state matches.
             host.latitude = null;
@@ -2237,13 +2274,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
               host.state,
             );
             if (address) {
-              const coords = await forwardGeocode(address, {
-                force: true,
-              }).catch(() => null);
+              const coords = await withTimeout(
+                forwardGeocode(address, {
+                  force: true,
+                }),
+                GEOCODE_TIMEOUT_MS,
+              ).catch(() => null);
               if (coords) {
-                const verify = await reverseGeocode(
-                  coords.lat,
-                  coords.lng,
+                if (Date.now() > deadline) {
+                  continue;
+                }
+                const verify = await withTimeout(
+                  reverseGeocode(coords.lat, coords.lng),
+                  GEOCODE_TIMEOUT_MS,
                 ).catch(() => null);
                 const verifyState = normalizeUsStateAbbr(
                   String(verify?.state || "").trim(),
@@ -2328,7 +2371,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         MAX_GEOCODE_PER_REQUEST,
       );
       for (const task of pendingTasks) {
-        const coords = await forwardGeocode(task.address).catch(() => null);
+        if (Date.now() > deadline) break;
+        const coords = await withTimeout(
+          forwardGeocode(task.address),
+          GEOCODE_TIMEOUT_MS,
+        ).catch(() => null);
         if (!coords) continue;
         task.onResolved.forEach((handler) => handler(coords));
         await Promise.all(
@@ -2339,7 +2386,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const payload = { hostLocations, eventLocations };
       mapLocationsCache = {
         payload,
-        expiresAt: Date.now() + 60_000,
+        expiresAt:
+          Date.now() +
+          (Math.max(
+            0,
+            Number(process.env.MAP_LOCATIONS_CACHE_TTL_MS || 0) || 0,
+          ) || 300_000),
       };
       mapLocationsLastGood = { payload };
       res.json(payload);

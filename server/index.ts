@@ -603,6 +603,22 @@ app.use((req, res, next) => {
   res.on("finish", () => {
     const duration = Date.now() - start;
     if (path.startsWith("/api")) {
+      if (process.env.NODE_ENV === "production") {
+        if (path === "/api/health") {
+          return;
+        }
+        if (path === "/api/hosts/me" && res.statusCode === 401) {
+          return;
+        }
+        const slowMs = Number(process.env.API_LOG_SLOW_MS || 1500) || 1500;
+        const verbose =
+          String(process.env.API_LOG_VERBOSE || "").toLowerCase() === "true";
+        const shouldLog =
+          verbose || res.statusCode >= 500 || duration >= slowMs;
+        if (!shouldLog) {
+          return;
+        }
+      }
       let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
       const redactedPayload = redactLogPayload(capturedJsonResponse);
       if (redactedPayload) {
@@ -646,12 +662,9 @@ app.use((req, res, next) => {
   // Setup session configuration before routes
   // Trust first proxy so req.secure is honored behind Vercel/Render and Secure cookies are set
   app.set("trust proxy", 1);
-  app.use((req, _res, next) => {
-    if (process.env.NODE_ENV === "production") {
-      console.log("🌐 trust proxy enabled -> req.secure:", req.secure);
-    }
-    next();
-  });
+  if (process.env.NODE_ENV === "production") {
+    console.log("🌐 trust proxy enabled");
+  }
   app.use(getSession());
   app.use(passport.initialize());
   app.use(passport.session());

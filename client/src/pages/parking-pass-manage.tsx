@@ -13,7 +13,7 @@ export default function ParkingPassManage() {
     }
 
     let cancelled = false;
-    fetch("/api/hosts/me")
+    fetch("/api/hosts/me", { credentials: "include" })
       .then((res) => {
         if (cancelled) return;
         if (res.ok) {

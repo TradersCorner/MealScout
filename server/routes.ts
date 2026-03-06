@@ -622,61 +622,6 @@ async function getLockedPriceForUser(userId: string): Promise<{
   return { locked, priceId, label };
 }
 
-// Password reset rate limiting - database-backed for persistence across server restarts
-async function checkPasswordResetRateLimit(userId: string): Promise<{
-  allowed: boolean;
-  nextAllowedTime?: Date;
-  remainingAttempts?: number;
-}> {
-  const fifteenMinutes = 15 * 60 * 1000; // 15 minutes
-  const maxAttempts = 3; // Max 3 attempts per 15 minutes
-  const cutoffTime = new Date(Date.now() - fifteenMinutes);
-
-  // Clean up expired tokens
-  await storage.deleteExpiredResetTokens();
-
-  // Get recent reset attempts
-  const user = await storage.getUser(userId);
-  if (!user) {
-    return { allowed: false, nextAllowedTime: undefined, remainingAttempts: 0 };
-  }
-
-  // Count recent password reset attempts (by checking passwordResetTokens table)
-  const recentAttempts = await db
-    .select()
-    .from(passwordResetTokens)
-    .where(
-      and(
-        eq(passwordResetTokens.userId, userId),
-        gte(passwordResetTokens.createdAt, cutoffTime),
-      ),
-    );
-
-  if (recentAttempts.length >= maxAttempts) {
-    const oldestAttempt = recentAttempts[0].createdAt;
-    const nextAllowedTime = new Date(oldestAttempt.getTime() + fifteenMinutes);
-
-    // Trigger anomaly detection incident
-    await createIncident({
-      ruleId: ANOMALY_RULES.PASSWORD_RESET_ABUSE.id,
-      severity: ANOMALY_RULES.PASSWORD_RESET_ABUSE.severity,
-      userId,
-      metadata: { attempts: recentAttempts.length, cutoffTime },
-    });
-
-    return {
-      allowed: false,
-      nextAllowedTime,
-      remainingAttempts: 0,
-    };
-  }
-
-  return {
-    allowed: true,
-    remainingAttempts: maxAttempts - recentAttempts.length,
-  };
-}
-
 // Environment validation for production - BLOCKING to prevent startup with missing config
 function validateEnvironment() {
   const required = ["DATABASE_URL", "SESSION_SECRET"];
@@ -1629,330 +1574,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     },
   );
 
-  // Password reset endpoints
-  app.post("/api/auth/forgot-password", async (req, res) => {
-    try {
-      await logAudit(
-        undefined,
-        "password_reset_request",
-        "user",
-        req.body.email,
-        req.ip,
-        req.headers["user-agent"],
-        { email: req.body.email },
-      );
-      // Validate request body
-      const schema = z.object({
-        email: z.string().email("Valid email is required").toLowerCase(),
-      });
-
-      const { email } = schema.parse(req.body);
-
-      // Look up user by email (do this once upfront)
-      const user = await storage.getUserByEmail(email);
-
-      // Rate limiting by user ID for security
-      if (user) {
-        const rateLimit = await checkPasswordResetRateLimit(user.id);
-
-        if (!rateLimit.allowed) {
-          const resetTimeMinutes = Math.ceil(
-            (rateLimit.nextAllowedTime!.getTime() - Date.now()) / (1000 * 60),
-          );
-          return res.status(429).json({
-            error: "Too many password reset attempts",
-            message: `Please try again in ${resetTimeMinutes} minutes`,
-            nextAllowedTime: rateLimit.nextAllowedTime,
-          });
-        }
-      }
-
-      // Check if email service is available
-      if (!emailService.isAvailable()) {
-        console.error("Password reset failed: Email service not configured");
-        // Still return success to prevent account enumeration
-        return res.json({
-          success: true,
-          message:
-            "If an account with that email exists, a password reset link has been sent.",
-        });
-      }
-
-      if (user && user.passwordHash) {
-        // Only allow password reset for users with email/password authentication
-        try {
-          // Clean up existing tokens for this user
-          await storage.deleteUserResetTokens(user.id);
-
-          // Generate secure token: tokenId.randomVerifier
-          const tokenId = randomBytes(16).toString("hex");
-          const verifier = randomBytes(32).toString("hex");
-          const fullToken = `${tokenId}.${verifier}`;
-
-          // Hash the verifier for secure storage using SHA-256 for exact lookup capability
-          const tokenHash = createHash("sha256").update(verifier).digest("hex");
-
-          // Token expires in 1 hour
-          const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
-
-          // Get client info
-          const clientIp = req.ip;
-          const userAgent = req.headers["user-agent"] || "";
-
-          // Store token in database
-          const tokenData = insertPasswordResetTokenSchema.parse({
-            userId: user.id,
-            tokenHash,
-            expiresAt,
-            requestIp: clientIp,
-            userAgent: userAgent.substring(0, 500), // Truncate to fit DB constraint
-          });
-
-          await storage.createPasswordResetToken(tokenData);
-
-          // Create reset URL with full token
-          const resetUrl = `${
-            req.get("Origin") || req.protocol + "://" + req.get("host")
-          }/reset-password?token=${encodeURIComponent(fullToken)}`;
-
-          // Send password reset email
-          const emailSent = await emailService.sendPasswordResetEmail(
-            user,
-            resetUrl,
-          );
-
-          if (!emailSent) {
-            console.error(
-              "Failed to send password reset email for user:",
-              user.email,
-            );
-          }
-        } catch (error) {
-          console.error(
-            "Error processing password reset for user:",
-            user.email,
-            error,
-          );
-          // Don't expose error details
-        }
-      }
-
-      // Always return success to prevent account enumeration
-      res.json({
-        success: true,
-        message:
-          "If an account with that email exists, a password reset link has been sent.",
-      });
-    } catch (error) {
-      console.error("Password reset request error:", error);
-      if (error instanceof z.ZodError) {
-        res.status(400).json({
-          error: "Invalid request",
-          message: "Valid email is required",
-          details: error.errors,
-        });
-      } else {
-        res.status(500).json({
-          error: "Internal server error",
-          message: "Unable to process password reset request",
-        });
-      }
-    }
-  });
-
-  app.get("/api/auth/reset-password/validate", async (req, res) => {
-    try {
-      const { token } = req.query;
-
-      if (!token || typeof token !== "string") {
-        return res.status(400).json({
-          valid: false,
-          error: "Token is required",
-        });
-      }
-
-      // Parse token format: tokenId.verifier
-      const tokenParts = token.split(".");
-      if (tokenParts.length !== 2) {
-        return res.status(400).json({
-          valid: false,
-          error: "Invalid token format",
-        });
-      }
-
-      const [tokenId, verifier] = tokenParts;
-
-      if (
-        !tokenId ||
-        !verifier ||
-        tokenId.length !== 32 ||
-        verifier.length !== 64 ||
-        !/^[a-f0-9]+$/.test(tokenId) ||
-        !/^[a-f0-9]+$/.test(verifier)
-      ) {
-        return res.status(400).json({
-          valid: false,
-          error: "Invalid token format",
-        });
-      }
-
-      try {
-        // Hash the verifier for database lookup using SHA-256
-        const verifierHash = createHash("sha256")
-          .update(verifier)
-          .digest("hex");
-
-        // Look up the token in the database
-        const tokenRecord =
-          await storage.getPasswordResetTokenByTokenHash(verifierHash);
-
-        // Return validation result with timing-safe response
-        const isValid = !!tokenRecord;
-
-        res.json({
-          valid: isValid,
-        });
-      } catch (error) {
-        console.error("Token validation error:", error);
-        res.json({
-          valid: false,
-          error: "Invalid token",
-        });
-      }
-    } catch (error) {
-      console.error("Reset password validation error:", error);
-      res.status(500).json({
-        valid: false,
-        error: "Unable to validate token",
-      });
-    }
-  });
-
-  app.post("/api/auth/reset-password", async (req, res) => {
-    try {
-      // Validate request body
-      const schema = z.object({
-        token: z.string().min(1, "Token is required"),
-        password: z
-          .string()
-          .min(1, PASSWORD_REQUIREMENTS)
-          .refine(isPasswordStrong, PASSWORD_REQUIREMENTS),
-      });
-
-      const { token, password } = schema.parse(req.body);
-
-      // Parse token format: tokenId.verifier
-      const tokenParts = token.split(".");
-      if (tokenParts.length !== 2) {
-        return res.status(400).json({
-          success: false,
-          error: "Invalid token format",
-        });
-      }
-
-      const [tokenId, verifier] = tokenParts;
-
-      if (
-        !tokenId ||
-        !verifier ||
-        tokenId.length !== 32 ||
-        verifier.length !== 64 ||
-        !/^[a-f0-9]+$/.test(tokenId) ||
-        !/^[a-f0-9]+$/.test(verifier)
-      ) {
-        return res.status(400).json({
-          success: false,
-          error: "Invalid token format",
-        });
-      }
-
-      try {
-        // Hash the verifier for database lookup using SHA-256
-        const verifierHash = createHash("sha256")
-          .update(verifier)
-          .digest("hex");
-
-        // Look up the token in the database
-        const tokenRecord =
-          await storage.getPasswordResetTokenByTokenHash(verifierHash);
-
-        if (!tokenRecord) {
-          return res.status(400).json({
-            success: false,
-            error: "Invalid or expired token",
-          });
-        }
-
-        // Get the user for this token
-        const user = await storage.getUser(tokenRecord.userId);
-
-        if (!user || !user.passwordHash) {
-          return res.status(400).json({
-            success: false,
-            error: "Invalid user account or authentication method",
-          });
-        }
-
-        // Hash the new password
-        const hashedPassword = await bcrypt.hash(password, 12);
-
-        // Update the user's password - we need to use the updateUser method or create a new one
-        // Since updateUser might not handle passwordHash, we'll need to use the upsertUser method
-        await storage.upsertUser({
-          id: user.id,
-          userType: user.userType,
-          email: user.email!,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          profileImageUrl: user.profileImageUrl,
-          passwordHash: hashedPassword,
-          emailVerified: user.emailVerified,
-          facebookId: user.facebookId,
-          facebookAccessToken: user.facebookAccessToken,
-          googleId: user.googleId,
-          googleAccessToken: user.googleAccessToken,
-          stripeCustomerId: user.stripeCustomerId,
-          stripeSubscriptionId: user.stripeSubscriptionId,
-          subscriptionBillingInterval: user.subscriptionBillingInterval,
-          birthYear: user.birthYear,
-          gender: user.gender,
-          postalCode: user.postalCode,
-          mustResetPassword: false, // Clear the flag after successful reset
-        });
-
-        // Mark the token as used
-        await storage.markPasswordResetTokenUsed(tokenRecord.id);
-
-        // Clean up any other reset tokens for this user for security
-        await storage.deleteUserResetTokens(user.id);
-
-        res.json({
-          success: true,
-          message: "Password has been successfully reset",
-        });
-      } catch (error) {
-        console.error("Password reset error:", error);
-        return res.status(400).json({
-          success: false,
-          error: "Invalid or expired token",
-        });
-      }
-    } catch (error) {
-      console.error("Reset password error:", error);
-      if (error instanceof z.ZodError) {
-        res.status(400).json({
-          success: false,
-          error: "Invalid request",
-          details: error.errors,
-        });
-      } else {
-        res.status(500).json({
-          success: false,
-          error: "Unable to reset password",
-        });
-      }
-    }
-  });
+  // Password reset endpoints are registered in setupUnifiedAuth (server/unifiedAuth.ts).
 
   // Endpoint for authenticated users to change their temporary password
   app.post(
@@ -5927,6 +5549,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         promoCode = "",
       } = req.body;
 
+      const testModeEnabled =
+        String(process.env.MEALSCOUT_TEST_MODE || "").toLowerCase() === "true" ||
+        process.env.NODE_ENV !== "production";
+      const normalizedPromoCode = String(promoCode || "").trim().toUpperCase();
+      const isAdminUser = ["admin", "super_admin", "staff"].includes(
+        String(user?.userType || ""),
+      );
+
       console.log("=== Subscription Initialize Request ===");
       console.log("User ID:", user?.id);
       console.log("User Email:", user?.email);
@@ -5966,7 +5596,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // TEST1: read-only preview; actual subscription created in /api/create-subscription
-      if (promoCode.toUpperCase() === "TEST1") {
+      if (normalizedPromoCode === "TEST1") {
+        if (!testModeEnabled || !isAdminUser) {
+          return res.status(403).json({ error: { message: "Not authorized" } });
+        }
         if (!user.email) {
           return res
             .status(400)
@@ -6021,6 +5654,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         applyCreditsCents,
       } = req.body; // boolean for multiple deals addon, billing interval
 
+      const testModeEnabled =
+        String(process.env.MEALSCOUT_TEST_MODE || "").toLowerCase() === "true" ||
+        process.env.NODE_ENV !== "production";
+      const normalizedPromoCode = String(promoCode || "").trim().toUpperCase();
+      const isAdminUser = ["admin", "super_admin", "staff"].includes(
+        String(user?.userType || ""),
+      );
+
       const hydratedUser = await ensureTrialForUser(user);
       if (isTrialActive(hydratedUser)) {
         return res.status(400).json({
@@ -6047,7 +5688,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Check for test promo code (charges $1 for testing)
-      if (promoCode && promoCode.toUpperCase() === "TEST1") {
+      if (normalizedPromoCode === "TEST1") {
+        if (!testModeEnabled || !isAdminUser) {
+          return res.status(403).json({
+            error: { message: "Not authorized" },
+          });
+        }
         if (!stripe) {
           return res.status(503).json({
             error: { message: "Payment service temporarily unavailable" },
@@ -7092,6 +6738,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     slotSummary: normalizedSlotTypes.join(", "),
                     totalCents: amountCents,
                   });
+                }
+
+                // Best-effort: mark one-time booking-fee promo as redeemed.
+                try {
+                  const promoCode = String(
+                    metadata.bookingPromoCode || "",
+                  ).trim().toUpperCase();
+                  if (promoCode === "BOOKFEE10") {
+                    const explicitUserId = String(metadata.userId || "").trim();
+                    const promoUserId = explicitUserId || owner?.id || "";
+                    if (promoUserId) {
+                      const userRecord = await storage.getUser(promoUserId);
+                      const settings = (userRecord?.accountSettings as any) || {};
+                      const promos = settings.promos || {};
+                      const bookingFee10 = promos.bookingFee10 || {};
+                      promos.bookingFee10 = {
+                        ...bookingFee10,
+                        redeemedAt: now.toISOString(),
+                        redeemedPaymentIntentId: paymentIntent.id,
+                        discountCents: Number(
+                          metadata.bookingPromoDiscountCents || 0,
+                        ),
+                        pendingPaymentIntentId: null,
+                        pendingAt: null,
+                      };
+                      await storage.updateUser(promoUserId, {
+                        accountSettings: { ...settings, promos } as any,
+                      });
+                    }
+                  }
+                } catch (promoError) {
+                  console.error(
+                    "[WEBHOOK] Error persisting booking promo redemption:",
+                    promoError,
+                  );
                 }
               } catch (emailError) {
                 console.error(

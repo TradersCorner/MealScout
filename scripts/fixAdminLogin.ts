@@ -3,8 +3,27 @@ import { users } from "../shared/schema.js";
 import { eq } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 
+function requireOneOfEnv(names: string[]): string {
+  for (const name of names) {
+    const value = process.env[name];
+    if (value && value.trim()) return value.trim();
+  }
+  throw new Error(`Missing required environment variable: ${names.join(" or ")}`);
+}
+
+function resolveAdminEmail(): string {
+  return requireOneOfEnv(["MEALSCOUT_ADMIN_EMAIL", "ADMIN_EMAIL"]);
+}
+
+function resolveAdminPassword(): string {
+  return requireOneOfEnv(["MEALSCOUT_ADMIN_PASSWORD", "ADMIN_PASSWORD"]);
+}
+
 async function checkAndFixAdmin() {
-  console.log("🔍 Checking admin account: info.mealscout@gmail.com\n");
+  const email = resolveAdminEmail();
+  const password = resolveAdminPassword();
+
+  console.log(`Checking admin account: ${email}\n`);
 
   try {
     // Check if admin exists
@@ -19,17 +38,16 @@ async function checkAndFixAdmin() {
         emailVerified: users.emailVerified,
       })
       .from(users)
-      .where(eq(users.email, "info.mealscout@gmail.com"));
+      .where(eq(users.email, email));
 
     if (adminUsers.length === 0) {
       console.log("❌ Admin account does not exist!");
       console.log("Creating admin account...\n");
 
-      // Create new admin with password "Roundtable4!"
-      const passwordHash = await bcrypt.hash("Roundtable4!", 12);
+      const passwordHash = await bcrypt.hash(password, 12);
 
       await db.insert(users).values({
-        email: "info.mealscout@gmail.com",
+        email,
         userType: "admin",
         firstName: "MealScout",
         lastName: "Admin",
@@ -39,8 +57,7 @@ async function checkAndFixAdmin() {
       });
 
       console.log("✅ Admin account created successfully!");
-      console.log("   Email: info.mealscout@gmail.com");
-      console.log("   Password: Roundtable4!");
+      console.log(`   Email: ${email}`);
     } else {
       const admin = adminUsers[0];
       console.log("✅ Admin account found:");
@@ -55,10 +72,10 @@ async function checkAndFixAdmin() {
       if (!admin.hasPassword) {
         console.log("⚠️  No password hash found. Setting password...\n");
       } else {
-        console.log("🔄 Resetting password to: Roundtable4!\n");
+        console.log("🔄 Resetting password...\n");
       }
 
-      const passwordHash = await bcrypt.hash("Roundtable4!", 12);
+      const passwordHash = await bcrypt.hash(password, 12);
 
       await db
         .update(users)
@@ -70,8 +87,7 @@ async function checkAndFixAdmin() {
         .where(eq(users.id, admin.id));
 
       console.log("✅ Password updated successfully!");
-      console.log("   Email: info.mealscout@gmail.com");
-      console.log("   Password: Roundtable4!");
+      console.log(`   Email: ${email}`);
     }
 
     console.log("\n✅ Admin login should now work at /admin-login");

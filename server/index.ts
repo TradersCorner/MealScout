@@ -243,16 +243,25 @@ app.use((req, res, next) => {
     return next();
   }
 
-  const origin = (req.headers.origin || req.headers.referer) as
+  const originHeader = (req.headers.origin || req.headers.referer) as
     | string
     | undefined;
-  if (!origin) {
+  if (!originHeader) {
     return res.status(403).json({ message: "Invalid origin" });
   }
 
-  const isAllowed = allowedOrigins.some((allowed) =>
-    origin.startsWith(allowed),
-  );
+  let requestOrigin: string | null = null;
+  try {
+    requestOrigin = new URL(originHeader).origin;
+  } catch {
+    requestOrigin = null;
+  }
+
+  if (!requestOrigin) {
+    return res.status(403).json({ message: "Invalid origin" });
+  }
+
+  const isAllowed = allowedOrigins.includes(requestOrigin);
   if (!isAllowed) {
     return res.status(403).json({ message: "Invalid origin" });
   }

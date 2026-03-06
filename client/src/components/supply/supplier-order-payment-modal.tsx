@@ -143,6 +143,7 @@ export function SupplierOrderPaymentModal(props: {
   const [buyerDiscountCents, setBuyerDiscountCents] = useState<number>(0);
   const [paymentMethod, setPaymentMethod] = useState<"ach" | "card">("ach");
   const [startError, setStartError] = useState<string | null>(null);
+  const [promoCode, setPromoCode] = useState("");
   const [feeBreakdown, setFeeBreakdown] = useState<{
     supplierGrossCents: number;
     platformBaseFeeCents: number;
@@ -156,6 +157,7 @@ export function SupplierOrderPaymentModal(props: {
       setChargeAmountCents(0);
       setBuyerDiscountCents(0);
       setStartError(null);
+      setPromoCode("");
       setFeeBreakdown(null);
       return;
     }
@@ -182,7 +184,10 @@ export function SupplierOrderPaymentModal(props: {
           "Content-Type": "application/json",
           "Idempotency-Key": createIdempotencyKey(),
         },
-        body: JSON.stringify({ paymentMethod: method }),
+        body: JSON.stringify({
+          paymentMethod: method,
+          promoCode: promoCode.trim() ? promoCode.trim() : undefined,
+        }),
       });
       const data = await res.json().catch(() => null);
       if (res.status === 409) {
@@ -260,6 +265,23 @@ export function SupplierOrderPaymentModal(props: {
                 Select your payment method. For large payments, bank transfer is usually cheapest.
               </div>
             </div>
+
+            {(import.meta.env.DEV ||
+              String(import.meta.env.VITE_SHOW_TEST_PROMOS || "").toLowerCase() ===
+                "true") && (
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-[color:var(--text-muted)]">
+                  Promo code (testing)
+                </label>
+                <input
+                  type="text"
+                  value={promoCode}
+                  onChange={(e) => setPromoCode(e.target.value)}
+                  className="w-full rounded-md border border-[var(--border-subtle)] px-3 py-2 text-sm"
+                  placeholder="e.g. TEST1"
+                />
+              </div>
+            )}
 
             {startError ? (
               <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-sm">

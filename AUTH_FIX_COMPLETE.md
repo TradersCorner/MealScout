@@ -30,7 +30,7 @@ req.login(user, (err) => {
 
 ## What This Fixes
 
-✅ **Admin Login** - info.mealscout@gmail.com can now log in at /admin-login
+✅ **Admin Login** - configured admin account can now log in at /admin-login
 ✅ **All User Login** - Email/password login works for all user types
 ✅ **Session Persistence** - Users stay logged in across page reloads
 ✅ **User Data** - User info is properly loaded and maintained
@@ -49,8 +49,8 @@ req.login(user, (err) => {
 ### Test Admin Login:
 
 1. Go to `/admin-login`
-2. Email: `info.mealscout@gmail.com`
-3. Password: `Roundtable4!` (after running fixAdminLogin.ts script)
+2. Email: use `MEALSCOUT_ADMIN_EMAIL` (or `ADMIN_EMAIL`)
+3. Password: use `MEALSCOUT_ADMIN_PASSWORD` (or `ADMIN_PASSWORD`)
 4. Should redirect to `/admin/dashboard`
 
 ### Test Customer Login:
@@ -75,10 +75,10 @@ To reset admin password, create `.env` file with DATABASE_URL and run:
 npx tsx scripts/fixAdminLogin.ts
 ```
 
-This will:
+This will (based on env vars):
 
-- Find or create admin account for info.mealscout@gmail.com
-- Set password to `Roundtable4!`
+- Find or create the configured admin account
+- Set password from `MEALSCOUT_ADMIN_PASSWORD` / `ADMIN_PASSWORD`
 - Ensure userType is `admin`
 - Mark email as verified
 

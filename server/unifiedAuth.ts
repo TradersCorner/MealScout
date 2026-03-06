@@ -1220,10 +1220,7 @@ export async function setupUnifiedAuth(app: Express) {
     try {
       const { email, password } = req.body;
 
-      console.log(`🔐 Login attempt for: ${email}`);
-
       if (!email || !password) {
-        console.log("❌ Missing email or password");
         return res
           .status(400)
           .json({ error: "Email and password are required" });
@@ -1231,26 +1228,16 @@ export async function setupUnifiedAuth(app: Express) {
 
       const user = await storage.getUserByEmail(email);
       if (!user) {
-        console.log(`❌ User not found: ${email}`);
         return res.status(401).json({ error: "Invalid email or password" });
       }
 
-      console.log(
-        `✅ User found: ${user.id}, userType: ${
-          user.userType
-        }, hasPassword: ${!!user.passwordHash}`,
-      );
-
       if (!user.passwordHash) {
-        console.log("❌ User has no password hash");
         return res.status(401).json({ error: "Invalid email or password" });
       }
 
       const passwordMatch = await bcrypt.compare(password, user.passwordHash);
-      console.log(`🔑 Password match: ${passwordMatch}`);
 
       if (!passwordMatch) {
-        console.log("❌ Password does not match");
         return res.status(401).json({ error: "Invalid email or password" });
       }
 
@@ -1262,7 +1249,6 @@ export async function setupUnifiedAuth(app: Express) {
       }
 
       // Use req.login to properly establish the session
-      console.log("🔄 Attempting to establish session...");
       req.login(user, (err) => {
         if (err) {
           console.error("❌ Session login error:", err);
@@ -1274,7 +1260,6 @@ export async function setupUnifiedAuth(app: Express) {
               .status(500)
               .json({ error: "Failed to persist session" });
           }
-          console.log(`✅ Login successful for: ${email}`);
           res.json({ user: sanitizeUser(user), message: "Login successful" });
         });
       });
@@ -1488,12 +1473,29 @@ export async function setupUnifiedAuth(app: Express) {
         });
       }
 
-      // Generate secure token
-      const resetToken = crypto.randomBytes(32).toString("hex");
-      const tokenHash = crypto
-        .createHash("sha256")
-        .update(resetToken)
-        .digest("hex");
+      // Only allow password reset for users with email/password authentication.
+      if (!user.passwordHash) {
+        return res.json({
+          message:
+            "If an account with that email exists, a password reset link has been sent.",
+        });
+      }
+
+      // If email is not configured, still return success to prevent enumeration.
+      if (!emailService.isAvailable()) {
+        return res.json({
+          message:
+            "If an account with that email exists, a password reset link has been sent.",
+        });
+      }
+
+      // Generate secure token: tokenId.verifier
+      const tokenId = crypto.randomBytes(16).toString("hex");
+      const verifier = crypto.randomBytes(32).toString("hex");
+      const resetToken = `${tokenId}.${verifier}`;
+
+      // Store only a hash of the verifier for lookup (not the full token).
+      const tokenHash = crypto.createHash("sha256").update(verifier).digest("hex");
       const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
 
       // Clean up existing tokens for this user
@@ -1509,8 +1511,10 @@ export async function setupUnifiedAuth(app: Express) {
       });
 
       // Generate reset URL
-      const baseUrl = process.env.PUBLIC_BASE_URL || "http://localhost:5000";
-      const resetUrl = `${baseUrl}/reset-password?token=${resetToken}`;
+      const baseUrl = getBaseUrl();
+      const resetUrl = `${baseUrl}/reset-password?token=${encodeURIComponent(
+        resetToken,
+      )}`;
 
       // Send reset email
       await emailService.sendPasswordResetEmail(user, resetUrl);
@@ -1536,8 +1540,12 @@ export async function setupUnifiedAuth(app: Express) {
         return res.json({ valid: false, error: "Invalid token" });
       }
 
-      // Hash the token to compare with stored hash
-      const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+      // Prefer tokenId.verifier, but accept legacy tokens that were hashed as a whole.
+      const tokenParts = token.split(".");
+      const tokenHash =
+        tokenParts.length === 2 && tokenParts[1]
+          ? crypto.createHash("sha256").update(tokenParts[1]).digest("hex")
+          : crypto.createHash("sha256").update(token).digest("hex");
 
       // Find token in database
       const resetToken =
@@ -1577,8 +1585,12 @@ export async function setupUnifiedAuth(app: Express) {
         return res.status(400).json({ error: PASSWORD_REQUIREMENTS });
       }
 
-      // Hash the token to compare with stored hash
-      const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+      // Prefer tokenId.verifier, but accept legacy tokens that were hashed as a whole.
+      const tokenParts = String(token).split(".");
+      const tokenHash =
+        tokenParts.length === 2 && tokenParts[1]
+          ? crypto.createHash("sha256").update(tokenParts[1]).digest("hex")
+          : crypto.createHash("sha256").update(String(token)).digest("hex");
 
       // Find and validate token
       const resetToken =
@@ -1604,8 +1616,8 @@ export async function setupUnifiedAuth(app: Express) {
       // Hash new password
       const passwordHash = await bcrypt.hash(password, 12);
 
-      // Update user password
-      await storage.updateUser(user.id, { passwordHash });
+      // Update user password (and clear temporary-password flag if present)
+      await storage.updateUserPassword(user.id, passwordHash, false);
 
       // Mark token as used
       await storage.markPasswordResetTokenUsed(resetToken.id);

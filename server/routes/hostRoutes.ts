@@ -2298,6 +2298,15 @@ export function registerHostRoutes(app: Express) {
     isAuthenticated,
     async (req: any, res) => {
       try {
+        const testModeEnabled =
+          String(process.env.MEALSCOUT_TEST_MODE || "").toLowerCase() ===
+            "true" || process.env.NODE_ENV !== "production";
+        const isAdminUser = ["admin", "super_admin", "staff"].includes(
+          String(req.user?.userType || ""),
+        );
+        const bookingFeePromoEnabled =
+          String(process.env.BOOKFEE10_ENABLED || "").toLowerCase() === "true" ||
+          process.env.NODE_ENV !== "production";
         const bypassStripe =
           String(process.env.MEALSCOUT_BYPASS_STRIPE || "").toLowerCase() ===
             "true" ||
@@ -2314,11 +2323,24 @@ export function registerHostRoutes(app: Express) {
           slotTypes,
           selectedDates,
           applyCreditsCents,
+          promoCode,
         } = req.body;
         const userId = req.user.id;
 
         if (!truckId) {
           return res.status(400).json({ message: "Truck ID required" });
+        }
+
+        const normalizedPromoCode = String(promoCode || "").trim().toUpperCase();
+        const bookingPromoCodes = new Set(["TEST1", "BOOKFEE10"]);
+        if (normalizedPromoCode && !bookingPromoCodes.has(normalizedPromoCode)) {
+          return res.status(400).json({ message: "Invalid promo code" });
+        }
+        if (normalizedPromoCode === "TEST1" && (!testModeEnabled || !isAdminUser)) {
+          return res.status(403).json({ message: "Not authorized" });
+        }
+        if (normalizedPromoCode === "BOOKFEE10" && !bookingFeePromoEnabled) {
+          return res.status(400).json({ message: "Promo code is not available" });
         }
         const allowedSlotTypes = new Set<string>(
           PARKING_PASS_SLOT_TYPES as readonly string[],
@@ -2705,10 +2727,31 @@ export function registerHostRoutes(app: Express) {
           (sum, item) => sum + item.price,
           0,
         );
-        const platformFeeCents = 1000 * bookingDays; // $10/day, no cap
+        let platformFeeCents = 1000 * bookingDays; // $10/day, no cap
+        let adjustedHostPriceCents = hostPriceCents;
+        let promoDiscountCents = 0;
+
+        if (normalizedPromoCode === "TEST1") {
+          // Admin/testing-only: force a $1 total booking regardless of slot price.
+          // This is intentionally not available in production unless MEALSCOUT_TEST_MODE is enabled.
+          adjustedHostPriceCents = 0;
+          platformFeeCents = 100;
+        } else if (normalizedPromoCode === "BOOKFEE10") {
+          const userRecord = await storage.getUser(userId);
+          const bookingPromoState = (userRecord?.accountSettings as any)?.promos
+            ?.bookingFee10;
+          if (bookingPromoState?.redeemedAt) {
+            return res.status(400).json({ message: "Promo code already used" });
+          }
+          if (bookingPromoState?.pendingPaymentIntentId) {
+            return res.status(400).json({ message: "Promo code already pending" });
+          }
+          promoDiscountCents = Math.min(1000, platformFeeCents);
+        }
 
         let creditAppliedCents = 0;
-        const requestedCreditCents = Number(applyCreditsCents || 0);
+        const requestedCreditCents =
+          normalizedPromoCode === "TEST1" ? 0 : Number(applyCreditsCents || 0);
         if (requestedCreditCents > 0) {
           const { getUserCreditBalance } = await import("../creditService");
           const creditBalance = await getUserCreditBalance(userId);
@@ -2721,10 +2764,10 @@ export function registerHostRoutes(app: Express) {
         }
 
         const adjustedPlatformFeeCents = Math.max(
-          platformFeeCents - creditAppliedCents,
+          platformFeeCents - creditAppliedCents - promoDiscountCents,
           0,
         );
-        const totalCents = hostPriceCents + adjustedPlatformFeeCents;
+        const totalCents = adjustedHostPriceCents + adjustedPlatformFeeCents;
 
         const splitAmount = (total: number, days: number) => {
           if (days <= 1) return [total];
@@ -2735,7 +2778,7 @@ export function registerHostRoutes(app: Express) {
           );
         };
 
-        const hostSplit = splitAmount(hostPriceCents, bookingDays);
+        const hostSplit = splitAmount(adjustedHostPriceCents, bookingDays);
         const platformSplit = splitAmount(
           adjustedPlatformFeeCents,
           bookingDays,
@@ -2845,14 +2888,37 @@ export function registerHostRoutes(app: Express) {
               .where(inArray(eventBookings.id, holdIds));
           }
 
+          if (normalizedPromoCode === "BOOKFEE10") {
+            try {
+              const userRecord = await storage.getUser(userId);
+              const existingSettings = (userRecord?.accountSettings as any) || {};
+              const promos = existingSettings.promos || {};
+              promos.bookingFee10 = {
+                ...(promos.bookingFee10 || {}),
+                redeemedAt: now.toISOString(),
+                redeemedPaymentIntentId: "bypass",
+                discountCents: promoDiscountCents,
+                pendingPaymentIntentId: null,
+                pendingAt: null,
+              };
+              await storage.updateUser(userId, {
+                accountSettings: { ...existingSettings, promos } as any,
+              });
+            } catch {
+              // ignore
+            }
+          }
+
           return res.json({
             bypassed: true,
             bookingIds: holdIds,
             totalCents,
             breakdown: {
-              hostPrice: hostPriceCents,
+              hostPrice: adjustedHostPriceCents,
               platformFee: adjustedPlatformFeeCents,
               creditsApplied: creditAppliedCents,
+              promoDiscount: promoDiscountCents,
+              promoCode: normalizedPromoCode || undefined,
             },
           });
         }
@@ -2874,13 +2940,16 @@ export function registerHostRoutes(app: Express) {
               passId: event.id,
               hostId: host.id,
               truckId,
+              userId,
               slotTypes: selectedSlotTypes.join(","),
               bookingDays: bookingDays.toString(),
               bookingStartDate: sortedDateKeys[0],
-              hostPriceCents: hostPriceCents.toString(),
+              hostPriceCents: adjustedHostPriceCents.toString(),
               platformFeeCents: adjustedPlatformFeeCents.toString(),
               totalCents: totalCents.toString(),
               creditAppliedCents: creditAppliedCents.toString(),
+              bookingPromoCode: normalizedPromoCode || "",
+              bookingPromoDiscountCents: promoDiscountCents.toString(),
             },
           };
 
@@ -2935,11 +3004,35 @@ export function registerHostRoutes(app: Express) {
           paymentIntentId: paymentIntent.id,
           totalCents,
           breakdown: {
-            hostPrice: hostPriceCents,
+            hostPrice: adjustedHostPriceCents,
             platformFee: adjustedPlatformFeeCents,
             creditsApplied: creditAppliedCents,
+            promoDiscount: promoDiscountCents,
+            promoCode: normalizedPromoCode || undefined,
           },
         });
+
+        if (normalizedPromoCode === "BOOKFEE10") {
+          try {
+            const userRecord = await storage.getUser(userId);
+            const existingSettings = (userRecord?.accountSettings as any) || {};
+            const promos = existingSettings.promos || {};
+            promos.bookingFee10 = {
+              ...(promos.bookingFee10 || {}),
+              pendingPaymentIntentId: paymentIntent.id,
+              pendingAt: new Date().toISOString(),
+              discountCents: promoDiscountCents,
+            };
+            await storage.updateUser(userId, {
+              accountSettings: { ...existingSettings, promos } as any,
+            });
+          } catch (error) {
+            console.warn(
+              "Failed to persist promo reservation (continuing):",
+              error,
+            );
+          }
+        }
       } catch (error: any) {
         console.error("Error creating booking:", error);
         res.status(500).json({ message: "Failed to create booking" });

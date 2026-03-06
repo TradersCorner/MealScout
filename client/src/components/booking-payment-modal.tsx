@@ -243,6 +243,7 @@ export function BookingPaymentModal({
   } | null>(null);
   const [creditBalance, setCreditBalance] = useState<number | null>(null);
   const [creditsToApply, setCreditsToApply] = useState("");
+  const [promoCode, setPromoCode] = useState("");
   const cancelOnInitiateRef = useRef(false);
   const stage: "review" | "pay" = clientSecret ? "pay" : "review";
 
@@ -301,6 +302,7 @@ export function BookingPaymentModal({
           slotTypes,
           selectedDates,
           applyCreditsCents: creditCents > 0 ? creditCents : undefined,
+          promoCode: promoCode.trim() ? promoCode.trim() : undefined,
         }),
       });
 
@@ -341,6 +343,7 @@ export function BookingPaymentModal({
     setPaymentIntentId(null);
     setBookingData(null);
     setCreditsToApply("");
+    setPromoCode("");
   };
 
   const handleClose = () => {
@@ -460,6 +463,23 @@ export function BookingPaymentModal({
                 Your spot is held briefly while you check out. Closing this window releases the hold.
               </p>
             </div>
+
+            {(import.meta.env.DEV ||
+              String(import.meta.env.VITE_SHOW_TEST_PROMOS || "").toLowerCase() ===
+                "true") && (
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-[color:var(--text-muted)]">
+                  Promo code (testing)
+                </label>
+                <input
+                  type="text"
+                  value={promoCode}
+                  onChange={(e) => setPromoCode(e.target.value)}
+                  className="w-full rounded-md border border-[var(--border-subtle)] px-3 py-2 text-sm"
+                  placeholder="e.g. BOOKFEE10 or TEST1"
+                />
+              </div>
+            )}
 
             <div className="flex gap-2">
               <Button

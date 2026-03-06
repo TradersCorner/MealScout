@@ -1,9 +1,25 @@
 import { storage } from "./server/storage.js";
 import bcrypt from "bcryptjs";
 
+function requireOneOfEnv(names: string[]): string {
+  for (const name of names) {
+    const value = process.env[name];
+    if (value && value.trim()) return value.trim();
+  }
+  throw new Error(`Missing required environment variable: ${names.join(" or ")}`);
+}
+
+function resolveAdminEmail(): string {
+  return requireOneOfEnv(["MEALSCOUT_ADMIN_EMAIL", "ADMIN_EMAIL"]);
+}
+
+function resolveAdminPassword(): string {
+  return requireOneOfEnv(["MEALSCOUT_ADMIN_PASSWORD", "ADMIN_PASSWORD"]);
+}
+
 async function createAdmin() {
-  const email = "info.mealscout@gmail.com";
-  const password = "Roundtable4!";
+  const email = resolveAdminEmail();
+  const password = resolveAdminPassword();
   
   console.log("Creating admin account...");
   
@@ -38,7 +54,6 @@ async function createAdmin() {
     await storage.updateUserType(result.userId, 'admin');
     
     console.log(`✅ Admin account created: ${email}`);
-    console.log(`   Password: ${password}`);
     console.log(`   User ID: ${result.userId}`);
     
     process.exit(0);

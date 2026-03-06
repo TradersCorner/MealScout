@@ -866,7 +866,7 @@ export default function Subscribe() {
                   Change your billing frequency or apply a promo code
                 </p>
                 <p className="text-xs text-[color:var(--accent-text)] font-medium mb-4">
-                  Tip: Use code "BETA" for free access or "TEST1" for $1 testing
+                  Tip: If you received a promo code from MealScout, enter it below.
                 </p>
                 <Button
                   onClick={showNewSubscription}

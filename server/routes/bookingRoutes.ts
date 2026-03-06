@@ -261,6 +261,26 @@ export function registerBookingRoutes(app: Express) {
           })
           .where(inArray(eventBookings.id, holdIds));
 
+        // Best-effort: release any pending booking-fee promo reservation tied to this PaymentIntent.
+        try {
+          const userRecord = await storage.getUser(req.user.id);
+          const settings = (userRecord?.accountSettings as any) || {};
+          const promos = settings.promos || {};
+          const bookingFee10 = promos.bookingFee10 || {};
+          if (bookingFee10.pendingPaymentIntentId === paymentIntentId) {
+            promos.bookingFee10 = {
+              ...bookingFee10,
+              pendingPaymentIntentId: null,
+              pendingAt: null,
+            };
+            await storage.updateUser(req.user.id, {
+              accountSettings: { ...settings, promos } as any,
+            });
+          }
+        } catch {
+          // ignore
+        }
+
         res.json({ ok: true });
       } catch (error) {
         console.error("Error cancelling checkout:", error);

@@ -3511,8 +3511,27 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
 
       const methodSchema = z.object({
         paymentMethod: z.enum(["ach", "card"]).optional(),
+        promoCode: z.string().max(64).optional(),
       });
       const parsed = methodSchema.parse(req.body || {});
+
+      const testModeEnabled =
+        String(process.env.MEALSCOUT_TEST_MODE || "").toLowerCase() === "true" ||
+        process.env.NODE_ENV !== "production";
+      const normalizedPromoCode = String(parsed.promoCode || "")
+        .trim()
+        .toUpperCase();
+      const isAdminUser = ["admin", "super_admin", "staff"].includes(
+        String(req.user?.userType || ""),
+      );
+      if (normalizedPromoCode) {
+        if (normalizedPromoCode !== "TEST1") {
+          return res.status(400).json({ message: "Invalid promo code" });
+        }
+        if (!testModeEnabled || !isAdminUser) {
+          return res.status(403).json({ message: "Not authorized" });
+        }
+      }
 
       const configuredDefaultThresholdRaw = String(
         process.env.SUPPLIER_ORDER_ACH_DEFAULT_THRESHOLD_CENTS || "",
@@ -3531,7 +3550,9 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
 
       const defaultMethod =
         amountCents >= thresholdDefaultCents && allowAch ? "ach" : allowCard ? "card" : allowAch ? "ach" : null;
-      const paymentMethod = parsed.paymentMethod ?? defaultMethod;
+      const paymentMethod = normalizedPromoCode === "TEST1"
+        ? "card"
+        : parsed.paymentMethod ?? defaultMethod;
       if (!paymentMethod) {
         return res.status(400).json({ message: "No payment methods are enabled for this supplier." });
       }
@@ -3549,9 +3570,15 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
           ? Math.min(configuredDiscountCents, applicationFeeBaseCents)
           : 0;
 
-      const applicationFeeCents = Math.max(0, applicationFeeBaseCents - discountCents);
-      const chargeAmountCents = Math.max(0, amountCents - discountCents);
-      const transferAmountCents = Math.max(0, transferAmountBaseCents);
+      let applicationFeeCents = Math.max(0, applicationFeeBaseCents - discountCents);
+      let chargeAmountCents = Math.max(0, amountCents - discountCents);
+      let transferAmountCents = Math.max(0, transferAmountBaseCents);
+
+      if (normalizedPromoCode === "TEST1") {
+        applicationFeeCents = 0;
+        transferAmountCents = 0;
+        chargeAmountCents = 100;
+      }
 
       const existingIntentId = String((order as any).stripePaymentIntentId || "").trim();
       if (existingIntentId) {
@@ -3606,12 +3633,18 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
           paymentType: "supplier_order",
           paymentMethod: paymentMethod,
           buyerDiscountCents: String(discountCents),
+          promoCode: normalizedPromoCode || "",
         },
-        application_fee_amount: applicationFeeCents > 0 ? applicationFeeCents : undefined,
-        transfer_data: {
-          destination,
-          amount: transferAmountCents,
-        },
+        ...(normalizedPromoCode === "TEST1"
+          ? {}
+          : {
+              application_fee_amount:
+                applicationFeeCents > 0 ? applicationFeeCents : undefined,
+              transfer_data: {
+                destination,
+                amount: transferAmountCents,
+              },
+            }),
       };
 
       const intent = await stripe.paymentIntents.create(intentParams);
@@ -3636,6 +3669,8 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
         chargeAmountCents,
         buyerDiscountCents: discountCents,
         paymentMethod,
+        promoCode: normalizedPromoCode || undefined,
+        testPricing: normalizedPromoCode === "TEST1",
         breakdown: {
           supplierGrossCents,
           platformBaseFeeCents: feeModel.platformBaseFeeCents,

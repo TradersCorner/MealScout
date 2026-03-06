@@ -1,9 +1,69 @@
 #!/usr/bin/env node
 
 import { spawnSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 
 const truthy = (value) =>
   ["1", "true", "yes", "on"].includes(String(value || "").trim().toLowerCase());
+
+const readTextFileOrNull = (path) => {
+  try {
+    return readFileSync(path, "utf8");
+  } catch {
+    return null;
+  }
+};
+
+const runRepoHygieneChecks = () => {
+  const failures = [];
+
+  const trackedTmpServer = spawnSync("git", ["ls-files", ".tmp-server"], {
+    shell: process.platform === "win32",
+    encoding: "utf8",
+  });
+
+  if (trackedTmpServer.status === 0 && String(trackedTmpServer.stdout || "").trim()) {
+    failures.push("Git is tracking `.tmp-server/**` (build artifacts must not be committed).");
+  }
+
+  const gitignore = readTextFileOrNull(".gitignore") || "";
+  if (!gitignore.includes(".tmp-server/")) {
+    failures.push("`.gitignore` is missing an ignore rule for `.tmp-server/`.");
+  }
+
+  const prodExample = readTextFileOrNull(".env.production.example");
+  if (prodExample) {
+    const lines = prodExample
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter((line) => line && !line.startsWith("#"));
+
+    const dbLine = lines.find((line) => line.startsWith("DATABASE_URL="));
+    if (dbLine) {
+      const value = dbLine.slice("DATABASE_URL=".length).trim();
+      const looksPlaceholder =
+        value.includes("<") || value.includes("USER:PASSWORD@HOST");
+      if (!looksPlaceholder) {
+        failures.push(
+          "`.env.production.example` contains a non-placeholder `DATABASE_URL` value.",
+        );
+      }
+    }
+
+    const tokenLine = lines.find((line) => line.startsWith("TRADESCOUT_API_TOKEN="));
+    if (tokenLine) {
+      const value = tokenLine.slice("TRADESCOUT_API_TOKEN=".length).trim();
+      const looksPlaceholder = value.startsWith("<") || value.startsWith("your_");
+      if (!looksPlaceholder) {
+        failures.push(
+          "`.env.production.example` contains a non-placeholder `TRADESCOUT_API_TOKEN` value.",
+        );
+      }
+    }
+  }
+
+  return failures;
+};
 
 const allChecks = [
   {
@@ -143,6 +203,16 @@ const main = () => {
   console.log("=".repeat(66));
   console.log("MealScout Security Verification Checklist");
   console.log("=".repeat(66));
+
+  const repoFailures = runRepoHygieneChecks();
+  if (repoFailures.length) {
+    console.log("\nRepo hygiene failures:");
+    for (const failure of repoFailures) {
+      console.log(`- ${failure}`);
+    }
+    console.log("\nFAIL Security verification checklist failed (repo hygiene).");
+    process.exit(1);
+  }
 
   if (skipRbac) {
     console.log("RBAC check is skipped via CHECKLIST_SKIP_RBAC.");

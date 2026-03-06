@@ -1769,6 +1769,8 @@ function StaffManagementTab() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [selectedUserId, setSelectedUserId] = useState("");
+  const [staffSearch, setStaffSearch] = useState("");
+  const [eligibleUserSearch, setEligibleUserSearch] = useState("");
 
   const { data: staffMembers = [], isLoading: loadingStaff } = useQuery<any[]>({
     queryKey: ["/api/admin/staff"],
@@ -1833,18 +1835,63 @@ function StaffManagementTab() {
     (staff) => staff.userType !== "super_admin",
   );
 
+  const filteredStaffMembers = useMemo(() => {
+    const search = staffSearch.trim().toLowerCase();
+    if (!search) return displayStaffMembers;
+    return displayStaffMembers.filter((staff: any) => {
+      const firstName = String(staff?.firstName || "").toLowerCase();
+      const lastName = String(staff?.lastName || "").toLowerCase();
+      const fullName = `${firstName} ${lastName}`.trim();
+      const email = String(staff?.email || "").toLowerCase();
+      return (
+        firstName.includes(search) ||
+        lastName.includes(search) ||
+        fullName.includes(search) ||
+        email.includes(search)
+      );
+    });
+  }, [displayStaffMembers, staffSearch]);
+
+  const filteredEligibleUsers = useMemo(() => {
+    const search = eligibleUserSearch.trim().toLowerCase();
+    if (!search) return eligibleUsers;
+    return eligibleUsers.filter((user: any) => {
+      const firstName = String(user?.firstName || "").toLowerCase();
+      const lastName = String(user?.lastName || "").toLowerCase();
+      const fullName = `${firstName} ${lastName}`.trim();
+      const email = String(user?.email || "").toLowerCase();
+      const userType = String(user?.userType || "").toLowerCase();
+      return (
+        firstName.includes(search) ||
+        lastName.includes(search) ||
+        fullName.includes(search) ||
+        email.includes(search) ||
+        userType.includes(search)
+      );
+    });
+  }, [eligibleUsers, eligibleUserSearch]);
+
   return (
     <div className="space-y-6">
       {/* Current Staff */}
       <div>
         <h3 className="font-semibold mb-3">Current Staff Members</h3>
+        <input
+          type="text"
+          className="w-full px-3 py-2 border rounded-md bg-background mb-3"
+          placeholder="Search current staff by name or email..."
+          value={staffSearch}
+          onChange={(e) => setStaffSearch(e.target.value)}
+        />
         {loadingStaff ? (
           <p className="text-muted-foreground">Loading...</p>
         ) : displayStaffMembers.length === 0 ? (
           <p className="text-muted-foreground">No staff members yet.</p>
+        ) : filteredStaffMembers.length === 0 ? (
+          <p className="text-muted-foreground">No matching staff members.</p>
         ) : (
           <div className="space-y-2">
-            {displayStaffMembers.map((staff) => (
+            {filteredStaffMembers.map((staff) => (
               <div
                 key={staff.id}
                 className="flex items-center justify-between p-3 border rounded-lg"
@@ -1881,6 +1928,13 @@ function StaffManagementTab() {
       {/* Promote User */}
       <div>
         <h3 className="font-semibold mb-3">Promote User to Staff</h3>
+        <input
+          type="text"
+          className="w-full px-3 py-2 border rounded-md bg-background mb-3"
+          placeholder="Search users by name, email, or role..."
+          value={eligibleUserSearch}
+          onChange={(e) => setEligibleUserSearch(e.target.value)}
+        />
         <div className="flex gap-3">
           <select
             className="flex-1 px-3 py-2 border rounded-md bg-background"
@@ -1888,7 +1942,7 @@ function StaffManagementTab() {
             onChange={(e) => setSelectedUserId(e.target.value)}
           >
             <option value="">Select user...</option>
-            {eligibleUsers.map((user) => (
+            {filteredEligibleUsers.map((user) => (
               <option key={user.id} value={user.id}>
                 {user.email} ({user.firstName} {user.lastName}) -{" "}
                 {user.userType}

@@ -1182,6 +1182,15 @@ export async function setupUnifiedAuth(app: Express) {
         return res.status(401).json({ error: "Invalid email or password" });
       }
 
+      if (!user.passwordHash && user.googleId) {
+        return res.status(409).json({
+          error: "This account uses Google sign-in. Continue with Google.",
+          code: "google_auth_required",
+          provider: "google",
+          authUrl: "/api/auth/google/restaurant",
+        });
+      }
+
       if (
         !user.passwordHash ||
         !(await bcrypt.compare(password, user.passwordHash))
@@ -1229,6 +1238,15 @@ export async function setupUnifiedAuth(app: Express) {
       const user = await storage.getUserByEmail(email);
       if (!user) {
         return res.status(401).json({ error: "Invalid email or password" });
+      }
+
+      if (!user.passwordHash && user.googleId) {
+        return res.status(409).json({
+          error: "This account uses Google sign-in. Continue with Google.",
+          code: "google_auth_required",
+          provider: "google",
+          authUrl: "/api/auth/google/customer",
+        });
       }
 
       if (!user.passwordHash) {

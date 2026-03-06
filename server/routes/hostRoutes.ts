@@ -2301,6 +2301,9 @@ export function registerHostRoutes(app: Express) {
         const testModeEnabled =
           String(process.env.MEALSCOUT_TEST_MODE || "").toLowerCase() ===
             "true" || process.env.NODE_ENV !== "production";
+        const testPromosRequireAdmin =
+          String(process.env.MEALSCOUT_TEST_PROMOS_REQUIRE_ADMIN || "").toLowerCase() ===
+          "true";
         const isAdminUser = ["admin", "super_admin", "staff"].includes(
           String(req.user?.userType || ""),
         );
@@ -2338,7 +2341,10 @@ export function registerHostRoutes(app: Express) {
         if (normalizedPromoCode && !bookingPromoCodes.has(normalizedPromoCode)) {
           return res.status(400).json({ message: "Invalid promo code" });
         }
-        if (isTestDollarPromo && (!testModeEnabled || !isAdminUser)) {
+        if (
+          isTestDollarPromo &&
+          (!testModeEnabled || (testPromosRequireAdmin && !isAdminUser))
+        ) {
           return res.status(403).json({ message: "Not authorized" });
         }
         if (normalizedPromoCode === "BOOKFEE10" && !bookingFeePromoEnabled) {

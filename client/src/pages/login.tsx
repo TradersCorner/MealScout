@@ -72,10 +72,24 @@ export default function Login() {
         headers: { "Content-Type": "application/json" },
         credentials: "include",
       });
+      const payload = await response.json().catch(() => ({}));
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Login failed");
+        if (payload?.code === "google_auth_required") {
+          toast({
+            title: "Continue with Google",
+            description:
+              payload?.error ||
+              "This email is linked to Google. Redirecting now...",
+          });
+          const authUrl =
+            typeof payload?.authUrl === "string" && payload.authUrl.startsWith("/")
+              ? payload.authUrl
+              : "/api/auth/google/customer";
+          window.location.href = authUrl;
+          return;
+        }
+        throw new Error(payload?.error || "Login failed");
       }
       // Refresh auth state before redirect to prevent showing guest view
       try {

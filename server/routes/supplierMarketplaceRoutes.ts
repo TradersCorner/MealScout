@@ -3518,6 +3518,9 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
       const testModeEnabled =
         String(process.env.MEALSCOUT_TEST_MODE || "").toLowerCase() === "true" ||
         process.env.NODE_ENV !== "production";
+      const testPromosRequireAdmin =
+        String(process.env.MEALSCOUT_TEST_PROMOS_REQUIRE_ADMIN || "").toLowerCase() ===
+        "true";
       const normalizedPromoCode = String(parsed.promoCode || "")
         .trim()
         .toUpperCase();
@@ -3530,7 +3533,7 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
         if (!isTestDollarPromo) {
           return res.status(400).json({ message: "Invalid promo code" });
         }
-        if (!testModeEnabled || !isAdminUser) {
+        if (!testModeEnabled || (testPromosRequireAdmin && !isAdminUser)) {
           return res.status(403).json({ message: "Not authorized" });
         }
       }

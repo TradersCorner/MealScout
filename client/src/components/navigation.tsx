@@ -351,7 +351,7 @@ export default function Navigation() {
         </div>
       </div>
 
-      <nav className="nav-bar nav-bar-mobile fixed bottom-0 left-0 right-0 w-full border-t px-3 pt-2 pb-[calc(0.45rem+env(safe-area-inset-bottom))] z-50 lg:hidden">
+      <nav className="nav-bar nav-bar-mobile fixed bottom-0 left-0 right-0 w-full border-t px-3 pt-2 pb-[calc(0.45rem+env(safe-area-inset-bottom))] z-[1100] lg:hidden">
       <div className="w-full mx-auto overflow-x-auto max-w-none">
         <div className="flex items-stretch justify-start space-x-2 min-w-max snap-x snap-mandatory">
           {navItems.map((item) =>

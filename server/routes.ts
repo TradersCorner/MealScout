@@ -1326,7 +1326,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ error: "Not authenticated" });
       }
 
-      const user = req.user;
+      let user = req.user;
+
+      // Safety: legacy/imported accounts may still be "customer" after creating a truck profile.
+      // Correct the role so profile labels/navigation stay consistent.
+      if (String(user?.userType || "") === "customer") {
+        const ownedRestaurants = await storage.getRestaurantsByOwner(user.id);
+        const hasFoodTruckProfile = ownedRestaurants.some(
+          (row: any) =>
+            Boolean(row?.isFoodTruck) ||
+            String(row?.businessType || "").toLowerCase() === "food_truck",
+        );
+
+        if (hasFoodTruckProfile) {
+          try {
+            await storage.updateUserType(user.id, "food_truck");
+            user = { ...user, userType: "food_truck" };
+            req.user = user;
+          } catch (roleFixError) {
+            console.warn(
+              "Unable to auto-correct userType to food_truck:",
+              roleFixError,
+            );
+          }
+        }
+      }
+
       console.log("✅ Returning user:", user.id, user.email, user.userType);
 
       // Check if user must reset password
@@ -5604,12 +5629,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const testModeEnabled =
         String(process.env.MEALSCOUT_TEST_MODE || "").toLowerCase() === "true" ||
         process.env.NODE_ENV !== "production";
+      const testPromosRequireAdmin =
+        String(process.env.MEALSCOUT_TEST_PROMOS_REQUIRE_ADMIN || "").toLowerCase() ===
+        "true";
       const normalizedPromoCode = String(promoCode || "").trim().toUpperCase();
       const isTestDollarPromo =
         normalizedPromoCode === "TEST1" || normalizedPromoCode === "FREE100";
-      const isAdminUser = ["admin", "super_admin", "staff"].includes(
-        String(user?.userType || ""),
-      );
+      const isAdminUser = ["admin", "super_admin", "staff"].includes(String(user?.userType || ""));
 
       console.log("=== Subscription Initialize Request ===");
       console.log("User ID:", user?.id);
@@ -5651,7 +5677,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // TEST1: read-only preview; actual subscription created in /api/create-subscription
       if (isTestDollarPromo) {
-        if (!testModeEnabled || !isAdminUser) {
+        if (!testModeEnabled || (testPromosRequireAdmin && !isAdminUser)) {
           return res.status(403).json({ error: { message: "Not authorized" } });
         }
         if (!user.email) {
@@ -5711,12 +5737,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const testModeEnabled =
         String(process.env.MEALSCOUT_TEST_MODE || "").toLowerCase() === "true" ||
         process.env.NODE_ENV !== "production";
+      const testPromosRequireAdmin =
+        String(process.env.MEALSCOUT_TEST_PROMOS_REQUIRE_ADMIN || "").toLowerCase() ===
+        "true";
       const normalizedPromoCode = String(promoCode || "").trim().toUpperCase();
       const isTestDollarPromo =
         normalizedPromoCode === "TEST1" || normalizedPromoCode === "FREE100";
-      const isAdminUser = ["admin", "super_admin", "staff"].includes(
-        String(user?.userType || ""),
-      );
+      const isAdminUser = ["admin", "super_admin", "staff"].includes(String(user?.userType || ""));
 
       const hydratedUser = await ensureTrialForUser(user);
       if (isTrialActive(hydratedUser)) {
@@ -5745,7 +5772,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Check for test promo code (charges $1 for testing)
       if (isTestDollarPromo) {
-        if (!testModeEnabled || !isAdminUser) {
+        if (!testModeEnabled || (testPromosRequireAdmin && !isAdminUser)) {
           return res.status(403).json({
             error: { message: "Not authorized" },
           });

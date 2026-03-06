@@ -26,7 +26,7 @@
   --field-bg: rgba(255, 255, 255, 0.95);
   --text-primary: #0a0a0a;
   --text-secondary: #1f2937;
-  --text-muted: #334155;
+  --text-muted: #6b7280;
   --text-placeholder: #64748b;
   --text-inverse: #0b0a09;
   --border-subtle: rgba(15, 23, 42, 0.12);
@@ -1098,8 +1098,41 @@
     color: var(--text-muted);
   }
 
+  /* Legacy utility classes still used across screens; force readable contrast in night mode. */
+  .theme-night .text-slate-900,
+  .theme-night .text-slate-800,
+  .theme-night .text-slate-700,
+  .theme-night .text-slate-600,
+  .theme-night .text-gray-900,
+  .theme-night .text-gray-800,
+  .theme-night .text-gray-700,
+  .theme-night .text-gray-600 {
+    color: #e5e7eb !important;
+  }
+
+  .theme-night .text-slate-500,
+  .theme-night .text-slate-400,
+  .theme-night .text-gray-500,
+  .theme-night .text-gray-400 {
+    color: #cbd5e1 !important;
+  }
+
+  .theme-night .text-amber-700,
+  .theme-night .text-orange-700 {
+    color: #fbbf24 !important;
+  }
+
+  .theme-night .pp-glass [class*="text-slate-"],
+  .theme-night .pp-glass [class*="text-gray-"],
+  .theme-night .pp-glass-muted [class*="text-slate-"],
+  .theme-night .pp-glass-muted [class*="text-gray-"],
+  .theme-night .leaflet-popup-content [class*="text-slate-"],
+  .theme-night .leaflet-popup-content [class*="text-gray-"] {
+    color: #e5e7eb !important;
+  }
+
   .theme-day .text-muted-foreground {
-    color: var(--text-secondary);
+    color: var(--text-muted);
   }
 
   .nav-bug {

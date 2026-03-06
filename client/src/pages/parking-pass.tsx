@@ -606,9 +606,8 @@ export default function ParkingPassPage() {
   const [requestedHostId, setRequestedHostId] = useState<string | null>(null);
   const [bookingReturnIntentId, setBookingReturnIntentId] = useState<string | null>(null);
   const [bookingReturnHandled, setBookingReturnHandled] = useState(false);
-  const [isCoarsePointer, setIsCoarsePointer] = useState(false);
-  // On mobile, once a Leaflet popup is open, touch gestures can feel "stuck" because the map keeps
-  // capturing scroll/pan. While the popup is open we disable map interactions so the page scrolls.
+  // While any popup is open, lock map interactions so users can read/select slots
+  // without accidental pan/zoom changes behind the popup.
   const [mapPopupOpen, setMapPopupOpen] = useState(false);
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [parkingCoords, setParkingCoords] = useState<
@@ -616,27 +615,12 @@ export default function ParkingPassPage() {
   >({});
 
   useEffect(() => {
-    if (typeof window === "undefined" || !window.matchMedia) return;
-    const media = window.matchMedia("(pointer: coarse)");
-    const apply = () => setIsCoarsePointer(Boolean(media.matches));
-    apply();
-    try {
-      media.addEventListener("change", apply);
-      return () => media.removeEventListener("change", apply);
-    } catch {
-      // Safari fallback
-      media.addListener(apply);
-      return () => media.removeListener(apply);
-    }
-  }, []);
-
-  useEffect(() => {
     if (viewMode !== "map") {
       setMapPopupOpen(false);
     }
   }, [viewMode]);
 
-  const mapInteractionsEnabled = !isCoarsePointer || !mapPopupOpen;
+  const mapInteractionsEnabled = !mapPopupOpen;
   const { data: mapLocationsData } = useQuery<MapLocationsResponse>({
     queryKey: ["/api/map/locations"],
     queryFn: async () => {
@@ -5079,6 +5063,8 @@ export default function ParkingPassPage() {
                           dragging={mapInteractionsEnabled}
                           touchZoom={mapInteractionsEnabled}
                           doubleClickZoom={mapInteractionsEnabled}
+                          boxZoom={mapInteractionsEnabled}
+                          keyboard={mapInteractionsEnabled}
                           className={`h-full w-full ${
                             mapInteractionsEnabled ? "touch-none" : "touch-pan-y"
                           }`}
@@ -5107,7 +5093,14 @@ export default function ParkingPassPage() {
                                   popupclose: () => setMapPopupOpen(false),
                                 }}
                               >
-                                <Popup>
+                                <Popup
+                                  maxWidth={320}
+                                  minWidth={240}
+                                  maxHeight={260}
+                                  keepInView
+                                  autoPan
+                                  autoPanPadding={[16, 16]}
+                                >
                                   <div className="space-y-2 text-xs">
                                     <p className="font-semibold text-orange-600">{name}</p>
                                     <p className="text-[color:var(--text-muted)]">
@@ -5157,6 +5150,8 @@ export default function ParkingPassPage() {
                         dragging={mapInteractionsEnabled}
                         touchZoom={mapInteractionsEnabled}
                         doubleClickZoom={mapInteractionsEnabled}
+                        boxZoom={mapInteractionsEnabled}
+                        keyboard={mapInteractionsEnabled}
                         className={`h-full w-full ${
                           mapInteractionsEnabled ? "touch-none" : "touch-pan-y"
                         }`}
@@ -5245,7 +5240,14 @@ export default function ParkingPassPage() {
                                 popupclose: () => setMapPopupOpen(false),
                               }}
                             >
-                              <Popup>
+                              <Popup
+                                maxWidth={320}
+                                minWidth={240}
+                                maxHeight={260}
+                                keepInView
+                                autoPan
+                                autoPanPadding={[16, 16]}
+                              >
                                 <div className="space-y-2 text-xs">
                                   <p className="font-semibold text-orange-600">
                                     {group.host.businessName}
@@ -6236,15 +6238,15 @@ export default function ParkingPassPage() {
           </div>
 
         {hasCartTotal && (
-          <div className="fixed bottom-4 left-0 right-0 z-50 px-4 lg:hidden">
-            <div className="mx-auto max-w-md rounded-2xl pp-glass shadow-clean-lg p-3 flex items-center justify-between gap-3">
+          <div className="fixed left-0 right-0 z-[1200] px-4 lg:hidden pointer-events-none bottom-[calc(4.75rem+env(safe-area-inset-bottom))]">
+            <div className="mx-auto max-w-md rounded-2xl pp-glass shadow-clean-lg p-3 flex items-center justify-between gap-3 pointer-events-auto">
               <div className="min-w-0">
                 <p className="text-[11px] text-[color:var(--text-muted)]">Cart ({cartItems.length})</p>
                 <p className="text-base font-semibold text-slate-900">
                   ${(cartTotals.totalCents / 100).toFixed(2)}
                 </p>
               </div>
-              <Button size="sm" onClick={startCheckout}>
+              <Button size="sm" type="button" onClick={startCheckout}>
                 Checkout
               </Button>
             </div>

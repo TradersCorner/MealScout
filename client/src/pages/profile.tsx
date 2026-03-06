@@ -255,9 +255,21 @@ export default function ProfilePage() {
                   >
                     {user?.userType === "restaurant_owner"
                       ? "Restaurant Owner"
-                      : user?.userType === "admin"
-                        ? "Admin"
-                        : "Food Explorer"}
+                      : user?.userType === "food_truck"
+                        ? "Food Truck"
+                        : user?.userType === "supplier"
+                          ? "Supplier"
+                          : user?.userType === "host"
+                            ? "Host"
+                            : user?.userType === "event_coordinator"
+                              ? "Event Coordinator"
+                              : user?.userType === "staff"
+                                ? "Staff"
+                                : user?.userType === "admin"
+                                  ? "Admin"
+                                  : user?.userType === "super_admin"
+                                    ? "Super Admin"
+                                    : "Food Explorer"}
                   </span>
                 </div>
               </div>

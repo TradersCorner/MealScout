@@ -278,7 +278,7 @@ export function SupplierOrderPaymentModal(props: {
                   value={promoCode}
                   onChange={(e) => setPromoCode(e.target.value)}
                   className="w-full rounded-md border border-[var(--border-subtle)] px-3 py-2 text-sm"
-                  placeholder="e.g. TEST1"
+                  placeholder="e.g. TEST1 or FREE100"
                 />
               </div>
             )}

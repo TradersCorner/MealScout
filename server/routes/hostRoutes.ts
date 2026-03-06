@@ -2332,11 +2332,13 @@ export function registerHostRoutes(app: Express) {
         }
 
         const normalizedPromoCode = String(promoCode || "").trim().toUpperCase();
-        const bookingPromoCodes = new Set(["TEST1", "BOOKFEE10"]);
+        const isTestDollarPromo =
+          normalizedPromoCode === "TEST1" || normalizedPromoCode === "FREE100";
+        const bookingPromoCodes = new Set(["TEST1", "FREE100", "BOOKFEE10"]);
         if (normalizedPromoCode && !bookingPromoCodes.has(normalizedPromoCode)) {
           return res.status(400).json({ message: "Invalid promo code" });
         }
-        if (normalizedPromoCode === "TEST1" && (!testModeEnabled || !isAdminUser)) {
+        if (isTestDollarPromo && (!testModeEnabled || !isAdminUser)) {
           return res.status(403).json({ message: "Not authorized" });
         }
         if (normalizedPromoCode === "BOOKFEE10" && !bookingFeePromoEnabled) {
@@ -2731,7 +2733,7 @@ export function registerHostRoutes(app: Express) {
         let adjustedHostPriceCents = hostPriceCents;
         let promoDiscountCents = 0;
 
-        if (normalizedPromoCode === "TEST1") {
+        if (isTestDollarPromo) {
           // Admin/testing-only: force a $1 total booking regardless of slot price.
           // This is intentionally not available in production unless MEALSCOUT_TEST_MODE is enabled.
           adjustedHostPriceCents = 0;
@@ -2751,7 +2753,7 @@ export function registerHostRoutes(app: Express) {
 
         let creditAppliedCents = 0;
         const requestedCreditCents =
-          normalizedPromoCode === "TEST1" ? 0 : Number(applyCreditsCents || 0);
+          isTestDollarPromo ? 0 : Number(applyCreditsCents || 0);
         if (requestedCreditCents > 0) {
           const { getUserCreditBalance } = await import("../creditService");
           const creditBalance = await getUserCreditBalance(userId);

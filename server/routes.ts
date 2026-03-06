@@ -5605,6 +5605,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         String(process.env.MEALSCOUT_TEST_MODE || "").toLowerCase() === "true" ||
         process.env.NODE_ENV !== "production";
       const normalizedPromoCode = String(promoCode || "").trim().toUpperCase();
+      const isTestDollarPromo =
+        normalizedPromoCode === "TEST1" || normalizedPromoCode === "FREE100";
       const isAdminUser = ["admin", "super_admin", "staff"].includes(
         String(user?.userType || ""),
       );
@@ -5648,7 +5650,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // TEST1: read-only preview; actual subscription created in /api/create-subscription
-      if (normalizedPromoCode === "TEST1") {
+      if (isTestDollarPromo) {
         if (!testModeEnabled || !isAdminUser) {
           return res.status(403).json({ error: { message: "Not authorized" } });
         }
@@ -5659,7 +5661,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         return res.send({
           status: "quote",
-          promo: "TEST1",
+          promo: normalizedPromoCode,
           testPricing: true,
           label: "$1 test plan",
           billingInterval: "month",
@@ -5710,6 +5712,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         String(process.env.MEALSCOUT_TEST_MODE || "").toLowerCase() === "true" ||
         process.env.NODE_ENV !== "production";
       const normalizedPromoCode = String(promoCode || "").trim().toUpperCase();
+      const isTestDollarPromo =
+        normalizedPromoCode === "TEST1" || normalizedPromoCode === "FREE100";
       const isAdminUser = ["admin", "super_admin", "staff"].includes(
         String(user?.userType || ""),
       );
@@ -5740,7 +5744,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Check for test promo code (charges $1 for testing)
-      if (normalizedPromoCode === "TEST1") {
+      if (isTestDollarPromo) {
         if (!testModeEnabled || !isAdminUser) {
           return res.status(403).json({
             error: { message: "Not authorized" },

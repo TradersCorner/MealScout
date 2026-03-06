@@ -3521,11 +3521,13 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
       const normalizedPromoCode = String(parsed.promoCode || "")
         .trim()
         .toUpperCase();
+      const isTestDollarPromo =
+        normalizedPromoCode === "TEST1" || normalizedPromoCode === "FREE100";
       const isAdminUser = ["admin", "super_admin", "staff"].includes(
         String(req.user?.userType || ""),
       );
       if (normalizedPromoCode) {
-        if (normalizedPromoCode !== "TEST1") {
+        if (!isTestDollarPromo) {
           return res.status(400).json({ message: "Invalid promo code" });
         }
         if (!testModeEnabled || !isAdminUser) {
@@ -3550,7 +3552,7 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
 
       const defaultMethod =
         amountCents >= thresholdDefaultCents && allowAch ? "ach" : allowCard ? "card" : allowAch ? "ach" : null;
-      const paymentMethod = normalizedPromoCode === "TEST1"
+      const paymentMethod = isTestDollarPromo
         ? "card"
         : parsed.paymentMethod ?? defaultMethod;
       if (!paymentMethod) {
@@ -3574,7 +3576,7 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
       let chargeAmountCents = Math.max(0, amountCents - discountCents);
       let transferAmountCents = Math.max(0, transferAmountBaseCents);
 
-      if (normalizedPromoCode === "TEST1") {
+      if (isTestDollarPromo) {
         applicationFeeCents = 0;
         transferAmountCents = 0;
         chargeAmountCents = 100;
@@ -3635,7 +3637,7 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
           buyerDiscountCents: String(discountCents),
           promoCode: normalizedPromoCode || "",
         },
-        ...(normalizedPromoCode === "TEST1"
+        ...(isTestDollarPromo
           ? {}
           : {
               application_fee_amount:
@@ -3670,7 +3672,7 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
         buyerDiscountCents: discountCents,
         paymentMethod,
         promoCode: normalizedPromoCode || undefined,
-        testPricing: normalizedPromoCode === "TEST1",
+        testPricing: isTestDollarPromo,
         breakdown: {
           supplierGrossCents,
           platformBaseFeeCents: feeModel.platformBaseFeeCents,

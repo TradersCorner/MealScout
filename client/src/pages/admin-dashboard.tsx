@@ -174,6 +174,29 @@ interface ParkingPassOnboardingQueueResponse {
   items: ParkingPassOnboardingQueueItem[];
 }
 
+interface ParkingPassPricingAuditItem {
+  hostId: string;
+  userId: string;
+  businessName: string | null;
+  hostPricing: boolean;
+  seriesPricing: boolean;
+  eventPricing: boolean;
+  pricingReady: boolean;
+  pricingSource: "host" | "series" | "event" | "none";
+  mismatch: boolean;
+}
+
+interface ParkingPassPricingAuditResponse {
+  ok: boolean;
+  totalHosts: number;
+  withHostPricing: number;
+  withSeriesPricing: number;
+  withEventPricing: number;
+  mismatches: number;
+  noPricing: number;
+  items: ParkingPassPricingAuditItem[];
+}
+
 interface HostPayoutRequestItem {
   id: string;
   hostId: string;
@@ -2243,6 +2266,13 @@ export default function AdminDashboard() {
   const { data: parkingPassOnboardingQueue, isLoading: queueLoading } =
     useQuery<ParkingPassOnboardingQueueResponse>({
       queryKey: ["/api/admin/parking-pass/onboarding-queue"],
+      enabled: !!adminUser && selectedTab === "overview",
+      staleTime: 30 * 1000,
+    });
+
+  const { data: parkingPassPricingAudit } =
+    useQuery<ParkingPassPricingAuditResponse>({
+      queryKey: ["/api/admin/parking-pass/pricing-audit"],
       enabled: !!adminUser && selectedTab === "overview",
       staleTime: 30 * 1000,
     });
@@ -5895,6 +5925,43 @@ export default function AdminDashboard() {
                   </div>
                 </div>
 
+                {parkingPassPricingAudit ? (
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                    <div className="rounded-md border p-3">
+                      <div className="text-xs text-muted-foreground">
+                        Host pricing rows
+                      </div>
+                      <div className="text-lg font-semibold">
+                        {Number(parkingPassPricingAudit.withHostPricing ?? 0)}
+                      </div>
+                    </div>
+                    <div className="rounded-md border p-3">
+                      <div className="text-xs text-muted-foreground">
+                        Series pricing rows
+                      </div>
+                      <div className="text-lg font-semibold">
+                        {Number(parkingPassPricingAudit.withSeriesPricing ?? 0)}
+                      </div>
+                    </div>
+                    <div className="rounded-md border p-3">
+                      <div className="text-xs text-muted-foreground">
+                        Event pricing rows
+                      </div>
+                      <div className="text-lg font-semibold">
+                        {Number(parkingPassPricingAudit.withEventPricing ?? 0)}
+                      </div>
+                    </div>
+                    <div className="rounded-md border p-3">
+                      <div className="text-xs text-muted-foreground">
+                        Pricing mismatches
+                      </div>
+                      <div className="text-lg font-semibold">
+                        {Number(parkingPassPricingAudit.mismatches ?? 0)}
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
+
                 {queueLoading ? (
                   <div className="text-sm text-muted-foreground">
                     Loading queue...
@@ -5968,6 +6035,33 @@ export default function AdminDashboard() {
                     No hosts currently need onboarding reminders.
                   </div>
                 )}
+
+                {Array.isArray(parkingPassPricingAudit?.items) &&
+                parkingPassPricingAudit.items.length > 0 ? (
+                  <div className="pt-2 border-t">
+                    <div className="text-xs font-semibold mb-2">
+                      Pricing audit exceptions
+                    </div>
+                    <div className="space-y-2">
+                      {parkingPassPricingAudit.items.slice(0, 8).map((item) => (
+                        <div
+                          key={`pricing-audit-${item.hostId}`}
+                          className="rounded-md border px-3 py-2 text-xs"
+                        >
+                          <div className="font-medium">
+                            {item.businessName || item.hostId}
+                          </div>
+                          <div className="text-muted-foreground">
+                            source={item.pricingSource} host=
+                            {item.hostPricing ? "yes" : "no"} series=
+                            {item.seriesPricing ? "yes" : "no"} event=
+                            {item.eventPricing ? "yes" : "no"}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
               </CardContent>
             </Card>
 

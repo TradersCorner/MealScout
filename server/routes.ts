@@ -5,6 +5,7 @@ import { DigestService } from "./digestService";
 import { notifyUnbookedEvents } from "./eventNotificationCron";
 import {
   getParkingPassOnboardingQueue,
+  getParkingPassPricingAudit,
   remindIncompleteParkingPassHosts,
   sendParkingPassReminderForHost,
 } from "./parkingPassReminder";
@@ -10222,6 +10223,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.status(500).json({
           ok: false,
           message: error?.message || "Failed to load onboarding queue",
+        });
+      }
+    },
+  );
+
+  app.get(
+    "/api/admin/parking-pass/pricing-audit",
+    isAuthenticated,
+    isAdmin,
+    async (_req, res) => {
+      try {
+        const audit = await getParkingPassPricingAudit();
+        res.json({
+          ok: true,
+          ...audit,
+        });
+      } catch (error: any) {
+        console.error("Failed to load parking pass pricing audit:", error);
+        res.status(500).json({
+          ok: false,
+          message: error?.message || "Failed to load pricing audit",
         });
       }
     },

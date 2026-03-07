@@ -54,6 +54,18 @@ export type ParkingPassOnboardingQueueItem = {
   priority: "high" | "medium";
 };
 
+export type ParkingPassPricingAuditItem = {
+  hostId: string;
+  userId: string;
+  businessName: string | null;
+  hostPricing: boolean;
+  seriesPricing: boolean;
+  eventPricing: boolean;
+  pricingReady: boolean;
+  pricingSource: "host" | "series" | "event" | "none";
+  mismatch: boolean;
+};
+
 const isHostExcluded = (host: {
   userType: string | null;
   locationType: string | null;
@@ -178,6 +190,109 @@ async function buildOnboardingQueueInternal() {
   });
 
   return queue;
+}
+
+export async function getParkingPassPricingAudit() {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const hostRows = await db
+    .select({
+      hostId: hosts.id,
+      userId: hosts.userId,
+      businessName: hosts.businessName,
+      locationType: hosts.locationType,
+      breakfastPriceCents: hosts.parkingPassBreakfastPriceCents,
+      lunchPriceCents: hosts.parkingPassLunchPriceCents,
+      dinnerPriceCents: hosts.parkingPassDinnerPriceCents,
+      dailyPriceCents: hosts.parkingPassDailyPriceCents,
+      weeklyPriceCents: hosts.parkingPassWeeklyPriceCents,
+      monthlyPriceCents: hosts.parkingPassMonthlyPriceCents,
+      userType: users.userType,
+    })
+    .from(hosts)
+    .innerJoin(users, eq(hosts.userId, users.id))
+    .where(or(eq(users.isDisabled, false), isNull(users.isDisabled)));
+
+  const eventRows = await db
+    .select({
+      hostId: events.hostId,
+      breakfastPriceCents: events.breakfastPriceCents,
+      lunchPriceCents: events.lunchPriceCents,
+      dinnerPriceCents: events.dinnerPriceCents,
+      dailyPriceCents: events.dailyPriceCents,
+      weeklyPriceCents: events.weeklyPriceCents,
+      monthlyPriceCents: events.monthlyPriceCents,
+    })
+    .from(events)
+    .where(and(eq(events.requiresPayment, true), gte(events.date, today)));
+
+  const seriesRows = await db
+    .select({
+      hostId: eventSeries.hostId,
+      breakfastPriceCents: eventSeries.defaultBreakfastPriceCents,
+      lunchPriceCents: eventSeries.defaultLunchPriceCents,
+      dinnerPriceCents: eventSeries.defaultDinnerPriceCents,
+      dailyPriceCents: eventSeries.defaultDailyPriceCents,
+      weeklyPriceCents: eventSeries.defaultWeeklyPriceCents,
+      monthlyPriceCents: eventSeries.defaultMonthlyPriceCents,
+    })
+    .from(eventSeries)
+    .where(eq(eventSeries.seriesType, "parking_pass"));
+
+  const hostsWithEventPricing = new Set<string>();
+  for (const row of eventRows) {
+    if (hasPricing(row)) hostsWithEventPricing.add(row.hostId);
+  }
+
+  const hostsWithSeriesPricing = new Set<string>();
+  for (const row of seriesRows) {
+    if (hasPricing(row)) hostsWithSeriesPricing.add(row.hostId);
+  }
+
+  const items: ParkingPassPricingAuditItem[] = [];
+  for (const host of hostRows) {
+    if (isHostExcluded(host)) continue;
+
+    const hostPricing = hasPricing(host);
+    const seriesPricing = hostsWithSeriesPricing.has(host.hostId);
+    const eventPricing = hostsWithEventPricing.has(host.hostId);
+    const pricingReady = hostPricing || seriesPricing || eventPricing;
+    const pricingSource = hostPricing
+      ? "host"
+      : seriesPricing
+        ? "series"
+        : eventPricing
+          ? "event"
+          : "none";
+    const mismatch =
+      (hostPricing ? 1 : 0) + (seriesPricing ? 1 : 0) + (eventPricing ? 1 : 0) > 1;
+
+    items.push({
+      hostId: host.hostId,
+      userId: host.userId,
+      businessName: host.businessName,
+      hostPricing,
+      seriesPricing,
+      eventPricing,
+      pricingReady,
+      pricingSource,
+      mismatch,
+    });
+  }
+
+  const mismatches = items.filter((item) => item.mismatch);
+  const noPricing = items.filter((item) => !item.pricingReady);
+
+  return {
+    totalHosts: items.length,
+    withHostPricing: items.filter((item) => item.hostPricing).length,
+    withSeriesPricing: items.filter((item) => item.seriesPricing).length,
+    withEventPricing: items.filter((item) => item.eventPricing).length,
+    mismatches: mismatches.length,
+    noPricing: noPricing.length,
+    items: mismatches.concat(noPricing).slice(0, 100),
+  };
 }
 
 export async function getParkingPassOnboardingQueue() {

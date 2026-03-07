@@ -71,6 +71,12 @@ async function buildOnboardingQueueInternal() {
       businessName: hosts.businessName,
       address: hosts.address,
       locationType: hosts.locationType,
+      breakfastPriceCents: hosts.parkingPassBreakfastPriceCents,
+      lunchPriceCents: hosts.parkingPassLunchPriceCents,
+      dinnerPriceCents: hosts.parkingPassDinnerPriceCents,
+      dailyPriceCents: hosts.parkingPassDailyPriceCents,
+      weeklyPriceCents: hosts.parkingPassWeeklyPriceCents,
+      monthlyPriceCents: hosts.parkingPassMonthlyPriceCents,
       stripeConnectAccountId: hosts.stripeConnectAccountId,
       stripeChargesEnabled: hosts.stripeChargesEnabled,
       stripePayoutsEnabled: hosts.stripePayoutsEnabled,
@@ -105,7 +111,7 @@ async function buildOnboardingQueueInternal() {
   for (const host of hostRows) {
     if (isHostExcluded(host)) continue;
 
-    const pricingReady = hostsWithPricing.has(host.hostId);
+    const pricingReady = hasPricing(host) || hostsWithPricing.has(host.hostId);
     const stripeReady = Boolean(
       host.stripeConnectAccountId &&
       host.stripeChargesEnabled &&

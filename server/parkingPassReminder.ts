@@ -2,6 +2,7 @@ import { and, eq, gte, isNull, or } from "drizzle-orm";
 import { db } from "./db";
 import { eventSeries, events, hosts, users } from "@shared/schema";
 import { emailService, isEmailConfigured } from "./emailService";
+import { storage } from "./storage";
 
 const isEmailNotificationsEnabled = (accountSettings: unknown) => {
   const settings =
@@ -37,6 +38,22 @@ const hasPricing = (row: {
   (row.dailyPriceCents ?? 0) > 0 ||
   (row.weeklyPriceCents ?? 0) > 0 ||
   (row.monthlyPriceCents ?? 0) > 0;
+
+const pricingFieldsFromRow = (row: {
+  breakfastPriceCents: number | null;
+  lunchPriceCents: number | null;
+  dinnerPriceCents: number | null;
+  dailyPriceCents: number | null;
+  weeklyPriceCents: number | null;
+  monthlyPriceCents: number | null;
+}) => ({
+  parkingPassBreakfastPriceCents: Number(row.breakfastPriceCents ?? 0) || 0,
+  parkingPassLunchPriceCents: Number(row.lunchPriceCents ?? 0) || 0,
+  parkingPassDinnerPriceCents: Number(row.dinnerPriceCents ?? 0) || 0,
+  parkingPassDailyPriceCents: Number(row.dailyPriceCents ?? 0) || 0,
+  parkingPassWeeklyPriceCents: Number(row.weeklyPriceCents ?? 0) || 0,
+  parkingPassMonthlyPriceCents: Number(row.monthlyPriceCents ?? 0) || 0,
+});
 
 export type ParkingPassOnboardingQueueItem = {
   hostId: string;
@@ -292,6 +309,144 @@ export async function getParkingPassPricingAudit() {
     mismatches: mismatches.length,
     noPricing: noPricing.length,
     items: mismatches.concat(noPricing).slice(0, 100),
+  };
+}
+
+export async function repairParkingPassPricingDrift() {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const hostRows = await db
+    .select({
+      hostId: hosts.id,
+      locationType: hosts.locationType,
+      userType: users.userType,
+      breakfastPriceCents: hosts.parkingPassBreakfastPriceCents,
+      lunchPriceCents: hosts.parkingPassLunchPriceCents,
+      dinnerPriceCents: hosts.parkingPassDinnerPriceCents,
+      dailyPriceCents: hosts.parkingPassDailyPriceCents,
+      weeklyPriceCents: hosts.parkingPassWeeklyPriceCents,
+      monthlyPriceCents: hosts.parkingPassMonthlyPriceCents,
+    })
+    .from(hosts)
+    .innerJoin(users, eq(hosts.userId, users.id))
+    .where(or(eq(users.isDisabled, false), isNull(users.isDisabled)));
+
+  const seriesRows = await db
+    .select({
+      id: eventSeries.id,
+      hostId: eventSeries.hostId,
+      defaultStartTime: eventSeries.defaultStartTime,
+      defaultEndTime: eventSeries.defaultEndTime,
+      parkingPassDaysOfWeek: eventSeries.parkingPassDaysOfWeek,
+      breakfastPriceCents: eventSeries.defaultBreakfastPriceCents,
+      lunchPriceCents: eventSeries.defaultLunchPriceCents,
+      dinnerPriceCents: eventSeries.defaultDinnerPriceCents,
+      dailyPriceCents: eventSeries.defaultDailyPriceCents,
+      weeklyPriceCents: eventSeries.defaultWeeklyPriceCents,
+      monthlyPriceCents: eventSeries.defaultMonthlyPriceCents,
+    })
+    .from(eventSeries)
+    .where(eq(eventSeries.seriesType, "parking_pass"));
+
+  const eventRows = await db
+    .select({
+      id: events.id,
+      hostId: events.hostId,
+      startTime: events.startTime,
+      endTime: events.endTime,
+      breakfastPriceCents: events.breakfastPriceCents,
+      lunchPriceCents: events.lunchPriceCents,
+      dinnerPriceCents: events.dinnerPriceCents,
+      dailyPriceCents: events.dailyPriceCents,
+      weeklyPriceCents: events.weeklyPriceCents,
+      monthlyPriceCents: events.monthlyPriceCents,
+      date: events.date,
+    })
+    .from(events)
+    .where(and(eq(events.requiresPayment, true), gte(events.date, today)));
+
+  const hostById = new Map<string, (typeof hostRows)[number]>(
+    hostRows.map((row: (typeof hostRows)[number]) => [String(row.hostId), row]),
+  );
+  const seriesByHostId = new Map<string, (typeof seriesRows)[number]>();
+  for (const row of seriesRows) {
+    if (!hasPricing(row)) continue;
+    const rowHostId = String(row.hostId);
+    if (!seriesByHostId.has(rowHostId)) {
+      seriesByHostId.set(rowHostId, row);
+    }
+  }
+
+  const eventByHostId = new Map<string, (typeof eventRows)[number]>();
+  for (const row of eventRows) {
+    if (!hasPricing(row)) continue;
+    const rowHostId = String(row.hostId);
+    const existing = eventByHostId.get(rowHostId);
+    if (!existing || new Date(row.date).getTime() < new Date(existing.date).getTime()) {
+      eventByHostId.set(rowHostId, row);
+    }
+  }
+
+  let updatedHosts = 0;
+  let syncedSeries = 0;
+  let repairedFromSeries = 0;
+  let repairedFromEvent = 0;
+
+  for (const [hostId, host] of hostById.entries()) {
+    if (isHostExcluded(host)) continue;
+
+    const hostPricing = hasPricing(host);
+    const seriesPricing = seriesByHostId.has(hostId);
+    const eventPricing = eventByHostId.has(hostId);
+
+    let hostUpdated = false;
+
+    if (!hostPricing && seriesPricing) {
+      const series = seriesByHostId.get(hostId)!;
+      await db
+        .update(hosts)
+        .set({
+          ...pricingFieldsFromRow(series),
+          parkingPassStartTime: series.defaultStartTime ?? null,
+          parkingPassEndTime: series.defaultEndTime ?? null,
+          parkingPassDaysOfWeek: series.parkingPassDaysOfWeek ?? [],
+          updatedAt: new Date(),
+        } as any)
+        .where(eq(hosts.id, hostId));
+      hostUpdated = true;
+      repairedFromSeries += 1;
+    } else if (!hostPricing && !seriesPricing && eventPricing) {
+      const event = eventByHostId.get(hostId)!;
+      await db
+        .update(hosts)
+        .set({
+          ...pricingFieldsFromRow(event),
+          parkingPassStartTime: event.startTime ?? null,
+          parkingPassEndTime: event.endTime ?? null,
+          updatedAt: new Date(),
+        } as any)
+        .where(eq(hosts.id, hostId));
+      hostUpdated = true;
+      repairedFromEvent += 1;
+    }
+
+    if (hostUpdated || (hostPricing && (seriesPricing || eventPricing))) {
+      updatedHosts += hostUpdated ? 1 : 0;
+      const seriesId = await storage.syncParkingPassSeriesFromHost(hostId);
+      if (seriesId) syncedSeries += 1;
+    }
+  }
+
+  const audit = await getParkingPassPricingAudit();
+  return {
+    success: true,
+    updatedHosts,
+    syncedSeries,
+    repairedFromSeries,
+    repairedFromEvent,
+    remainingMismatches: audit.mismatches,
+    remainingNoPricing: audit.noPricing,
   };
 }
 

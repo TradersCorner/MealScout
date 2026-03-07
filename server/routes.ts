@@ -6,6 +6,7 @@ import { notifyUnbookedEvents } from "./eventNotificationCron";
 import {
   getParkingPassOnboardingQueue,
   getParkingPassPricingAudit,
+  repairParkingPassPricingDrift,
   remindIncompleteParkingPassHosts,
   sendParkingPassReminderForHost,
 } from "./parkingPassReminder";
@@ -10244,6 +10245,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.status(500).json({
           ok: false,
           message: error?.message || "Failed to load pricing audit",
+        });
+      }
+    },
+  );
+
+  app.post(
+    "/api/admin/parking-pass/pricing-audit/repair",
+    isAuthenticated,
+    isStaffOrAdmin,
+    async (_req, res) => {
+      try {
+        const result = await repairParkingPassPricingDrift();
+        res.json({
+          ok: true,
+          ...result,
+        });
+      } catch (error: any) {
+        console.error("Failed to repair parking pass pricing drift:", error);
+        res.status(500).json({
+          ok: false,
+          message: error?.message || "Failed to repair pricing drift",
         });
       }
     },

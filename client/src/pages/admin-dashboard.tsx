@@ -2561,6 +2561,34 @@ export default function AdminDashboard() {
       });
     },
   });
+  const repairParkingPassPricingAudit = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest(
+        "POST",
+        "/api/admin/parking-pass/pricing-audit/repair",
+      );
+      return await res.json();
+    },
+    onSuccess: async (data: any) => {
+      await queryClient.invalidateQueries({
+        queryKey: ["/api/admin/parking-pass/onboarding-queue"],
+      });
+      await queryClient.invalidateQueries({
+        queryKey: ["/api/admin/parking-pass/pricing-audit"],
+      });
+      toast({
+        title: "Pricing repair completed",
+        description: `Updated ${Number(data?.updatedHosts ?? 0)} host(s), remaining mismatches ${Number(data?.remainingMismatches ?? 0)}.`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Pricing repair failed",
+        description: error?.message || "Unable to repair pricing drift.",
+        variant: "destructive",
+      });
+    },
+  });
   const runLocationDemandActivation = useMutation({
     mutationFn: async () => {
       const res = await apiRequest(
@@ -5882,15 +5910,26 @@ export default function AdminDashboard() {
                       Prioritized hosts missing Stripe onboarding or pricing.
                     </CardDescription>
                   </div>
-                  <Button
-                    variant="outline"
-                    disabled={runParkingPassReminders.isPending}
-                    onClick={() => runParkingPassReminders.mutate()}
-                  >
-                    {runParkingPassReminders.isPending
-                      ? "Running..."
-                      : "Run All Reminders"}
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      disabled={repairParkingPassPricingAudit.isPending}
+                      onClick={() => repairParkingPassPricingAudit.mutate()}
+                    >
+                      {repairParkingPassPricingAudit.isPending
+                        ? "Repairing..."
+                        : "Repair Pricing"}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      disabled={runParkingPassReminders.isPending}
+                      onClick={() => runParkingPassReminders.mutate()}
+                    >
+                      {runParkingPassReminders.isPending
+                        ? "Running..."
+                        : "Run All Reminders"}
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent

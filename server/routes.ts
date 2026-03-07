@@ -8,6 +8,10 @@ import {
   remindIncompleteParkingPassHosts,
   sendParkingPassReminderForHost,
 } from "./parkingPassReminder";
+import {
+  getLocationDemandFunnelKpis,
+  runLocationDemandActivationCron,
+} from "./services/locationDemandActivation";
 import Stripe from "stripe";
 import { storage } from "./storage";
 import {
@@ -10091,6 +10095,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   }
 
+  // Demand activation reminders for threshold-met requests that are still unclaimed.
+  if (
+    String(process.env.LOCATION_DEMAND_ACTIVATION_ENABLED || "true")
+      .trim()
+      .toLowerCase() !== "false"
+  ) {
+    const expression = String(
+      process.env.LOCATION_DEMAND_ACTIVATION_CRON || "*/30 * * * *",
+    );
+    cron.schedule(expression, async () => {
+      try {
+        const stats = await runLocationDemandActivationCron();
+        if (Number((stats as any)?.sent || 0) > 0) {
+          console.log("[location-demand-activation] sent", stats);
+        }
+      } catch (error) {
+        console.error("[location-demand-activation] cron failed:", error);
+      }
+    });
+  }
+
   // Automated drip: Pensacola report leads (email capture funnel follow-ups)
   if (
     String(process.env.PENSACOLA_REPORT_ENABLED || "")
@@ -10140,6 +10165,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.status(500).json({
           ok: false,
           message: error?.message || "Failed to trigger reminders",
+        });
+      }
+    },
+  );
+
+  app.post(
+    "/api/admin/location-demand/activation/run",
+    isAuthenticated,
+    isAdmin,
+    async (_req, res) => {
+      try {
+        const stats = await runLocationDemandActivationCron();
+        res.json({ ok: true, stats });
+      } catch (error: any) {
+        console.error("Manual location demand activation trigger failed:", error);
+        res.status(500).json({
+          ok: false,
+          message: error?.message || "Failed to trigger location demand activation",
+        });
+      }
+    },
+  );
+
+  app.get(
+    "/api/admin/location-demand/funnel",
+    isAuthenticated,
+    isAdmin,
+    async (_req, res) => {
+      try {
+        const kpis = await getLocationDemandFunnelKpis();
+        res.json({ ok: true, ...kpis });
+      } catch (error: any) {
+        console.error("Failed to load location demand funnel KPIs:", error);
+        res.status(500).json({
+          ok: false,
+          message: error?.message || "Failed to load location demand funnel KPIs",
         });
       }
     },

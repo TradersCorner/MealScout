@@ -44,6 +44,15 @@ Manual audits:
 
 - `npm run -s audit:parking-pass-webhooks`
 - `npm run -s audit:demand-funnel`
+- `npm run -s audit:location-demand-activation`
+
+Demand activation automation:
+
+- Cron enable flag: `LOCATION_DEMAND_ACTIVATION_ENABLED=true|false`
+- Cron schedule: `LOCATION_DEMAND_ACTIVATION_CRON=*/30 * * * *`
+- Optional SMS reminders: `LOCATION_DEMAND_ACTIVATION_SMS=true|false`
+- Manual trigger endpoint (admin): `POST /api/admin/location-demand/activation/run`
+- KPI endpoint (admin): `GET /api/admin/location-demand/funnel`
 
 ## 5) Failure triage
 

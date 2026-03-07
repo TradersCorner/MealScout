@@ -1,6 +1,6 @@
 import { and, eq, gte, isNull, or } from "drizzle-orm";
 import { db } from "./db";
-import { events, hosts, users } from "@shared/schema";
+import { eventSeries, events, hosts, users } from "@shared/schema";
 import { emailService, isEmailConfigured } from "./emailService";
 
 const isEmailNotificationsEnabled = (accountSettings: unknown) => {
@@ -47,6 +47,7 @@ export type ParkingPassOnboardingQueueItem = {
   emailNotificationsEnabled: boolean;
   locationType: string | null;
   pricingReady: boolean;
+  pricingSource: "host" | "series" | "event" | "none";
   stripeReady: boolean;
   needsPricing: boolean;
   needsStripe: boolean;
@@ -102,16 +103,44 @@ async function buildOnboardingQueueInternal() {
     .from(events)
     .where(and(eq(events.requiresPayment, true), gte(events.date, today)));
 
-  const hostsWithPricing = new Set<string>();
+  const seriesRows = await db
+    .select({
+      hostId: eventSeries.hostId,
+      breakfastPriceCents: eventSeries.defaultBreakfastPriceCents,
+      lunchPriceCents: eventSeries.defaultLunchPriceCents,
+      dinnerPriceCents: eventSeries.defaultDinnerPriceCents,
+      dailyPriceCents: eventSeries.defaultDailyPriceCents,
+      weeklyPriceCents: eventSeries.defaultWeeklyPriceCents,
+      monthlyPriceCents: eventSeries.defaultMonthlyPriceCents,
+    })
+    .from(eventSeries)
+    .where(eq(eventSeries.seriesType, "parking_pass"));
+
+  const hostsWithEventPricing = new Set<string>();
   for (const row of upcomingRows) {
-    if (hasPricing(row)) hostsWithPricing.add(row.hostId);
+    if (hasPricing(row)) hostsWithEventPricing.add(row.hostId);
+  }
+
+  const hostsWithSeriesPricing = new Set<string>();
+  for (const row of seriesRows) {
+    if (hasPricing(row)) hostsWithSeriesPricing.add(row.hostId);
   }
 
   const queue: ParkingPassOnboardingQueueItem[] = [];
   for (const host of hostRows) {
     if (isHostExcluded(host)) continue;
 
-    const pricingReady = hasPricing(host) || hostsWithPricing.has(host.hostId);
+    const hasHostPricing = hasPricing(host);
+    const hasSeriesPricing = hostsWithSeriesPricing.has(host.hostId);
+    const hasEventPricing = hostsWithEventPricing.has(host.hostId);
+    const pricingReady = hasHostPricing || hasSeriesPricing || hasEventPricing;
+    const pricingSource = hasHostPricing
+      ? "host"
+      : hasSeriesPricing
+        ? "series"
+        : hasEventPricing
+          ? "event"
+          : "none";
     const stripeReady = Boolean(
       host.stripeConnectAccountId &&
       host.stripeChargesEnabled &&
@@ -133,6 +162,7 @@ async function buildOnboardingQueueInternal() {
       ),
       locationType: host.locationType,
       pricingReady,
+      pricingSource,
       stripeReady,
       needsPricing,
       needsStripe,
@@ -227,6 +257,7 @@ export async function sendParkingPassReminderForHost(hostId: string) {
       businessName: item.businessName,
       email: item.email,
       needsPricing: item.needsPricing,
+      pricingSource: item.pricingSource,
       needsStripe: item.needsStripe,
       priority: item.priority,
     },

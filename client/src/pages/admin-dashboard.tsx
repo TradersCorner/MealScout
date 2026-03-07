@@ -159,6 +159,7 @@ interface ParkingPassOnboardingQueueItem {
   email: string | null;
   locationType: string | null;
   pricingReady: boolean;
+  pricingSource: "host" | "series" | "event" | "none";
   stripeReady: boolean;
   needsPricing: boolean;
   needsStripe: boolean;
@@ -5931,7 +5932,11 @@ export default function AdminDashboard() {
                               ) : null}
                               {item.needsPricing ? (
                                 <Badge variant="outline">Needs Pricing</Badge>
-                              ) : null}
+                              ) : (
+                                <Badge variant="outline">
+                                  Pricing: {item.pricingSource}
+                                </Badge>
+                              )}
                             </div>
                           </div>
                           <Button

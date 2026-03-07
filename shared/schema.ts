@@ -2812,6 +2812,9 @@ export const locationRequests = pgTable(
     longitude: decimal("longitude", { precision: 11, scale: 8 }),
     preferredDates: jsonb("preferred_dates").notNull(), // string[] of ISO dates
     expectedFootTraffic: integer("expected_foot_traffic").notNull(),
+    minInterestedTrucks: integer("min_interested_trucks").notNull().default(3),
+    demandStatus: varchar("demand_status").notNull().default("collecting"), // 'collecting' | 'threshold_met' | 'claimed' | 'expired' | 'fulfilled'
+    thresholdReachedAt: timestamp("threshold_reached_at"),
     notes: text("notes"),
     status: varchar("status").notNull().default("open"), // 'open' | 'fulfilled' | 'expired'
     createdAt: timestamp("created_at").defaultNow(),
@@ -2819,6 +2822,7 @@ export const locationRequests = pgTable(
   (table) => [
     index("idx_location_requests_user").on(table.postedByUserId),
     index("idx_location_requests_status").on(table.status),
+    index("idx_location_requests_demand_status").on(table.demandStatus),
     index("idx_location_requests_created").on(table.createdAt),
   ],
 );
@@ -2843,6 +2847,40 @@ export const truckInterests = pgTable(
     index("idx_truck_interests_request").on(table.locationRequestId),
     index("idx_truck_interests_restaurant").on(table.restaurantId),
     index("idx_truck_interests_created").on(table.createdAt),
+    unique("uq_truck_interests_request_restaurant").on(
+      table.locationRequestId,
+      table.restaurantId,
+    ),
+  ],
+);
+
+// Host Location Claims: hosts claiming demand-backed locations
+export const hostLocationClaims = pgTable(
+  "host_location_claims",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    locationRequestId: varchar("location_request_id")
+      .notNull()
+      .references(() => locationRequests.id, { onDelete: "cascade" }),
+    claimedByUserId: varchar("claimed_by_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    hostId: varchar("host_id"),
+    status: varchar("status").notNull().default("pending"), // 'pending' | 'approved' | 'rejected' | 'converted'
+    message: text("message"),
+    createdAt: timestamp("created_at").defaultNow(),
+    resolvedAt: timestamp("resolved_at"),
+  },
+  (table) => [
+    index("idx_host_location_claims_request").on(table.locationRequestId),
+    index("idx_host_location_claims_user").on(table.claimedByUserId),
+    index("idx_host_location_claims_status").on(table.status),
+    unique("uq_host_location_claims_active_request_user").on(
+      table.locationRequestId,
+      table.claimedByUserId,
+    ),
   ],
 );
 
@@ -3843,6 +3881,7 @@ export const locationRequestsRelations = relations(
       references: [users.id],
     }),
     interests: many(truckInterests),
+    claims: many(hostLocationClaims),
   }),
 );
 
@@ -3856,6 +3895,24 @@ export const truckInterestsRelations = relations(truckInterests, ({ one }) => ({
     references: [restaurants.id],
   }),
 }));
+
+export const hostLocationClaimsRelations = relations(
+  hostLocationClaims,
+  ({ one }) => ({
+    locationRequest: one(locationRequests, {
+      fields: [hostLocationClaims.locationRequestId],
+      references: [locationRequests.id],
+    }),
+    claimedBy: one(users, {
+      fields: [hostLocationClaims.claimedByUserId],
+      references: [users.id],
+    }),
+    host: one(hosts, {
+      fields: [hostLocationClaims.hostId],
+      references: [hosts.id],
+    }),
+  }),
+);
 
 export const hostsRelations = relations(hosts, ({ one, many }) => ({
   user: one(users, {
@@ -4057,6 +4114,8 @@ export type LocationRequest = typeof locationRequests.$inferSelect;
 export type InsertLocationRequest = z.infer<typeof insertLocationRequestSchema>;
 export type TruckInterest = typeof truckInterests.$inferSelect;
 export type InsertTruckInterest = z.infer<typeof insertTruckInterestSchema>;
+export type HostLocationClaim = typeof hostLocationClaims.$inferSelect;
+export type InsertHostLocationClaim = typeof hostLocationClaims.$inferInsert;
 
 export type InsertSupportTicket = z.infer<typeof insertSupportTicketSchema>;
 export type SupportTicket = typeof supportTickets.$inferSelect;
@@ -4137,6 +4196,8 @@ export const insertLocationRequestSchema = createInsertSchema(
   .omit({
     id: true,
     status: true,
+    demandStatus: true,
+    thresholdReachedAt: true,
     createdAt: true,
   })
   .superRefine((val, ctx) => {
@@ -4183,6 +4244,17 @@ export const insertLocationRequestSchema = createInsertSchema(
         path: ["expectedFootTraffic"],
       });
     }
+
+    if (
+      val.minInterestedTrucks !== undefined &&
+      (val.minInterestedTrucks < 1 || val.minInterestedTrucks > 20)
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Minimum interested trucks must be between 1 and 20",
+        path: ["minInterestedTrucks"],
+      });
+    }
   });
 
 export const insertTruckInterestSchema = createInsertSchema(truckInterests, {
@@ -4190,6 +4262,19 @@ export const insertTruckInterestSchema = createInsertSchema(truckInterests, {
 }).omit({
   id: true,
   createdAt: true,
+});
+
+export const insertHostLocationClaimSchema = createInsertSchema(
+  hostLocationClaims,
+  {
+    message: z.string().max(500).optional(),
+  },
+).omit({
+  id: true,
+  hostId: true,
+  status: true,
+  createdAt: true,
+  resolvedAt: true,
 });
 
 export const insertSupportTicketSchema = createInsertSchema(

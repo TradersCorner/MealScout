@@ -15,6 +15,7 @@ import { emailService } from "../emailService";
 import { resolveCityTimeZoneSync } from "../services/cityTimeZone";
 import { getPublicSlotGateConfigFromEnv, isSlotPublic } from "../services/publicSlotGate";
 import { buildSlotDateTimes } from "../services/timeIntent";
+import { dateKeyInZone } from "../services/dateKeys";
 import Stripe from "stripe";
 
 const stripe = process.env.STRIPE_SECRET_KEY
@@ -28,9 +29,9 @@ const stripe = process.env.STRIPE_SECRET_KEY
  * - POST /api/bookings/:bookingId/cancel - Cancel a booking (non-refundable)
  */
 export function registerBookingRoutes(app: Express) {
-  const toDateKey = (value: unknown): string | null => {
+  const toDateKey = (value: unknown, timeZone?: string): string | null => {
     if (value instanceof Date) {
-      const key = value.toISOString().split("T")[0];
+      const key = dateKeyInZone(value, timeZone || "America/Chicago");
       return /^\d{4}-\d{2}-\d{2}$/.test(key) ? key : null;
     }
     const raw = String(value || "").trim();
@@ -944,7 +945,14 @@ export function registerBookingRoutes(app: Express) {
               slotType: row.slotType,
               event: {
                 id: row.event.id,
-                date: toDateKey(row.event.date) ?? row.event.date,
+                date:
+                  toDateKey(
+                    row.event.date,
+                    resolveCityTimeZoneSync({
+                      city: (row.host as any)?.city ?? null,
+                      state: (row.host as any)?.state ?? null,
+                    }),
+                  ) ?? row.event.date,
                 startTime: row.event.startTime,
                 endTime: row.event.endTime,
                 status: row.event.status,
@@ -973,7 +981,14 @@ export function registerBookingRoutes(app: Express) {
               createdAt: row.createdAt,
               event: {
                 id: row.event.id,
-                date: toDateKey(row.event.date) ?? row.event.date,
+                date:
+                  toDateKey(
+                    row.event.date,
+                    resolveCityTimeZoneSync({
+                      city: (row.host as any)?.city ?? null,
+                      state: (row.host as any)?.state ?? null,
+                    }),
+                  ) ?? row.event.date,
                 startTime: row.event.startTime,
                 endTime: row.event.endTime,
                 status: row.event.status,
@@ -1030,7 +1045,14 @@ export function registerBookingRoutes(app: Express) {
             createdAt: entry.createdAt,
             manual: {
               id: entry.id,
-              date: toDateKey(entry.date) ?? entry.date,
+              date:
+                toDateKey(
+                  entry.date,
+                  resolveCityTimeZoneSync({
+                    city: (entry as any)?.city ?? null,
+                    state: (entry as any)?.state ?? null,
+                  }),
+                ) ?? entry.date,
               startTime: entry.startTime,
               endTime: entry.endTime,
               locationName: entry.locationName,

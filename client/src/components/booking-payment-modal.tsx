@@ -245,6 +245,7 @@ export function BookingPaymentModal({
   const [creditsToApply, setCreditsToApply] = useState("");
   const [promoCode, setPromoCode] = useState("");
   const cancelOnInitiateRef = useRef(false);
+  const idempotencyKeyRef = useRef<string | null>(null);
   const stage: "review" | "pay" = clientSecret ? "pay" : "review";
 
   useEffect(() => {
@@ -290,13 +291,23 @@ export function BookingPaymentModal({
   const initiateBooking = async () => {
     setIsLoading(true);
     try {
+      const requestIdempotencyKey =
+        idempotencyKeyRef.current ||
+        (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+          ? crypto.randomUUID()
+          : `${Date.now()}-${Math.random().toString(36).slice(2)}`);
+      idempotencyKeyRef.current = requestIdempotencyKey;
+
       const creditCents = Math.max(
         0,
         Math.floor(Number(creditsToApply || 0) * 100),
       );
       const res = await fetch(`/api/parking-pass/${passId}/book`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": requestIdempotencyKey,
+        },
         body: JSON.stringify({
           truckId,
           slotTypes,
@@ -344,6 +355,7 @@ export function BookingPaymentModal({
     setBookingData(null);
     setCreditsToApply("");
     setPromoCode("");
+    idempotencyKeyRef.current = null;
   };
 
   const handleClose = () => {

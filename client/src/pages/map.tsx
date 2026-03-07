@@ -1266,8 +1266,9 @@ export default function MapPage() {
       if (!res.ok) throw new Error("Failed to load bookable hosts");
       return res.json();
     },
-    staleTime: 60_000,
+    staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 
   useEffect(() => {
@@ -1357,8 +1358,9 @@ export default function MapPage() {
       if (!res.ok) throw new Error("Failed to load parking pass availability");
       return res.json();
     },
-    staleTime: 60_000,
+    staleTime: 3 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 
   useEffect(() => {

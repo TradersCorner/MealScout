@@ -7,6 +7,7 @@ import { events, eventSeries, insertEventSeriesSchema, type InsertEvent } from "
 import { isAuthenticated } from "../unifiedAuth";
 import { getHostByUserId, userOwnsSeries } from "../services/hostOwnership";
 import { assertMaxSpan180Days, generateOccurrences, filterFutureOccurrences } from "../services/openCallSeries";
+import { dateKeyInZone } from "../services/dateKeys";
 import { eq } from "drizzle-orm";
 import { isParkingPassPublicReady } from "../services/parkingPassQuality";
 
@@ -280,7 +281,14 @@ export function registerOpenCallSeriesRoutes(app: Express) {
                 dates: [] 
               });
             }
-            affectedTrucks.get(key)!.dates.push(occurrence.date.toISOString().split('T')[0]);
+            affectedTrucks
+              .get(key)!
+              .dates.push(
+                dateKeyInZone(
+                  occurrence.date,
+                  String(series.timezone || "America/Chicago"),
+                ),
+              );
           }
         }
       }

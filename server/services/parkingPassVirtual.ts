@@ -10,6 +10,12 @@ import {
   hosts,
 } from "@shared/schema";
 import { PARKING_PASS_MEAL_WINDOWS, timeToMinutes } from "@shared/parkingPassSlots";
+import {
+  addDaysToDateKey,
+  dateKeyInZone,
+  utcDateFromDateKey,
+  weekdayInZoneForDateKey,
+} from "./dateKeys";
 
 const DEFAULT_HORIZON_DAYS = 30;
 
@@ -37,8 +43,6 @@ const addDays = (d: Date, days: number) => {
   next.setDate(next.getDate() + days);
   return next;
 };
-
-const dateKeyFromDate = (d: Date) => d.toISOString().split("T")[0];
 
 const normalizeDaysOfWeek = (value: unknown): number[] => {
   if (!Array.isArray(value)) return [];
@@ -123,7 +127,7 @@ export async function listParkingPassOccurrences(options?: {
         coordinatorUserId: null,
         name: row.name ?? `Parking Pass - ${row.hostId}`,
         description: row.description ?? null,
-        timezone: "America/New_York",
+        timezone: "America/Chicago",
         recurrenceRule: null,
         startDate: start as any,
         endDate: end as any,
@@ -191,6 +195,12 @@ export async function listParkingPassOccurrences(options?: {
     }) as any;
 
   const seriesIds = seriesRows.map((row) => row.series.id);
+  const seriesTimezoneById = new Map(
+    seriesRows.map((row) => [
+      row.series.id,
+      String(row.series.timezone || "America/Chicago").trim(),
+    ]),
+  );
   const overrides = await db
     .select()
     .from(events)
@@ -207,7 +217,10 @@ export async function listParkingPassOccurrences(options?: {
   for (const row of overrides) {
     const seriesId = row.seriesId;
     if (!seriesId) continue;
-    const key = `${seriesId}:${dateKeyFromDate(new Date(row.date))}`;
+    const key = `${seriesId}:${dateKeyInZone(
+      new Date(row.date),
+      seriesTimezoneById.get(seriesId) || "America/Chicago",
+    )}`;
     overrideBySeriesDate.set(key, row);
   }
 
@@ -223,7 +236,11 @@ export async function listParkingPassOccurrences(options?: {
     );
   const blackoutSet = new Set(
     blackoutRows.map(
-      (row) => `${row.seriesId}:${dateKeyFromDate(new Date(row.date))}`,
+      (row) =>
+        `${row.seriesId}:${dateKeyInZone(
+          new Date(row.date),
+          seriesTimezoneById.get(row.seriesId) || "America/Chicago",
+        )}`,
     ),
   );
 
@@ -237,13 +254,14 @@ export async function listParkingPassOccurrences(options?: {
     const includeAllDays = daysOfWeek.length === 0;
     const window = ensureValidWindow(series.defaultStartTime, series.defaultEndTime);
 
+    const seriesTimeZone = String(series.timezone || "America/Chicago").trim();
+    const startDateKey = dateKeyInZone(start, seriesTimeZone);
     for (let offset = 0; offset < horizonDays; offset += 1) {
-      const cursor = addDays(start, offset);
-      const dow = cursor.getDay();
+      const dateKey = addDaysToDateKey(startDateKey, offset);
+      const dow = weekdayInZoneForDateKey(dateKey, seriesTimeZone);
       if (!includeAllDays && !daysOfWeek.includes(dow)) {
         continue;
       }
-      const dateKey = dateKeyFromDate(cursor);
       const seriesDateKey = `${series.id}:${dateKey}`;
       if (blackoutSet.has(seriesDateKey)) {
         continue;
@@ -254,7 +272,7 @@ export async function listParkingPassOccurrences(options?: {
       const endTime = override?.endTime ?? window.endTime;
 
       const id = override?.id ?? buildParkingPassVirtualId(series.id, dateKey);
-      const effectiveDate = override?.date ?? new Date(dateKey);
+      const effectiveDate = override?.date ?? utcDateFromDateKey(dateKey);
 
       const maxTrucks = override?.maxTrucks ?? series.defaultMaxTrucks ?? 1;
       const hardCapEnabled = override?.hardCapEnabled ?? series.defaultHardCapEnabled ?? false;
@@ -330,13 +348,7 @@ export async function ensureParkingPassEventRow(args: {
   }
 
   const { seriesId, dateKey } = parsed;
-  const targetDate = new Date(`${dateKey}T00:00:00`);
-  if (args.requireFuture) {
-    const today = dayStart(new Date());
-    if (targetDate < today) {
-      throw new Error("Cannot book past Parking Pass dates.");
-    }
-  }
+  const targetDate = utcDateFromDateKey(dateKey);
 
   const [seriesRow] = await db
     .select({ series: eventSeries, host: hosts })
@@ -348,12 +360,29 @@ export async function ensureParkingPassEventRow(args: {
   if (!seriesRow || seriesRow.series.seriesType !== "parking_pass") {
     return null;
   }
+  const seriesTimeZone = String(
+    seriesRow.series.timezone || "America/Chicago",
+  ).trim();
+  if (args.requireFuture) {
+    const todayKey = dateKeyInZone(new Date(), seriesTimeZone);
+    if (dateKey < todayKey) {
+      throw new Error("Cannot book past Parking Pass dates.");
+    }
+  }
 
   // Blackout check
+  const targetDateEnd = new Date(targetDate);
+  targetDateEnd.setUTCDate(targetDateEnd.getUTCDate() + 1);
   const [blackout] = await db
     .select({ id: parkingPassBlackoutDates.id })
     .from(parkingPassBlackoutDates)
-    .where(and(eq(parkingPassBlackoutDates.seriesId, seriesId), eq(parkingPassBlackoutDates.date, targetDate)))
+    .where(
+      and(
+        eq(parkingPassBlackoutDates.seriesId, seriesId),
+        gte(parkingPassBlackoutDates.date, targetDate),
+        lt(parkingPassBlackoutDates.date, targetDateEnd),
+      ),
+    )
     .limit(1);
   if (blackout) {
     return null;
@@ -361,7 +390,7 @@ export async function ensureParkingPassEventRow(args: {
 
   // Day-of-week check
   const days = normalizeDaysOfWeek(seriesRow.series.parkingPassDaysOfWeek as unknown);
-  if (days.length > 0 && !days.includes(targetDate.getDay())) {
+  if (days.length > 0 && !days.includes(weekdayInZoneForDateKey(dateKey, seriesTimeZone))) {
     return null;
   }
 
@@ -403,6 +432,11 @@ export async function ensureParkingPassEventRow(args: {
     updatedAt: new Date(),
   };
 
-  const [created] = await db.insert(events).values(insertPayload).returning();
+  await db.insert(events).values(insertPayload).onConflictDoNothing();
+  const [created] = await db
+    .select()
+    .from(events)
+    .where(eq(events.id, args.passId))
+    .limit(1);
   return created ?? null;
 }

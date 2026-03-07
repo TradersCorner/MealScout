@@ -14,6 +14,7 @@
   restaurantRecommendations,
   locationRequests,
   truckInterests,
+  hostLocationClaims,
   userAddresses,
   passwordResetTokens,
   phoneVerificationTokens,
@@ -51,6 +52,8 @@
   type LocationRequest,
   type InsertLocationRequest,
   type InsertTruckInterest,
+  type HostLocationClaim,
+  type InsertHostLocationClaim,
   type UserAddress,
   type InsertUserAddress,
   type PasswordResetToken,
@@ -112,6 +115,7 @@ import {
   or,
   gte,
   lte,
+  lt,
   sql,
   desc,
   asc,
@@ -126,6 +130,8 @@ import { syncUserToBrevo } from "./brevoCrm";
 import { ensureAffiliateTag } from "./affiliateTagService";
 import { forwardGeocode } from "./utils/geocoding";
 import { isParkingPassPublicReady } from "./services/parkingPassQuality";
+import { resolveCityTimeZoneSync } from "./services/cityTimeZone";
+import { utcDateFromDateKey } from "./services/dateKeys";
 
 // Interface for storage operations
 export interface IStorage {
@@ -578,7 +584,29 @@ export interface IStorage {
   expireStaleLocationRequests(): Promise<number>;
   createTruckInterest(
     interest: InsertTruckInterest,
-  ): Promise<{ interestId: string; locationRequest: LocationRequest }>;
+  ): Promise<{
+    interestId: string;
+    locationRequest: LocationRequest;
+    interestCount: number;
+    minInterestedTrucks: number;
+    thresholdReached: boolean;
+  }>;
+  getLocationDemandQueue(limit?: number): Promise<
+    Array<
+      LocationRequest & {
+        interestCount: number;
+        thresholdRemaining: number;
+      }
+    >
+  >;
+  createHostLocationClaim(
+    claim: InsertHostLocationClaim,
+  ): Promise<HostLocationClaim>;
+  convertHostLocationClaim(
+    claimId: string,
+    hostId: string,
+    claimingUserId: string,
+  ): Promise<void>;
 
   // User address operations
   createUserAddress(address: InsertUserAddress): Promise<UserAddress>;
@@ -1265,14 +1293,18 @@ export class DatabaseStorage implements IStorage {
       monthlyPriceCents: monthly,
     };
     const publicReady = isParkingPassPublicReady(listing as any);
+    const seriesTimezone = resolveCityTimeZoneSync({
+      city: host.city,
+      state: host.state,
+    });
 
-    await db
+    const [created] = await db
       .insert(eventSeries)
       .values({
         hostId: host.id,
         name: `Parking Pass - ${host.businessName}`,
         description: host.address,
-        timezone: "America/New_York",
+        timezone: seriesTimezone,
         recurrenceRule: null,
         startDate: today,
         endDate: horizon,
@@ -1294,9 +1326,9 @@ export class DatabaseStorage implements IStorage {
         status: publicReady ? "published" : "draft",
         publishedAt: publicReady ? new Date() : null,
       })
+      .onConflictDoNothing()
       .returning();
-
-    return true;
+    return Boolean(created?.id);
   }
 
   async syncParkingPassSeriesFromHost(hostId: string): Promise<string | null> {
@@ -1399,7 +1431,10 @@ export class DatabaseStorage implements IStorage {
         .insert(eventSeries)
         .values({
           hostId: host.id,
-          timezone: "America/New_York",
+          timezone: resolveCityTimeZoneSync({
+            city: host.city,
+            state: host.state,
+          }),
           recurrenceRule: null,
           startDate: today,
           endDate: horizon,
@@ -1407,8 +1442,20 @@ export class DatabaseStorage implements IStorage {
           seriesType: "parking_pass",
           ...updates,
         } as any)
+        .onConflictDoNothing()
         .returning();
-      return created?.id ?? null;
+      if (created?.id) return created.id;
+      const [existingAfterConflict] = await db
+        .select({ id: eventSeries.id })
+        .from(eventSeries)
+        .where(
+          and(
+            eq(eventSeries.hostId, host.id),
+            eq(eventSeries.seriesType, "parking_pass"),
+          ),
+        )
+        .limit(1);
+      return existingAfterConflict?.id ?? null;
     } catch (error) {
       console.warn("syncParkingPassSeriesFromHost failed:", error);
       return seriesId;
@@ -1764,9 +1811,16 @@ export class DatabaseStorage implements IStorage {
   async createParkingPassBlackoutDate(
     blackout: InsertParkingPassBlackoutDate,
   ): Promise<ParkingPassBlackoutDate> {
+    const rawDate =
+      blackout.date instanceof Date ? blackout.date : new Date(blackout.date as any);
+    const dateKey = rawDate.toISOString().split("T")[0];
+    const normalizedDate = utcDateFromDateKey(dateKey);
     const [created] = await db
       .insert(parkingPassBlackoutDates)
-      .values(blackout)
+      .values({
+        ...blackout,
+        date: normalizedDate,
+      })
       .returning();
     return created;
   }
@@ -1775,12 +1829,17 @@ export class DatabaseStorage implements IStorage {
     seriesId: string,
     date: Date,
   ): Promise<void> {
+    const dateKey = date.toISOString().split("T")[0];
+    const start = utcDateFromDateKey(dateKey);
+    const end = new Date(start);
+    end.setUTCDate(end.getUTCDate() + 1);
     await db
       .delete(parkingPassBlackoutDates)
       .where(
         and(
           eq(parkingPassBlackoutDates.seriesId, seriesId),
-          eq(parkingPassBlackoutDates.date, date),
+          gte(parkingPassBlackoutDates.date, start),
+          lt(parkingPassBlackoutDates.date, end),
         ),
       );
   }
@@ -1934,7 +1993,12 @@ export class DatabaseStorage implements IStorage {
     return await db
       .select()
       .from(locationRequests)
-      .where(eq(locationRequests.status, "open"))
+      .where(
+        and(
+          eq(locationRequests.status, "open"),
+          ne(locationRequests.demandStatus, "claimed"),
+        ),
+      )
       .orderBy(desc(locationRequests.createdAt));
   }
 
@@ -6133,6 +6197,11 @@ export class DatabaseStorage implements IStorage {
     const payload = {
       ...request,
       status: "open",
+      demandStatus: "collecting",
+      minInterestedTrucks: Math.max(
+        1,
+        Math.min(20, Number(request.minInterestedTrucks ?? 3) || 3),
+      ),
       notes: request.notes?.trim() || null,
     };
 
@@ -6172,7 +6241,13 @@ export class DatabaseStorage implements IStorage {
 
   async createTruckInterest(
     interest: InsertTruckInterest,
-  ): Promise<{ interestId: string; locationRequest: LocationRequest }> {
+  ): Promise<{
+    interestId: string;
+    locationRequest: LocationRequest;
+    interestCount: number;
+    minInterestedTrucks: number;
+    thresholdReached: boolean;
+  }> {
     await this.expireStaleLocationRequests();
 
     const locationRequest = await this.getLocationRequestById(
@@ -6185,15 +6260,178 @@ export class DatabaseStorage implements IStorage {
       throw new Error("Location request is not open");
     }
 
-    const [created] = await db
-      .insert(truckInterests)
-      .values({
-        ...interest,
-        message: interest.message?.trim() || null,
-      })
-      .returning({ id: truckInterests.id });
+    try {
+      return await db.transaction(async (tx: any) => {
+        const [created] = await tx
+          .insert(truckInterests)
+          .values({
+            ...interest,
+            message: interest.message?.trim() || null,
+          })
+          .returning({ id: truckInterests.id });
 
-    return { interestId: created.id, locationRequest };
+        const [countRow] = await tx
+          .select({ count: sql<number>`count(*)` })
+          .from(truckInterests)
+          .where(eq(truckInterests.locationRequestId, interest.locationRequestId));
+        const interestCount = Number(countRow?.count ?? 0);
+        const minInterestedTrucks = Math.max(
+          1,
+          Number(locationRequest.minInterestedTrucks ?? 3) || 3,
+        );
+        const thresholdReached = interestCount >= minInterestedTrucks;
+
+        if (thresholdReached) {
+          await tx
+            .update(locationRequests)
+            .set({
+              demandStatus: "threshold_met",
+              thresholdReachedAt:
+                locationRequest.thresholdReachedAt || new Date(),
+            })
+            .where(
+              and(
+                eq(locationRequests.id, interest.locationRequestId),
+                eq(locationRequests.status, "open"),
+              ),
+            );
+        }
+
+        const [updatedLocation] = await tx
+          .select()
+          .from(locationRequests)
+          .where(eq(locationRequests.id, interest.locationRequestId));
+
+        return {
+          interestId: created.id,
+          locationRequest: updatedLocation || locationRequest,
+          interestCount,
+          minInterestedTrucks,
+          thresholdReached,
+        };
+      });
+    } catch (error: any) {
+      if (error?.code === "23505") {
+        throw new Error("Truck already interested");
+      }
+      throw error;
+    }
+  }
+
+  async getLocationDemandQueue(
+    limit = 100,
+  ): Promise<
+    Array<
+      LocationRequest & {
+        interestCount: number;
+        thresholdRemaining: number;
+      }
+    >
+  > {
+    await this.expireStaleLocationRequests();
+
+    const safeLimit = Math.max(1, Math.min(250, Number(limit) || 100));
+    const rows = await db
+      .select({
+        request: locationRequests,
+        interestCount: sql<number>`count(${truckInterests.id})`,
+      })
+      .from(locationRequests)
+      .leftJoin(
+        truckInterests,
+        eq(truckInterests.locationRequestId, locationRequests.id),
+      )
+      .where(
+        and(
+          eq(locationRequests.status, "open"),
+          or(
+            eq(locationRequests.demandStatus, "collecting"),
+            eq(locationRequests.demandStatus, "threshold_met"),
+          ),
+        ),
+      )
+      .groupBy(locationRequests.id)
+      .orderBy(
+        desc(locationRequests.thresholdReachedAt),
+        desc(sql`count(${truckInterests.id})`),
+        desc(locationRequests.createdAt),
+      )
+      .limit(safeLimit);
+
+    return rows.map((row: (typeof rows)[number]) => {
+      const interestCount = Number(row.interestCount ?? 0);
+      const minInterestedTrucks = Math.max(
+        1,
+        Number(row.request.minInterestedTrucks ?? 3) || 3,
+      );
+      return {
+        ...row.request,
+        interestCount,
+        thresholdRemaining: Math.max(0, minInterestedTrucks - interestCount),
+      };
+    });
+  }
+
+  async createHostLocationClaim(
+    claim: InsertHostLocationClaim,
+  ): Promise<HostLocationClaim> {
+    const [created] = await db
+      .insert(hostLocationClaims)
+      .values({
+        ...claim,
+        message: claim.message?.trim() || null,
+      })
+      .returning();
+
+    await db
+      .update(locationRequests)
+      .set({ demandStatus: "claimed" })
+      .where(
+        and(
+          eq(locationRequests.id, claim.locationRequestId),
+          eq(locationRequests.status, "open"),
+        ),
+      );
+
+    return created;
+  }
+
+  async convertHostLocationClaim(
+    claimId: string,
+    hostId: string,
+    claimingUserId: string,
+  ): Promise<void> {
+    await db.transaction(async (tx: any) => {
+      const [claim] = await tx
+        .select()
+        .from(hostLocationClaims)
+        .where(
+          and(
+            eq(hostLocationClaims.id, claimId),
+            eq(hostLocationClaims.claimedByUserId, claimingUserId),
+          ),
+        );
+      if (!claim) {
+        throw new Error("Host location claim not found");
+      }
+
+      await tx
+        .update(hostLocationClaims)
+        .set({
+          status: "converted",
+          hostId,
+          resolvedAt: new Date(),
+        })
+        .where(eq(hostLocationClaims.id, claimId));
+
+      await tx
+        .update(locationRequests)
+        .set({
+          status: "fulfilled",
+          demandStatus: "fulfilled",
+        })
+        .where(eq(locationRequests.id, claim.locationRequestId));
+    });
   }
 
   // User address operations

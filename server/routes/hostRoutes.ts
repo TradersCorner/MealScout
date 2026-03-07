@@ -47,18 +47,38 @@ import {
   listParkingPassOccurrences,
 } from "../services/parkingPassVirtual";
 import {
+  addDaysToDateKey,
+  dateKeyFromUnknown,
+  dateKeyInZone,
+  utcDateFromDateKey,
+} from "../services/dateKeys";
+import {
   computeParkingPassQualityFlags,
   isParkingPassPublicReady,
 } from "../services/parkingPassQuality";
 import { imageUploads } from "@shared/schema";
 import { logAudit } from "../auditLogger";
 import { getHostEarningsSummary } from "../hostEarningsService";
+import { resolveCityTimeZoneSync } from "../services/cityTimeZone";
+import { requireIdempotencyKey } from "../middleware/idempotency";
+import { distributedRateLimit } from "../middleware/distributedRateLimit";
 
 const stripe = process.env.STRIPE_SECRET_KEY
   ? new Stripe(process.env.STRIPE_SECRET_KEY)
   : null;
 
 export function registerHostRoutes(app: Express) {
+  const parkingPassBookingBurstLimiter = distributedRateLimit({
+    scope: "parking-pass-booking:burst",
+    limit: 12,
+    windowMs: 60 * 1000,
+  });
+  const parkingPassBookingDayLimiter = distributedRateLimit({
+    scope: "parking-pass-booking:day",
+    limit: 120,
+    windowMs: 24 * 60 * 60 * 1000,
+  });
+
   const isStaffOrAdminUser = (user: any) =>
     user?.userType === "staff" ||
     user?.userType === "admin" ||
@@ -143,6 +163,9 @@ export function registerHostRoutes(app: Express) {
   app.post("/api/hosts", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
+      const locationRequestClaimId = String(
+        req.body?.locationRequestClaimId || "",
+      ).trim();
       // Check if host profile already exists
       const existing = await getHostByUserId(userId);
       if (existing) {
@@ -238,6 +261,14 @@ export function registerHostRoutes(app: Express) {
         .ensureDraftParkingPassForHost(host.id)
         .catch(() => false);
 
+      if (locationRequestClaimId) {
+        await storage
+          .convertHostLocationClaim(locationRequestClaimId, host.id, userId)
+          .catch((error: any) => {
+            console.error("Failed to convert host location claim:", error);
+          });
+      }
+
       // Hosts should keep their existing user type (typically "customer").
       // We no longer auto-upgrade hosts into restaurant_owner accounts so
       // they don't see restaurant dashboards or deal creation flows.
@@ -245,6 +276,7 @@ export function registerHostRoutes(app: Express) {
       res.status(201).json({
         ...host,
         parkingPassSeriesReady,
+        locationRequestClaimId: locationRequestClaimId || null,
       });
     } catch (error: any) {
       console.error("Error creating host:", error);
@@ -704,7 +736,16 @@ export function registerHostRoutes(app: Express) {
         }
         const blackoutDates =
           await storage.getParkingPassBlackoutDates(seriesId);
-        res.json(blackoutDates);
+        const timezone = resolveCityTimeZoneSync({
+          city: host.city,
+          state: host.state,
+        });
+        res.json(
+          blackoutDates.map((row: any) => ({
+            ...row,
+            dateKey: dateKeyInZone(new Date(row.date), timezone),
+          })),
+        );
       } catch (error: any) {
         console.error("Error fetching blackout dates:", error);
         res.status(500).json({ message: "Failed to fetch blackout dates" });
@@ -731,10 +772,15 @@ export function registerHostRoutes(app: Express) {
             .json({ message: "No active parking pass found." });
         }
 
-        const date = new Date(req.body?.date);
-        if (Number.isNaN(date.getTime())) {
+        const timezone = resolveCityTimeZoneSync({
+          city: host.city,
+          state: host.state,
+        });
+        const dateKey = dateKeyFromUnknown(req.body?.date, timezone);
+        if (!dateKey) {
           return res.status(400).json({ message: "Valid date required" });
         }
+        const date = utcDateFromDateKey(dateKey);
 
         const created = await storage.createParkingPassBlackoutDate({
           seriesId,
@@ -760,13 +806,17 @@ export function registerHostRoutes(app: Express) {
           return res.status(404).json({ message: "Host profile not found" });
         }
 
-        const date = new Date(req.body?.date);
-        if (Number.isNaN(date.getTime())) {
+        const timezone = resolveCityTimeZoneSync({
+          city: host.city,
+          state: host.state,
+        });
+        const dateKey = dateKeyFromUnknown(req.body?.date, timezone);
+        if (!dateKey) {
           return res.status(400).json({ message: "Valid date required" });
         }
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        if (date <= today) {
+        const date = utcDateFromDateKey(dateKey);
+        const todayKey = dateKeyInZone(new Date(), timezone);
+        if (dateKey <= todayKey) {
           return res.status(400).json({
             message: "Same-day blackout dates cannot be removed.",
           });
@@ -1053,12 +1103,16 @@ export function registerHostRoutes(app: Express) {
         weeklyPriceCents,
         monthlyPriceCents,
       });
+      const seriesTimezone = resolveCityTimeZoneSync({
+        city: host.city,
+        state: host.state,
+      });
 
       const seriesValues: typeof eventSeries.$inferInsert = {
         hostId: host.id,
         name: `Parking Pass - ${host.businessName}`,
         description: host.address,
-        timezone: "America/New_York",
+        timezone: seriesTimezone,
         recurrenceRule: null,
         startDate: today,
         endDate: horizon,
@@ -1090,8 +1144,28 @@ export function registerHostRoutes(app: Express) {
         const [created] = await db
           .insert(eventSeries)
           .values(seriesValues)
+          .onConflictDoNothing()
           .returning();
         seriesId = created?.id ?? null;
+        if (!seriesId) {
+          const [existingAfterConflict] = await db
+            .select({ id: eventSeries.id })
+            .from(eventSeries)
+            .where(
+              and(
+                eq(eventSeries.hostId, host.id),
+                eq(eventSeries.seriesType, "parking_pass"),
+              ),
+            )
+            .limit(1);
+          if (existingAfterConflict?.id) {
+            seriesId = existingAfterConflict.id;
+            await db
+              .update(eventSeries)
+              .set(seriesValues as any)
+              .where(eq(eventSeries.id, seriesId));
+          }
+        }
       }
 
       if (!seriesId) {
@@ -1546,10 +1620,14 @@ export function registerHostRoutes(app: Express) {
 
         const affectedEventIds = affectedEvents.map((row) => row.id);
         const eventDateById = new Map<string, string>();
+        const hostTimeZone = resolveCityTimeZoneSync({
+          city: host.city,
+          state: host.state,
+        });
         for (const row of affectedEvents) {
           eventDateById.set(
             row.id,
-            new Date(row.date).toISOString().split("T")[0],
+            dateKeyInZone(new Date(row.date), hostTimeZone),
           );
         }
 
@@ -2295,6 +2373,9 @@ export function registerHostRoutes(app: Express) {
   // Book a Parking Pass (creates payment intent with $10/day platform fee auto-added)
   app.post(
     "/api/parking-pass/:passId/book",
+    parkingPassBookingBurstLimiter,
+    parkingPassBookingDayLimiter,
+    requireIdempotencyKey({ scope: "parking_pass_booking" }),
     isAuthenticated,
     async (req: any, res) => {
       try {
@@ -2466,6 +2547,10 @@ export function registerHostRoutes(app: Express) {
         const hostStripeAccountId = hostPaymentsEnabled
           ? host.stripeConnectAccountId
           : null;
+        const bookingTimeZone = resolveCityTimeZoneSync({
+          city: host.city,
+          state: host.state,
+        });
 
         // Check for existing booking
         const existingBooking = await db
@@ -2487,8 +2572,8 @@ export function registerHostRoutes(app: Express) {
         }
 
         const eventDate = new Date(event.date);
-        const rangeStart = new Date(eventDate);
-        rangeStart.setHours(0, 0, 0, 0);
+        const eventDateKey = dateKeyInZone(eventDate, bookingTimeZone);
+        const rangeStart = utcDateFromDateKey(eventDateKey);
 
         const requestedDateKeys = Array.isArray(selectedDates)
           ? Array.from(
@@ -2519,9 +2604,7 @@ export function registerHostRoutes(app: Express) {
           requestedDateKeys.length > 0
             ? requestedDateKeys
             : Array.from({ length: bookingDaysDefault }, (_, offset) => {
-                const cursor = new Date(rangeStart);
-                cursor.setDate(cursor.getDate() + offset);
-                return cursor.toISOString().split("T")[0];
+                return addDaysToDateKey(eventDateKey, offset);
               });
         if (expectedDateKeys.length === 0) {
           return res
@@ -2566,7 +2649,7 @@ export function registerHostRoutes(app: Express) {
 
         const eventsByDate = new Map<string, (typeof bookingEvents)[number]>();
         for (const row of bookingEvents) {
-          const dateKey = new Date(row.date).toISOString().split("T")[0];
+          const dateKey = dateKeyInZone(new Date(row.date), bookingTimeZone);
           eventsByDate.set(dateKey, row);
         }
 
@@ -2580,9 +2663,26 @@ export function registerHostRoutes(app: Express) {
           });
         }
 
+        const now = new Date();
+        const todayStart = new Date(now);
+        todayStart.setHours(0, 0, 0, 0);
+        const nowMinutes = now.getHours() * 60 + now.getMinutes();
+
         for (const dateKey of expectedDateKeys) {
           const row = eventsByDate.get(dateKey);
           if (!row) continue;
+          const rowDate = new Date(row.date);
+          const rowDayStart = new Date(rowDate);
+          rowDayStart.setHours(0, 0, 0, 0);
+
+          if (rowDayStart < todayStart) {
+            return res.status(400).json({
+              message: "Cannot book past parking pass dates.",
+            });
+          }
+
+          const isSameDayBooking = rowDayStart.getTime() === todayStart.getTime();
+
           if (row.status !== "open") {
             return res.status(400).json({
               message: "This parking pass is not available for that date.",
@@ -2593,6 +2693,20 @@ export function registerHostRoutes(app: Express) {
               return res.status(400).json({
                 message: "Selected slots do not fit within host parking hours.",
               });
+            }
+
+            if (isSameDayBooking) {
+              const window = getSlotWindowMinutesWithCleanup(
+                slotType,
+                row.startTime,
+                row.endTime,
+              );
+              if (!window || window.startMinutes <= nowMinutes) {
+                return res.status(400).json({
+                  message:
+                    "Selected slots must start in the future. Choose a later slot or a different date.",
+                });
+              }
             }
           }
         }
@@ -2673,9 +2787,10 @@ export function registerHostRoutes(app: Express) {
         }
 
         for (const booking of existingBookings) {
-          const dateKey = new Date(booking.eventDate)
-            .toISOString()
-            .split("T")[0];
+          const dateKey = dateKeyInZone(
+            new Date(booking.eventDate),
+            bookingTimeZone,
+          );
           const requested = requestedWindowsByDate.get(dateKey);
           if (!requested || requested.length === 0) continue;
           const slotParts = (booking.slotType || "")

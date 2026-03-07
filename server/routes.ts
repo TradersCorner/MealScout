@@ -34,6 +34,12 @@ import {
   isHostProfileMapEligible,
   normalizeUsStateAbbr,
 } from "./services/parkingPassQuality";
+import { resolveCityTimeZoneSync } from "./services/cityTimeZone";
+import {
+  addDaysToDateKey,
+  dateKeyInZone,
+  utcDateFromDateKey,
+} from "./services/dateKeys";
 import { registerOpenCallSeriesRoutes } from "./routes/openCallSeriesRoutes";
 import { registerEventRoutes } from "./routes/eventRoutes";
 import { registerDiscoveryRoutes } from "./routes/discoveryRoutes";
@@ -74,6 +80,7 @@ import {
   insertDealFeedbackSchema,
   insertLocationRequestSchema,
   insertTruckInterestSchema,
+  insertHostLocationClaimSchema,
   insertHostSchema,
   insertEventSchema,
   insertEventSeriesSchema,
@@ -94,6 +101,7 @@ import {
   userAddresses,
   locationRequests,
   restaurants,
+  truckInterests,
   suppliers,
   supplierProducts,
   videoStories,
@@ -1846,6 +1854,122 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/location-requests/demand", async (req: any, res) => {
+    try {
+      const limit = Number(req.query?.limit ?? 100) || 100;
+      const queue = await storage.getLocationDemandQueue(limit);
+      res.json({
+        generatedAt: new Date().toISOString(),
+        count: queue.length,
+        queue: queue.map((row) => ({
+          id: row.id,
+          businessName: row.businessName,
+          address: row.address,
+          locationType: row.locationType,
+          preferredDates: row.preferredDates,
+          expectedFootTraffic: row.expectedFootTraffic,
+          minInterestedTrucks: row.minInterestedTrucks,
+          demandStatus: row.demandStatus,
+          status: row.status,
+          thresholdReachedAt: row.thresholdReachedAt,
+          interestCount: row.interestCount,
+          thresholdRemaining: row.thresholdRemaining,
+          latitude: row.latitude,
+          longitude: row.longitude,
+          createdAt: row.createdAt,
+        })),
+      });
+    } catch (error) {
+      console.error("Error loading location demand queue:", error);
+      res.status(500).json({ message: "Failed to load location demand queue" });
+    }
+  });
+
+  app.get("/api/location-requests/:id/summary", async (req: any, res) => {
+    try {
+      const requestId = String(req.params?.id || "").trim();
+      if (!requestId) {
+        return res.status(400).json({ message: "Location request ID required" });
+      }
+
+      const locationRequest = await storage.getLocationRequestById(requestId);
+      if (!locationRequest) {
+        return res.status(404).json({ message: "Location request not found" });
+      }
+
+      const queue = await storage.getLocationDemandQueue(250);
+      const match = queue.find((row) => String(row.id) === requestId);
+      const interestCount = Number(match?.interestCount ?? 0);
+      const minInterestedTrucks = Math.max(
+        1,
+        Number(locationRequest.minInterestedTrucks ?? 3) || 3,
+      );
+
+      res.json({
+        id: locationRequest.id,
+        demandStatus: locationRequest.demandStatus,
+        status: locationRequest.status,
+        interestCount,
+        minInterestedTrucks,
+        thresholdRemaining: Math.max(0, minInterestedTrucks - interestCount),
+        thresholdReached: interestCount >= minInterestedTrucks,
+        thresholdReachedAt: locationRequest.thresholdReachedAt,
+        createdAt: locationRequest.createdAt,
+      });
+    } catch (error) {
+      console.error("Error loading location request summary:", error);
+      res.status(500).json({ message: "Failed to load location request summary" });
+    }
+  });
+
+  app.post(
+    "/api/location-requests/:id/claim",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const locationRequestId = String(req.params?.id || "").trim();
+        if (!locationRequestId) {
+          return res.status(400).json({ message: "Location request ID required" });
+        }
+
+        const parsed = insertHostLocationClaimSchema.parse({
+          ...req.body,
+          locationRequestId,
+          claimedByUserId: req.user.id,
+        });
+
+        const locationRequest =
+          await storage.getLocationRequestById(locationRequestId);
+        if (!locationRequest) {
+          return res.status(404).json({ message: "Location request not found" });
+        }
+        if (locationRequest.status !== "open") {
+          return res.status(400).json({ message: "Location request is closed" });
+        }
+
+        const claim = await storage.createHostLocationClaim(parsed);
+        res.status(201).json({
+          message: "Demand location claimed",
+          claimId: claim.id,
+          status: claim.status,
+        });
+      } catch (error: any) {
+        console.error("Error creating location request claim:", error);
+        if (error instanceof z.ZodError) {
+          return res
+            .status(400)
+            .json({ message: "Invalid claim data", errors: error.errors });
+        }
+        if (error?.code === "23505") {
+          return res.status(409).json({
+            message: "You already claimed this location request",
+          });
+        }
+        res.status(500).json({ message: "Failed to claim location request" });
+      }
+    },
+  );
+
   app.post(
     "/api/location-requests/:id/interests",
     isRestaurantOwner,
@@ -1881,9 +2005,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
           message,
         );
 
+        if (result.thresholdReached) {
+          const hostUser = await storage.getUser(result.locationRequest.postedByUserId);
+          if (hostUser?.email) {
+            const thresholdSubject = `${result.locationRequest.businessName} is now demand-qualified`;
+            const thresholdHtml = `
+              <p>Your requested location reached its demand threshold.</p>
+              <p><strong>Location:</strong> ${result.locationRequest.businessName}</p>
+              <p><strong>Address:</strong> ${result.locationRequest.address}</p>
+              <p><strong>Interested trucks:</strong> ${result.interestCount}</p>
+              <p><strong>Required:</strong> ${result.minInterestedTrucks}</p>
+              <p><a href="${(process.env.PUBLIC_BASE_URL || "").replace(/\/+$/, "")}/host-signup">Claim this demand and publish your first paid slot</a></p>
+            `;
+            await emailService
+              .sendBasicEmail(hostUser.email, thresholdSubject, thresholdHtml)
+              .catch(() => undefined);
+          }
+
+          const truckAudience = await db
+            .selectDistinct({
+              email: users.email,
+            })
+            .from(truckInterests)
+            .innerJoin(
+              restaurants,
+              eq(restaurants.id, truckInterests.restaurantId),
+            )
+            .innerJoin(users, eq(users.id, restaurants.ownerId))
+            .where(eq(truckInterests.locationRequestId, locationRequestId));
+          const truckEmails = truckAudience
+            .map((row: { email: string | null }) => String(row.email || "").trim())
+            .filter(Boolean);
+
+          if (truckEmails.length > 0) {
+            const baseUrl = (process.env.PUBLIC_BASE_URL || "").replace(/\/+$/, "");
+            const truckSubject = `${result.locationRequest.businessName} is opening for booking`;
+            const truckHtml = `
+              <p>This location request hit its demand threshold and is moving into host onboarding.</p>
+              <p><strong>Location:</strong> ${result.locationRequest.businessName}</p>
+              <p><strong>Address:</strong> ${result.locationRequest.address}</p>
+              <p><strong>Interested trucks:</strong> ${result.interestCount}</p>
+              <p><a href="${baseUrl}/parking-pass">Open Parking Pass bookings</a></p>
+            `;
+            await Promise.all(
+              truckEmails.map((email: string) =>
+                emailService
+                  .sendBasicEmail(email, truckSubject, truckHtml)
+                  .catch(() => undefined),
+              ),
+            );
+          }
+        }
+
         res.status(201).json({
           message: "Interest sent to host",
           interestId: result.interestId,
+          interestCount: result.interestCount,
+          minInterestedTrucks: result.minInterestedTrucks,
+          thresholdReached: result.thresholdReached,
         });
       } catch (error: any) {
         console.error("Error expressing truck interest:", error);
@@ -1902,6 +2081,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (error.message === "Location request is not open") {
           return res.status(400).json({
             message: "Location request is not accepting new interest",
+          });
+        }
+        if (error.message === "Truck already interested") {
+          return res.status(409).json({
+            message: "This truck has already shown interest in this location",
           });
         }
 
@@ -6330,6 +6514,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
               .select()
               .from(hosts)
               .where(eq(hosts.id, eventRow.hostId));
+            const bookingTimeZone = resolveCityTimeZoneSync({
+              city: host?.city,
+              state: host?.state,
+            });
 
             const slotTypes = String(
               metadata.slotTypes || metadata.slotType || "",
@@ -6362,8 +6550,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
             const startDateKey = metadata.bookingStartDate
               ? String(metadata.bookingStartDate)
-              : new Date(eventRow.date).toISOString().split("T")[0];
-            const rangeStart = new Date(`${startDateKey}T00:00:00`);
+              : dateKeyInZone(new Date(eventRow.date), bookingTimeZone);
+            const rangeStart = utcDateFromDateKey(startDateKey);
             const rangeEnd = new Date(rangeStart);
             rangeEnd.setDate(rangeEnd.getDate() + bookingDays);
 
@@ -6385,15 +6573,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
               (typeof bookingEvents)[number]
             >();
             for (const row of bookingEvents) {
-              const dateKey = new Date(row.date).toISOString().split("T")[0];
+              const dateKey = dateKeyInZone(
+                new Date(row.date),
+                bookingTimeZone,
+              );
               eventsByDate.set(dateKey, row);
             }
 
             const expectedDateKeys: string[] = [];
             for (let offset = 0; offset < bookingDays; offset += 1) {
-              const cursor = new Date(rangeStart);
-              cursor.setDate(cursor.getDate() + offset);
-              expectedDateKeys.push(cursor.toISOString().split("T")[0]);
+              expectedDateKeys.push(addDaysToDateKey(startDateKey, offset));
             }
 
             const metadataHostPriceCents = Number(metadata.hostPriceCents || 0);
@@ -6443,27 +6632,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
               }
 
               try {
-                await db.insert(eventBookings).values({
-                  eventId: passId,
-                  truckId,
-                  hostId: eventRow.hostId,
-                  hostPriceCents: metadataHostPriceCents,
-                  platformFeeCents: metadataPlatformFeeCents,
-                  totalCents: amountCents,
-                  status: "cancelled",
-                  stripePaymentIntentId: paymentIntent.id,
-                  stripePaymentStatus: "succeeded",
-                  stripeApplicationFeeAmount: metadataPlatformFeeCents,
-                  stripeTransferDestination:
-                    host?.stripeConnectAccountId || null,
-                  slotType: normalizedSlotTypes.join(","),
-                  refundStatus: "credit",
-                  refundAmountCents: amountCents,
-                  refundedAt: new Date(),
-                  refundReason: "Overbooked",
-                  cancelledAt: new Date(),
-                  cancellationReason: "Overbooked - credit issued",
-                });
+                await db
+                  .insert(eventBookings)
+                  .values({
+                    eventId: passId,
+                    truckId,
+                    hostId: eventRow.hostId,
+                    hostPriceCents: metadataHostPriceCents,
+                    platformFeeCents: metadataPlatformFeeCents,
+                    totalCents: amountCents,
+                    status: "cancelled",
+                    stripePaymentIntentId: paymentIntent.id,
+                    stripePaymentStatus: "succeeded",
+                    stripeApplicationFeeAmount: metadataPlatformFeeCents,
+                    stripeTransferDestination:
+                      host?.stripeConnectAccountId || null,
+                    slotType: normalizedSlotTypes.join(","),
+                    refundStatus: "credit",
+                    refundAmountCents: amountCents,
+                    refundedAt: new Date(),
+                    refundReason: "Overbooked",
+                    cancelledAt: new Date(),
+                    cancellationReason: "Overbooked - credit issued",
+                  })
+                  .onConflictDoNothing();
               } catch (error) {
                 console.warn(
                   "[WEBHOOK] Unable to insert cancelled booking row after credit:",
@@ -6764,14 +6956,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
               const insertedRows = await db
                 .insert(eventBookings)
                 .values(filteredRows)
+                .onConflictDoNothing()
                 .returning({
                   id: eventBookings.id,
                   hostId: eventBookings.hostId,
                   hostPriceCents: eventBookings.hostPriceCents,
                 });
 
-              for (const row of filteredRows) {
-                incrementNewlyConfirmed(row.eventId);
+              if (insertedRows.length === 0) {
+                const existingRows = await db
+                  .select({
+                    id: eventBookings.id,
+                    eventId: eventBookings.eventId,
+                    hostId: eventBookings.hostId,
+                    hostPriceCents: eventBookings.hostPriceCents,
+                  })
+                  .from(eventBookings)
+                  .where(inArray(eventBookings.eventId, eventIds))
+                  .where(eq(eventBookings.truckId, truckId))
+                  .where(eq(eventBookings.stripePaymentIntentId, paymentIntent.id))
+                  .where(eq(eventBookings.status, "confirmed"));
+
+                if (existingRows.length === expectedDateKeys.length) {
+                  bookingConfirmed = true;
+                  for (const row of existingRows) {
+                    incrementNewlyConfirmed(row.eventId);
+                  }
+                } else {
+                  await cancelWithCredit("parking_pass_duplicate");
+                  break;
+                }
+              }
+
+              if (insertedRows.length > 0) {
+                for (const row of filteredRows) {
+                  incrementNewlyConfirmed(row.eventId);
+                }
               }
 
               for (const row of insertedRows) {

@@ -5,6 +5,7 @@ import { and, eq, gte, ilike, inArray, isNotNull, lte, ne, or, sql } from "drizz
 import { buildSlotDateTimes, intervalOverlaps, resolveTimeIntent, type TimeIntent } from "../services/timeIntent";
 import { getPublicSlotGateConfigFromEnv, isSlotPublic, type PublicSlot } from "../services/publicSlotGate";
 import { resolveCityTimeZone, usStateToTimeZone } from "../services/cityTimeZone";
+import { dateKeyInZone } from "../services/dateKeys";
 
 type TimeKey = "now" | "breakfast" | "lunch" | "dinner" | "tonight" | "this-weekend";
 
@@ -40,9 +41,9 @@ function makeEntitySlug(name: unknown, id: unknown): string {
   return slug ? `${slug}--${rawId}` : rawId;
 }
 
-function toDateKey(value: unknown): string | null {
+function toDateKey(value: unknown, timeZone?: string): string | null {
   if (value instanceof Date) {
-    const key = value.toISOString().split("T")[0];
+    const key = dateKeyInZone(value, timeZone || "America/Chicago");
     return /^\d{4}-\d{2}-\d{2}$/.test(key) ? key : null;
   }
   const raw = String(value || "").trim();
@@ -281,7 +282,9 @@ export function registerDiscoveryRoutes(app: Express) {
             : null;
         const schedule = {
           kind: row.kind,
-          date: toDateKey(row.date) ?? new Date(row.date).toISOString().split("T")[0],
+          date:
+            toDateKey(row.date, timeZone) ??
+            dateKeyInZone(new Date(row.date), timeZone),
           startTime: row.startTime,
           endTime: row.endTime,
           lastConfirmedAt: row.lastConfirmedAtUtc.toISOString(),
@@ -441,7 +444,9 @@ export function registerDiscoveryRoutes(app: Express) {
         const truckPath = `/truck/${encodeURIComponent(makeEntitySlug(truckName, truckId))}`;
         const schedule = {
           kind: "booking" as const,
-          date: toDateKey(row.date) ?? new Date(row.date).toISOString().split("T")[0],
+          date:
+            toDateKey(row.date, timeZone) ??
+            dateKeyInZone(new Date(row.date), timeZone),
           startTime: String(row.startTime || ""),
           endTime: String(row.endTime || ""),
           lastConfirmedAt: slot.lastConfirmedAtUtc.toISOString(),

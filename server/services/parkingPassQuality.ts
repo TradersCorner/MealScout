@@ -249,7 +249,6 @@ export function isParkingPassPublicReady(listing: Parameters<typeof computeParki
   // - invalid_state/bad_address_format: legacy/dirty data is common
   // - invalid_time_window/spots: downstream logic defaults these safely
   const nonBlocking = new Set<ParkingPassQualityFlag>([
-    "payments_disabled",
     "missing_coords",
     "invalid_coords",
     "invalid_state",

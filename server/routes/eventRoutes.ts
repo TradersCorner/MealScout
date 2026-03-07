@@ -33,11 +33,26 @@ import {
 import crypto from "crypto";
 import { handleReportRequest, renderReportPdfForToken, requestReportSchema } from "../services/pensacolaReportLeadMagnet";
 import { buildSlotDateTimes } from "../services/timeIntent";
-import { resolveCityTimeZone } from "../services/cityTimeZone";
+import {
+  resolveCityTimeZone,
+  resolveCityTimeZoneSync,
+} from "../services/cityTimeZone";
 import { isSlotPublic, type PublicSlot } from "../services/publicSlotGate";
 import { distributedRateLimit } from "../middleware/distributedRateLimit";
+import { dateKeyFromUnknown, dateKeyInZone } from "../services/dateKeys";
 
 export function registerEventRoutes(app: Express) {
+  const parkingPassFeedLimiter = distributedRateLimit({
+    scope: "parking-pass-feed",
+    limit: 120,
+    windowMs: 60 * 1000,
+  });
+  const parkingPassBookabilityLimiter = distributedRateLimit({
+    scope: "parking-pass-bookability",
+    limit: 180,
+    windowMs: 60 * 1000,
+  });
+
   let parkingPassPublicFeedCache:
     | { expiresAt: number; payload: any[] }
     | null = null;
@@ -378,7 +393,7 @@ export function registerEventRoutes(app: Express) {
   });
 
   // Parking Pass listings (truck-paid slots only)
-  app.get("/api/parking-pass", async (req: any, res) => {
+  app.get("/api/parking-pass", parkingPassFeedLimiter, async (req: any, res) => {
     try {
       res.setHeader("Cache-Control", "public, max-age=60");
       const isAuthed = Boolean(req.isAuthenticated?.() && req.user?.id);
@@ -456,8 +471,12 @@ export function registerEventRoutes(app: Express) {
             String(host.state || row?.hostState || row?.state || "FL"),
           );
           const startingAtCents = minStartingPriceCents(row);
+          const rowTimeZone = resolveCityTimeZoneSync({
+            city: host.city || row?.hostCity || row?.city,
+            state: host.state || row?.hostState || row?.state,
+          });
           const nextDate = row?.date
-            ? String(row.date instanceof Date ? row.date.toISOString().split("T")[0] : String(row.date).split("T")[0])
+            ? dateKeyInZone(new Date(row.date), rowTimeZone)
             : null;
 
           const lat = host.latitude ?? row?.hostLatitude ?? row?.latitude;
@@ -734,7 +753,7 @@ export function registerEventRoutes(app: Express) {
   let parkingPassHostIdsLastGood:
     | { payload: { generatedAt: string; hostIds: string[] } }
     | null = null;
-  app.get("/api/parking-pass/host-ids", async (_req: any, res) => {
+  app.get("/api/parking-pass/host-ids", parkingPassBookabilityLimiter, async (_req: any, res) => {
     try {
       res.setHeader("Cache-Control", "public, max-age=60");
       if (parkingPassHostIdsCache && parkingPassHostIdsCache.expiresAt > Date.now()) {
@@ -880,13 +899,18 @@ export function registerEventRoutes(app: Express) {
     }
   >();
 
-  const normalizeDateKey = (value: unknown) => {
-    const raw = String(value || "").trim();
-    if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
-    return new Date().toISOString().split("T")[0];
-  };
+  const normalizeDateKey = (value: unknown) =>
+    dateKeyFromUnknown(value, "America/Chicago") ||
+    dateKeyInZone(new Date(), "America/Chicago");
 
   const buildParkingPassHostStatusPayload = async (dateKey: string) => {
+    const eventDateKey = (event: any) => {
+      const tz = resolveCityTimeZoneSync({
+        city: event?.host?.city || event?.hostCity || event?.city,
+        state: event?.host?.state || event?.hostState || event?.state,
+      });
+      return dateKeyInZone(new Date(event?.date), tz);
+    };
     const isPublicHostProfile = (host: any, event?: any) =>
       isHostProfileMapEligible({
         businessName: host?.businessName || event?.host?.businessName,
@@ -901,7 +925,7 @@ export function registerEventRoutes(app: Express) {
     const virtualEvents = occurrences.filter((event: any) => {
       if (!isParkingPassPublicReady(event)) return false;
       if (!isPublicHostProfile(event?.host, event)) return false;
-      const eventDate = String(event?.date || "").slice(0, 10);
+      const eventDate = eventDateKey(event);
       return eventDate === dateKey;
     });
 
@@ -910,7 +934,7 @@ export function registerEventRoutes(app: Express) {
       if (event?.eventType !== "parking_pass") return false;
       if (!isParkingPassPublicReady(event)) return false;
       if (!isPublicHostProfile(event?.host, event)) return false;
-      const eventDate = String(event?.date || "").slice(0, 10);
+      const eventDate = eventDateKey(event);
       return eventDate === dateKey;
     });
 
@@ -992,7 +1016,10 @@ export function registerEventRoutes(app: Express) {
     };
   };
 
-  app.get("/api/parking-pass/host-status", async (req: any, res) => {
+  app.get(
+    "/api/parking-pass/host-status",
+    parkingPassBookabilityLimiter,
+    async (req: any, res) => {
     try {
       res.setHeader("Cache-Control", "public, max-age=60");
       const dateKey = normalizeDateKey(req.query?.date);
@@ -1040,7 +1067,13 @@ export function registerEventRoutes(app: Express) {
         });
         occurrences.forEach((event: any) => {
           const hostId = String(event?.hostId ?? event?.host?.id ?? "").trim();
-          const eventDate = String(event?.date || "").slice(0, 10);
+          const eventDate = dateKeyInZone(
+            new Date(event?.date),
+            resolveCityTimeZoneSync({
+              city: event?.host?.city || event?.hostCity || event?.city,
+              state: event?.host?.state || event?.hostState || event?.state,
+            }),
+          );
           if (!hostId || eventDate !== dateKey) return;
           const flags = computeParkingPassQualityFlags(event);
           const set = flagsByHost.get(hostId) || new Set<string>();

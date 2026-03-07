@@ -7,6 +7,7 @@ import {
   PARKING_PASS_MEAL_WINDOWS,
   PARKING_PASS_SLOT_TYPES,
   addMinutesToTime,
+  getSlotWindowMinutesWithCleanup,
   isSlotWithinHours,
 } from "@shared/parkingPassSlots";
 import {
@@ -324,6 +325,10 @@ const buildSlotOptions = (listing: ParkingPassListing) =>
         slot.type as (typeof PARKING_PASS_SLOT_TYPES)[number],
         listing.startTime,
         listing.endTime,
+      ) &&
+      isSlotBookableByTime(
+        listing,
+        slot.type as (typeof PARKING_PASS_SLOT_TYPES)[number],
       ),
   );
 
@@ -389,8 +394,43 @@ const buildHostAddress = (host?: Host | null) => {
   return parts.join(", ");
 };
 
-const getListingDateKey = (value: string) =>
-  new Date(value).toISOString().split("T")[0];
+const getListingDateKey = (value: string) => {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  if (raw.includes("T")) {
+    const key = raw.split("T")[0];
+    if (/^\d{4}-\d{2}-\d{2}$/.test(key)) return key;
+  }
+  const parsed = new Date(raw);
+  if (Number.isNaN(parsed.getTime())) return "";
+  return format(parsed, "yyyy-MM-dd");
+};
+
+function isSlotBookableByTime(
+  listing: ParkingPassListing,
+  slotType: (typeof PARKING_PASS_SLOT_TYPES)[number],
+  now = new Date(),
+) {
+  const listingDate = new Date(listing.date);
+  const listingDayStart = new Date(listingDate);
+  listingDayStart.setHours(0, 0, 0, 0);
+
+  const todayStart = new Date(now);
+  todayStart.setHours(0, 0, 0, 0);
+
+  if (listingDayStart < todayStart) return false;
+  if (listingDayStart > todayStart) return true;
+
+  const window = getSlotWindowMinutesWithCleanup(
+    slotType,
+    listing.startTime,
+    listing.endTime,
+  );
+  if (!window) return false;
+
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+  return window.startMinutes > nowMinutes;
+}
 
 const normalizeLocationPart = (value: string | null | undefined) =>
   (value || "").trim().toLowerCase().replace(/\s+/g, " ");
@@ -581,7 +621,7 @@ export default function ParkingPassPage() {
     if (dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam)) {
       return dateParam;
     }
-    return new Date().toISOString().split("T")[0];
+    return format(new Date(), "yyyy-MM-dd");
   });
   const [selectedSlotsByListing, setSelectedSlotsByListing] = useState<
     Record<string, string[]>
@@ -630,7 +670,9 @@ export default function ParkingPassPage() {
       }
       return res.json();
     },
-    staleTime: 60_000,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: true,
   });
   const MAP_LOCATIONS_CACHE_KEY = "mealscout:map:locations:v1";
   const [cachedMapLocations, setCachedMapLocations] =
@@ -699,8 +741,9 @@ export default function ParkingPassPage() {
       if (!res.ok) throw new Error("Failed to load bookable hosts");
       return res.json();
     },
-    staleTime: 60_000,
+    staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
   useEffect(() => {
     if (!bookableHostIdPayload?.hostIds?.length) return;
@@ -750,7 +793,7 @@ export default function ParkingPassPage() {
   >({});
   const geocodeInFlight = useRef(false);
   const [scheduleForm, setScheduleForm] = useState({
-    date: new Date().toISOString().split("T")[0],
+    date: format(new Date(), "yyyy-MM-dd"),
     startTime: "",
     endTime: "",
     locationName: "",
@@ -1157,7 +1200,11 @@ export default function ParkingPassPage() {
           const data = await res.json();
           if (Array.isArray(data)) {
             const dates = data
-              .map((row) => new Date(row.date).toISOString().split("T")[0])
+              .map((row) =>
+                String((row as any)?.dateKey || "").trim() ||
+                getListingDateKey((row as any)?.date),
+              )
+              .filter(Boolean)
               .sort();
             setBlackoutDates(dates);
             setHasActiveParkingPass(true);
@@ -1319,7 +1366,7 @@ export default function ParkingPassPage() {
       try {
         const start = new Date();
         start.setDate(start.getDate() - 120);
-        const startKey = start.toISOString().split("T")[0];
+        const startKey = format(start, "yyyy-MM-dd");
         const res = await fetch(
           `/api/trucks/${truckId}/parking-reports?startDate=${startKey}`,
         );
@@ -1559,7 +1606,7 @@ export default function ParkingPassPage() {
     const dateKey =
       typeof item.date === "string"
         ? item.date.split("T")[0]
-        : item.date.toISOString().split("T")[0];
+        : format(item.date, "yyyy-MM-dd");
     setReportDraft({
       date: dateKey,
       sourceType: item.type === "booking" ? "booking" : "manual",
@@ -2371,6 +2418,15 @@ export default function ParkingPassPage() {
   };
 
   const handleSelect = (listing: ParkingPassListing, slotType: string) => {
+    if (
+      !isSlotBookableByTime(
+        listing,
+        slotType as (typeof PARKING_PASS_SLOT_TYPES)[number],
+      )
+    ) {
+      return;
+    }
+
     setSelectedSlotsByListing((prev) => {
       const existing = prev[listing.id] || [];
       const durationSlots = new Set(["daily", "weekly", "monthly"]);
@@ -2391,7 +2447,12 @@ export default function ParkingPassPage() {
   };
 
   const handleBookSelected = (listing: ParkingPassListing) => {
-    const slotTypes = selectedSlotsByListing[listing.id] || [];
+    const slotTypes = (selectedSlotsByListing[listing.id] || []).filter((slot) =>
+      isSlotBookableByTime(
+        listing,
+        slot as (typeof PARKING_PASS_SLOT_TYPES)[number],
+      ),
+    );
     if (slotTypes.length === 0) return;
 
     setCartItems((prev) => {
@@ -3000,8 +3061,41 @@ export default function ParkingPassPage() {
     return Array.isArray(spots) ? spots.length > 0 : true;
   };
 
+  const listingHasBookableSlots = (
+    listing: ParkingPassListing | null | undefined,
+  ): boolean => {
+    if (!listingHasAvailability(listing)) return false;
+    return listing ? buildSlotOptions(listing).length > 0 : false;
+  };
+
+  const listingDayIsSelectable = (
+    listing: ParkingPassListing | null | undefined,
+  ): boolean => {
+    if (!listingHasAvailability(listing)) return false;
+    if (!listing) return false;
+
+    const listingDate = new Date(listing.date);
+    const listingDayStart = new Date(listingDate);
+    listingDayStart.setHours(0, 0, 0, 0);
+
+    const now = new Date();
+    const todayStart = new Date(now);
+    todayStart.setHours(0, 0, 0, 0);
+
+    if (listingDayStart < todayStart) return false;
+    if (listingDayStart > todayStart) return true;
+
+    // Same-day rule: keep day selectable until the 3rd meal window (dinner) starts.
+    const [dinnerHour, dinnerMinute] = PARKING_PASS_MEAL_WINDOWS.dinner.start
+      .split(":")
+      .map(Number);
+    const dinnerStartMinutes = dinnerHour * 60 + dinnerMinute;
+    const nowMinutes = now.getHours() * 60 + now.getMinutes();
+    return nowMinutes < dinnerStartMinutes;
+  };
+
   const selectedDateHasOpenSpots = Boolean(
-    activeListingForDate && listingHasAvailability(activeListingForDate),
+    activeListingForDate && listingDayIsSelectable(activeListingForDate),
   );
 
   const nextBookableDateByGroup = useMemo(() => {
@@ -3011,7 +3105,7 @@ export default function ParkingPassPage() {
         const dateKey = getListingDateKey(listing.date);
         if (dateKey < todayDateKey) return false;
         // Spots should be discoverable even if the host hasn't enabled payments yet.
-        return listingHasAvailability(listing);
+        return listingDayIsSelectable(listing);
       });
       map.set(group.key, next ? getListingDateKey(next.date) : null);
     }
@@ -3025,7 +3119,7 @@ export default function ParkingPassPage() {
         const dateKey = getListingDateKey(listing.date);
         if (dateKey < todayDateKey) return false;
         // Spots should be discoverable even if the host hasn't enabled payments yet.
-        return listingHasAvailability(listing);
+        return listingDayIsSelectable(listing);
       });
       map.set(group.key, next || null);
     }
@@ -3035,7 +3129,7 @@ export default function ParkingPassPage() {
   const activeBookableDates = useMemo(() => {
     if (!activeLocation) return [];
     const keys = activeLocation.listings
-      .filter((listing) => listingHasAvailability(listing))
+      .filter((listing) => listingDayIsSelectable(listing))
       .map((listing) => getListingDateKey(listing.date));
     return Array.from(new Set(keys)).sort();
   }, [activeLocation]);
@@ -3375,7 +3469,7 @@ export default function ParkingPassPage() {
                         type="date"
                         value={blackoutDateInput}
                         onChange={(event) => setBlackoutDateInput(event.target.value)}
-                        min={new Date().toISOString().split("T")[0]}
+                        min={format(new Date(), "yyyy-MM-dd")}
                         disabled={!hasActiveParkingPass}
                       />
                       <Button
@@ -3408,7 +3502,7 @@ export default function ParkingPassPage() {
                             className="rounded-full border border-[color:var(--status-warning)]/30 bg-orange-50 px-3 py-1 text-xs text-orange-900 hover:bg-orange-100"
                             disabled={
                               isSavingBlackout ||
-                              dateKey <= new Date().toISOString().split("T")[0]
+                              dateKey <= format(new Date(), "yyyy-MM-dd")
                             }
                           >
                             {format(new Date(dateKey), "MMM d, yyyy")} (remove)
@@ -6162,40 +6256,7 @@ export default function ParkingPassPage() {
                               Slot pricing
                             </p>
                             <div className="grid grid-cols-2 gap-2">
-                              {[
-                                {
-                                  label: "Breakfast",
-                                  type: "breakfast",
-                                  priceCents: activeListingForDate.breakfastPriceCents,
-                                },
-                                {
-                                  label: "Lunch",
-                                  type: "lunch",
-                                  priceCents: activeListingForDate.lunchPriceCents,
-                                },
-                                {
-                                  label: "Dinner",
-                                  type: "dinner",
-                                  priceCents: activeListingForDate.dinnerPriceCents,
-                                },
-                                {
-                                  label: "Daily",
-                                  type: "daily",
-                                  priceCents: activeListingForDate.dailyPriceCents,
-                                },
-                                {
-                                  label: "Weekly",
-                                  type: "weekly",
-                                  priceCents: activeListingForDate.weeklyPriceCents,
-                                },
-                                {
-                                  label: "Monthly",
-                                  type: "monthly",
-                                  priceCents: activeListingForDate.monthlyPriceCents,
-                                },
-                              ]
-                                .filter((slot) => (slot.priceCents || 0) > 0)
-                                .map((slot) => {
+                              {buildSlotOptions(activeListingForDate).map((slot) => {
                                   const feeCents = getFeeCentsForSlots(
                                     [slot.type],
                                   );

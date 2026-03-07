@@ -37,6 +37,18 @@ interface HostEarningsSummary {
   canRequestPayout: boolean;
 }
 
+interface LocationDemandItem {
+  id: string;
+  businessName: string;
+  address: string;
+  demandStatus: string;
+  status: string;
+  interestCount: number;
+  minInterestedTrucks: number;
+  thresholdRemaining: number;
+  thresholdReachedAt?: string | null;
+}
+
 function HostDashboard() {
   const { isAuthenticated, isLoading, user } = useAuth();
   const { toast } = useToast();
@@ -66,6 +78,8 @@ function HostDashboard() {
   const [cancelingSeriesId, setCancelingSeriesId] = useState<string | null>(
     null,
   );
+  const [demandQueue, setDemandQueue] = useState<LocationDemandItem[]>([]);
+  const [isLoadingDemand, setIsLoadingDemand] = useState(false);
 
   const [seriesForm, setSeriesForm] = useState({
     name: "",
@@ -176,6 +190,26 @@ function HostDashboard() {
     }
   };
 
+  const loadDemandQueue = async () => {
+    setIsLoadingDemand(true);
+    try {
+      const res = await fetch("/api/location-requests/demand/me?limit=25", {
+        credentials: "include",
+      });
+      if (!res.ok) {
+        throw new Error("Failed to load demand queue");
+      }
+      const payload = await res.json();
+      const rows = Array.isArray(payload?.queue) ? payload.queue : [];
+      setDemandQueue(rows);
+    } catch (error) {
+      console.error("Demand queue error:", error);
+      setDemandQueue([]);
+    } finally {
+      setIsLoadingDemand(false);
+    }
+  };
+
   const requestHostPayout = async () => {
     setIsRequestingPayout(true);
     try {
@@ -211,6 +245,7 @@ function HostDashboard() {
     if (!host) return;
     loadSeries();
     void loadHostEarnings();
+    void loadDemandQueue();
   }, [host?.id]);
 
   const handleEnablePayments = async () => {
@@ -385,6 +420,10 @@ function HostDashboard() {
       setIsCreatingSeries(false);
     }
   };
+
+  const demandThresholdMet = demandQueue.filter(
+    (row) => row.demandStatus === "threshold_met",
+  );
 
   const handlePublishSeries = async (seriesId: string) => {
     setPublishingSeriesId(seriesId);
@@ -571,6 +610,78 @@ function HostDashboard() {
             </p>
           </div>
         </div>
+      </div>
+
+      <div className="mb-6 rounded-lg border border-[color:var(--border-subtle)] bg-[var(--bg-card)] p-4">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-lg font-semibold text-[color:var(--text-primary)]">
+            Demand Queue
+          </h2>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-[color:var(--text-muted)]">
+              {demandThresholdMet.length} threshold met
+            </span>
+            <Button variant="outline" size="sm" onClick={loadDemandQueue} disabled={isLoadingDemand}>
+              {isLoadingDemand ? "Refreshing..." : "Refresh"}
+            </Button>
+          </div>
+        </div>
+
+        {demandQueue.length === 0 ? (
+          <p className="text-sm text-[color:var(--text-muted)]">
+            No demand requests yet. As trucks show interest, qualified locations appear here.
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {demandQueue.slice(0, 6).map((item) => {
+              const thresholdMet = item.demandStatus === "threshold_met";
+              const claimed = item.demandStatus === "claimed";
+              return (
+                <div
+                  key={item.id}
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-[color:var(--border-subtle)] px-3 py-2"
+                >
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-[color:var(--text-primary)] truncate">
+                      {item.businessName}
+                    </p>
+                    <p className="text-xs text-[color:var(--text-muted)] truncate">
+                      {item.address}
+                    </p>
+                    <p className="text-xs text-[color:var(--text-muted)]">
+                      {item.interestCount}/{item.minInterestedTrucks} interested trucks
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`rounded-full px-2 py-1 text-xs ${
+                        claimed
+                          ? "bg-slate-100 text-slate-700"
+                          : thresholdMet
+                            ? "bg-emerald-100 text-emerald-800"
+                            : "bg-amber-100 text-amber-800"
+                      }`}
+                    >
+                      {claimed
+                        ? "claimed"
+                        : thresholdMet
+                          ? "threshold met"
+                          : `${item.thresholdRemaining} to go`}
+                    </span>
+                    {thresholdMet ? (
+                      <Button
+                        size="sm"
+                        onClick={() => setLocation("/parking-pass#parking-pass-settings")}
+                      >
+                        Publish Slots
+                      </Button>
+                    ) : null}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       <div className="flex flex-col gap-4 mb-8 md:flex-row md:items-center md:justify-between">

@@ -1885,6 +1885,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get(
+    "/api/location-requests/demand/me",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const limit = Number(req.query?.limit ?? 100) || 100;
+        const queue = await storage.getLocationDemandQueueByUser(
+          String(req.user?.id || ""),
+          limit,
+        );
+        res.json({
+          generatedAt: new Date().toISOString(),
+          count: queue.length,
+          queue: queue.map((row) => ({
+            id: row.id,
+            businessName: row.businessName,
+            address: row.address,
+            locationType: row.locationType,
+            preferredDates: row.preferredDates,
+            expectedFootTraffic: row.expectedFootTraffic,
+            minInterestedTrucks: row.minInterestedTrucks,
+            demandStatus: row.demandStatus,
+            status: row.status,
+            thresholdReachedAt: row.thresholdReachedAt,
+            interestCount: row.interestCount,
+            thresholdRemaining: row.thresholdRemaining,
+            createdAt: row.createdAt,
+          })),
+        });
+      } catch (error) {
+        console.error("Error loading my location demand queue:", error);
+        res.status(500).json({ message: "Failed to load my location demand queue" });
+      }
+    },
+  );
+
   app.get("/api/location-requests/:id/summary", async (req: any, res) => {
     try {
       const requestId = String(req.params?.id || "").trim();

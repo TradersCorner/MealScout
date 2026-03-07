@@ -599,6 +599,17 @@ export interface IStorage {
       }
     >
   >;
+  getLocationDemandQueueByUser(
+    userId: string,
+    limit?: number,
+  ): Promise<
+    Array<
+      LocationRequest & {
+        interestCount: number;
+        thresholdRemaining: number;
+      }
+    >
+  >;
   createHostLocationClaim(
     claim: InsertHostLocationClaim,
   ): Promise<HostLocationClaim>;
@@ -6350,6 +6361,55 @@ export class DatabaseStorage implements IStorage {
           ),
         ),
       )
+      .groupBy(locationRequests.id)
+      .orderBy(
+        desc(locationRequests.thresholdReachedAt),
+        desc(sql`count(${truckInterests.id})`),
+        desc(locationRequests.createdAt),
+      )
+      .limit(safeLimit);
+
+    return rows.map((row: (typeof rows)[number]) => {
+      const interestCount = Number(row.interestCount ?? 0);
+      const minInterestedTrucks = Math.max(
+        1,
+        Number(row.request.minInterestedTrucks ?? 3) || 3,
+      );
+      return {
+        ...row.request,
+        interestCount,
+        thresholdRemaining: Math.max(0, minInterestedTrucks - interestCount),
+      };
+    });
+  }
+
+  async getLocationDemandQueueByUser(
+    userId: string,
+    limit = 100,
+  ): Promise<
+    Array<
+      LocationRequest & {
+        interestCount: number;
+        thresholdRemaining: number;
+      }
+    >
+  > {
+    await this.expireStaleLocationRequests();
+    const normalizedUserId = String(userId || "").trim();
+    if (!normalizedUserId) return [];
+
+    const safeLimit = Math.max(1, Math.min(250, Number(limit) || 100));
+    const rows = await db
+      .select({
+        request: locationRequests,
+        interestCount: sql<number>`count(${truckInterests.id})`,
+      })
+      .from(locationRequests)
+      .leftJoin(
+        truckInterests,
+        eq(truckInterests.locationRequestId, locationRequests.id),
+      )
+      .where(eq(locationRequests.postedByUserId, normalizedUserId))
       .groupBy(locationRequests.id)
       .orderBy(
         desc(locationRequests.thresholdReachedAt),

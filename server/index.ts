@@ -23,6 +23,7 @@ import { validateEnv } from "./utils/env";
 import { healthRouter } from "./routes/health";
 import { apiMetricsMiddleware, requestIdMiddleware } from "./observability";
 import { runOpsDataCleanup } from "./opsCleanup";
+import { runMarketplaceHealthAudit } from "./marketplaceHealth";
 import { videoStories, restaurants, requestLogs } from "@shared/schema";
 import { and, eq } from "drizzle-orm";
 
@@ -1373,6 +1374,46 @@ app.use((req, res, next) => {
           void runCleanup();
           setInterval(runCleanup, cleanupIntervalMs);
         }, 45_000);
+      }
+
+      const enableMarketplaceHealthAudit =
+        process.env.MARKETPLACE_HEALTH_AUDIT_ENABLED !== "false";
+      if (enableMarketplaceHealthAudit) {
+        const intervalMinutesRaw = Number(
+          process.env.MARKETPLACE_HEALTH_AUDIT_INTERVAL_MINUTES || 60,
+        );
+        const intervalMinutes = Number.isFinite(intervalMinutesRaw)
+          ? Math.max(10, Math.floor(intervalMinutesRaw))
+          : 60;
+        const intervalMs = intervalMinutes * 60 * 1000;
+        const runAudit = async () => {
+          const result = await runMarketplaceHealthAudit();
+          if (!result.ok) {
+            console.warn(
+              "⚠️ Marketplace health audit warning:",
+              (result as any).error || result,
+            );
+            return;
+          }
+          const r: any = result;
+          console.log(
+            `[marketplace-health] ok total=${r.demandCounts?.total ?? 0} collecting=${r.demandCounts?.collecting ?? 0} threshold_met=${r.demandCounts?.threshold_met ?? 0} claimed=${r.demandCounts?.claimed ?? 0} fulfilled=${r.demandCounts?.fulfilled ?? 0}`,
+          );
+          if (
+            Number(r.stuckThreshold || 0) > 0 ||
+            Number(r.staleCollecting || 0) > 0 ||
+            Number(r.stalePending || 0) > 0
+          ) {
+            console.warn(
+              `[marketplace-health] stuck_threshold=${r.stuckThreshold} stale_collecting=${r.staleCollecting} stale_pending_bookings=${r.stalePending}`,
+            );
+          }
+        };
+
+        setTimeout(() => {
+          void runAudit();
+          setInterval(runAudit, intervalMs);
+        }, 60_000);
       }
 
       // Perform database validation after server startup - non-blocking

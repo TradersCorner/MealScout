@@ -5047,6 +5047,24 @@ export default function AdminDashboard() {
     };
   };
 
+  const demandSummary = locationDemandFunnel?.summary;
+  const demandStuck24h = Number(demandSummary?.threshold_met_stuck_24h ?? 0);
+  const demandStuck72h = Number(demandSummary?.threshold_met_stuck_72h ?? 0);
+  const demandAlertLevel =
+    demandStuck72h > 0 ? "critical" : demandStuck24h > 0 ? "warning" : "healthy";
+  const demandAlertBadgeVariant =
+    demandAlertLevel === "critical"
+      ? "destructive"
+      : demandAlertLevel === "warning"
+        ? "secondary"
+        : "outline";
+  const demandAlertText =
+    demandAlertLevel === "critical"
+      ? "SLA breach: 72h+ threshold backlog requires immediate intervention."
+      : demandAlertLevel === "warning"
+        ? "Warning: 24h+ threshold backlog needs host follow-up."
+        : "Healthy: no threshold backlog breaches.";
+
   return (
     <div className="admin-dashboard max-w-7xl mx-auto min-h-screen bg-[var(--bg-app)] pb-20">
       {/* Header */}
@@ -5694,6 +5712,25 @@ export default function AdminDashboard() {
                     <CardDescription>
                       Track threshold to claimed to published to booked conversion.
                     </CardDescription>
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                      <Badge variant={demandAlertBadgeVariant}>
+                        {demandAlertLevel === "critical"
+                          ? "Critical"
+                          : demandAlertLevel === "warning"
+                            ? "Warning"
+                            : "Healthy"}
+                      </Badge>
+                      <Badge
+                        variant={demandStuck72h > 0 ? "destructive" : "outline"}
+                      >
+                        72h stuck: {demandStuck72h}
+                      </Badge>
+                      <Badge
+                        variant={demandStuck24h > 0 ? "secondary" : "outline"}
+                      >
+                        24h stuck: {demandStuck24h}
+                      </Badge>
+                    </div>
                   </div>
                   <Button
                     variant="outline"
@@ -5789,14 +5826,18 @@ export default function AdminDashboard() {
                   </div>
                 </div>
 
-                <div className="text-xs text-muted-foreground">
+                <div
+                  className={`text-xs ${
+                    demandAlertLevel === "critical"
+                      ? "text-[color:var(--status-error)]"
+                      : demandAlertLevel === "warning"
+                        ? "text-[color:var(--status-warning)]"
+                        : "text-muted-foreground"
+                  }`}
+                >
                   {demandFunnelLoading
                     ? "Loading demand funnel..."
-                    : `Stuck: 24h=${Number(
-                        locationDemandFunnel?.summary?.threshold_met_stuck_24h ?? 0,
-                      )}, 72h=${Number(
-                        locationDemandFunnel?.summary?.threshold_met_stuck_72h ?? 0,
-                      )}`}
+                    : demandAlertText}
                 </div>
               </CardContent>
             </Card>

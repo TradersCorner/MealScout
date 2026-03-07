@@ -68,20 +68,31 @@ let io: SocketIOServer | null = null;
 const userSubscriptions = new Map<string, Set<string>>();
 
 export function setupWebSocketServer(httpServer: Server): SocketIOServer {
+  const sessionSecret = process.env.SESSION_SECRET;
+  if (!sessionSecret) {
+    throw new Error(
+      "SESSION_SECRET is required for WebSocket session authentication"
+    );
+  }
+  const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
+
   // Session middleware configuration (same as Express app)
   const sessionMiddleware = session({
     store: new PgSession({
       conString: process.env.DATABASE_URL,
       tableName: 'sessions',
       createTableIfMissing: false,
+      ttl: sessionTtl,
     }),
-    secret: process.env.SESSION_SECRET || 'development-secret-change-in-production',
+    secret: sessionSecret,
     resave: false,
     saveUninitialized: false,
+    proxy: true,
     cookie: {
       secure: process.env.NODE_ENV === 'production',
       httpOnly: true,
-      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+      maxAge: sessionTtl,
     },
   });
 

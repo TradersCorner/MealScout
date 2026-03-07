@@ -301,20 +301,17 @@ export async function setupUnifiedAuth(app: Express) {
           done: any,
         ) => {
           try {
-            console.log("🔍 Google customer profile data received:", {
-              id: profile.id,
-              displayName: profile.displayName,
-              emails: profile.emails,
-              name: profile.name,
-              photos: profile.photos,
-              _json: profile._json
-                ? {
-                    given_name: profile._json.given_name,
-                    family_name: profile._json.family_name,
-                    email: profile._json.email,
-                    picture: profile._json.picture,
-                  }
-                : null,
+            console.log("[oauth] Google customer profile received", {
+              hasProviderId: Boolean(profile?.id),
+              hasEmail:
+                Boolean(profile?.emails?.[0]?.value) ||
+                Boolean(profile?._json?.email),
+              hasName:
+                Boolean(profile?.name?.givenName) ||
+                Boolean(profile?.displayName),
+              hasPhoto:
+                Boolean(profile?.photos?.[0]?.value) ||
+                Boolean(profile?._json?.picture),
             });
 
             const userData: GoogleUserData = {
@@ -335,12 +332,9 @@ export async function setupUnifiedAuth(app: Express) {
               googleAccessToken: accessToken,
             };
 
-            console.log("🔍 Processed Google customer user data:", {
-              googleId: userData.googleId,
-              email: userData.email,
-              firstName: userData.firstName,
-              lastName: userData.lastName,
-              hasProfileImage: !!userData.profileImageUrl,
+            console.log("[oauth] Processed Google customer user data", {
+              hasEmail: Boolean(userData.email),
+              hasProfileImage: Boolean(userData.profileImageUrl),
             });
 
             const user = await storage.upsertUserByAuth(
@@ -353,7 +347,7 @@ export async function setupUnifiedAuth(app: Express) {
             req.session.oauthUserType = undefined;
             console.log(
               "✅ Google customer user created/updated successfully:",
-              { userId: user.id, email: user.email },
+              { userId: user.id, hasEmail: Boolean(user.email) },
             );
 
             // LISA Phase 4A: Emit claim for OAuth login
@@ -381,7 +375,12 @@ export async function setupUnifiedAuth(app: Express) {
             return done(null, user);
           } catch (error) {
             console.error("❌ Google customer authentication error:", error);
-            console.error("❌ Profile data that caused error:", profile);
+            console.error("[oauth] Google customer profile metadata:", {
+              hasProviderId: Boolean(profile?.id),
+              hasEmail:
+                Boolean(profile?.emails?.[0]?.value) ||
+                Boolean(profile?._json?.email),
+            });
             return done(error, null);
           }
         },
@@ -405,20 +404,17 @@ export async function setupUnifiedAuth(app: Express) {
           done: any,
         ) => {
           try {
-            console.log("🔍 Google restaurant profile data received:", {
-              id: profile.id,
-              displayName: profile.displayName,
-              emails: profile.emails,
-              name: profile.name,
-              photos: profile.photos,
-              _json: profile._json
-                ? {
-                    given_name: profile._json.given_name,
-                    family_name: profile._json.family_name,
-                    email: profile._json.email,
-                    picture: profile._json.picture,
-                  }
-                : null,
+            console.log("[oauth] Google restaurant profile received", {
+              hasProviderId: Boolean(profile?.id),
+              hasEmail:
+                Boolean(profile?.emails?.[0]?.value) ||
+                Boolean(profile?._json?.email),
+              hasName:
+                Boolean(profile?.name?.givenName) ||
+                Boolean(profile?.displayName),
+              hasPhoto:
+                Boolean(profile?.photos?.[0]?.value) ||
+                Boolean(profile?._json?.picture),
             });
 
             const userData: GoogleUserData = {
@@ -439,12 +435,9 @@ export async function setupUnifiedAuth(app: Express) {
               googleAccessToken: accessToken,
             };
 
-            console.log("🔍 Processed Google restaurant user data:", {
-              googleId: userData.googleId,
-              email: userData.email,
-              firstName: userData.firstName,
-              lastName: userData.lastName,
-              hasProfileImage: !!userData.profileImageUrl,
+            console.log("[oauth] Processed Google restaurant user data", {
+              hasEmail: Boolean(userData.email),
+              hasProfileImage: Boolean(userData.profileImageUrl),
             });
 
             const userType = getOauthUserType(req, "restaurant_owner");
@@ -458,7 +451,7 @@ export async function setupUnifiedAuth(app: Express) {
             req.session.oauthUserType = undefined;
             console.log(
               "✅ Google restaurant user created/updated successfully:",
-              { userId: user.id, email: user.email },
+              { userId: user.id, hasEmail: Boolean(user.email) },
             );
 
             // LISA Phase 4A: Emit claim for OAuth login
@@ -490,7 +483,12 @@ export async function setupUnifiedAuth(app: Express) {
             return done(null, user);
           } catch (error) {
             console.error("❌ Google restaurant authentication error:", error);
-            console.error("❌ Profile data that caused error:", profile);
+            console.error("[oauth] Google restaurant profile metadata:", {
+              hasProviderId: Boolean(profile?.id),
+              hasEmail:
+                Boolean(profile?.emails?.[0]?.value) ||
+                Boolean(profile?._json?.email),
+            });
             return done(error, null);
           }
         },
@@ -638,20 +636,16 @@ export async function setupUnifiedAuth(app: Express) {
           done: any,
         ) => {
           try {
-            console.log("🔍 Facebook profile data received:", {
-              id: profile.id,
-              displayName: profile.displayName,
-              emails: profile.emails,
-              name: profile.name,
-              photos: profile.photos,
+            console.log("[oauth] Facebook profile received", {
+              hasProviderId: Boolean(profile?.id),
+              hasEmail:
+                Boolean(profile?.emails?.[0]?.value) ||
+                Boolean(profile?._json?.email),
+              hasName:
+                Boolean(profile?.name?.givenName) ||
+                Boolean(profile?.displayName),
+              hasPhoto: Boolean(profile?.photos?.[0]?.value),
               appContext: req.session?.fbAppContext || "mealscout",
-              _json: profile._json
-                ? {
-                    first_name: profile._json.first_name,
-                    last_name: profile._json.last_name,
-                    email: profile._json.email,
-                  }
-                : null,
             });
 
             const userData: FacebookUserData = {
@@ -671,13 +665,10 @@ export async function setupUnifiedAuth(app: Express) {
               facebookAccessToken: accessToken,
             };
 
-            console.log("🔍 Processed Facebook user data:", {
-              facebookId: userData.facebookId,
-              email: userData.email,
-              firstName: userData.firstName,
-              lastName: userData.lastName,
+            console.log("[oauth] Processed Facebook user data", {
+              hasEmail: Boolean(userData.email),
               appContext: req.session?.fbAppContext || "mealscout",
-              hasProfileImage: !!userData.profileImageUrl,
+              hasProfileImage: Boolean(userData.profileImageUrl),
             });
 
             // Retrieve app context from session (set in /api/auth/facebook route)
@@ -696,7 +687,7 @@ export async function setupUnifiedAuth(app: Express) {
             req.session.oauthUserType = undefined;
             console.log("✅ Facebook user created/updated successfully:", {
               userId: user.id,
-              email: user.email,
+              hasEmail: Boolean(user.email),
               appContext,
             });
 
@@ -725,7 +716,12 @@ export async function setupUnifiedAuth(app: Express) {
             return done(null, user);
           } catch (error) {
             console.error("❌ Facebook authentication error:", error);
-            console.error("❌ Profile data that caused error:", profile);
+            console.error("[oauth] Facebook profile metadata:", {
+              hasProviderId: Boolean(profile?.id),
+              hasEmail:
+                Boolean(profile?.emails?.[0]?.value) ||
+                Boolean(profile?._json?.email),
+            });
             return done(error, null);
           }
         },

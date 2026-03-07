@@ -5,6 +5,7 @@ type EnvSpec = {
   CLIENT_ORIGIN: string;
   BREVO_API_KEY?: string;
   INCIDENT_EMAIL_RECIPIENTS?: string;
+  INCIDENT_SIGNATURE_SECRET?: string;
   TWILIO_ACCOUNT_SID?: string;
   TWILIO_AUTH_TOKEN?: string;
 };
@@ -41,6 +42,7 @@ export function validateEnv(): EnvSpec {
     // If missing, related actions should fail gracefully and/or log warnings.
     BREVO_API_KEY: optional("BREVO_API_KEY"),
     INCIDENT_EMAIL_RECIPIENTS: optional("INCIDENT_EMAIL_RECIPIENTS"),
+    INCIDENT_SIGNATURE_SECRET: requiredInProd("INCIDENT_SIGNATURE_SECRET"),
     TWILIO_ACCOUNT_SID: optional("TWILIO_ACCOUNT_SID"),
     TWILIO_AUTH_TOKEN: optional("TWILIO_AUTH_TOKEN"),
   };

@@ -14,6 +14,7 @@ import { storage } from "./storage";
 import { setupWebSocketServer } from "./websocket";
 import { antiScrape } from "./middleware/antiScrape";
 import { getSession } from "./unifiedAuth";
+import { distributedRateLimit } from "./middleware/distributedRateLimit";
 import { db } from "./db";
 import { sql } from "drizzle-orm";
 import fs from "fs";
@@ -281,46 +282,32 @@ if (sentryEnabled) {
   }
 }
 
-// Enhanced global error handlers to prevent server crashes during deployment
-process.on("uncaughtException", (error) => {
-  console.error("❌ Uncaught Exception:", error);
-  console.error("Stack trace:", error.stack);
+// Enhanced graceful shutdown handling
+let isShuttingDown = false;
 
-  if (process.env.NODE_ENV === "production") {
-    console.warn(
-      "⚠️  Production mode: Server continuing despite uncaught exception to maintain service availability"
-    );
-    console.log(
-      "🔍 Error details logged for debugging. Service remains operational."
-    );
-  } else {
-    console.error(
-      "💥 Development mode: Exiting process due to uncaught exception"
-    );
-    process.exit(1);
+const triggerFatalShutdown = (label: string, error: unknown) => {
+  if (isShuttingDown) {
+    return;
   }
+  isShuttingDown = true;
+  const normalizedError =
+    error instanceof Error ? error : new Error(String(error));
+  console.error(`[fatal] ${label}:`, normalizedError);
+  if (normalizedError.stack) {
+    console.error(normalizedError.stack);
+  }
+  // Give logs a moment to flush before terminating the process.
+  setTimeout(() => process.exit(1), 250).unref();
+};
+
+process.on("uncaughtException", (error) => {
+  triggerFatalShutdown("uncaughtException", error);
 });
 
 process.on("unhandledRejection", (reason, promise) => {
-  console.error("❌ Unhandled Promise Rejection at:", promise);
-  console.error("Rejection reason:", reason);
-
-  if (process.env.NODE_ENV === "production") {
-    console.warn(
-      "⚠️  Production mode: Server continuing despite unhandled rejection"
-    );
-    console.log(
-      "🔍 Rejection details logged for debugging. Service remains operational."
-    );
-  } else {
-    console.warn(
-      "⚠️  Development mode: Unhandled rejection detected - consider adding proper error handling"
-    );
-  }
+  console.error("[fatal] Unhandled Promise Rejection at:", promise);
+  triggerFatalShutdown("unhandledRejection", reason);
 });
-
-// Enhanced graceful shutdown handling
-let isShuttingDown = false;
 
 const gracefulShutdown = (signal: string) => {
   if (isShuttingDown) {
@@ -444,96 +431,47 @@ if (process.env.NODE_ENV !== "production") {
   });
 }
 
-// Rate limiting middleware for sensitive endpoints
-interface RateLimitStore {
-  [key: string]: { count: number; resetTime: number };
-}
-
-const rateLimitStore: RateLimitStore = {};
-
-// Helper to create rate limit middleware
-function createRateLimiter(options: {
-  windowMs: number;
-  maxRequests: number;
-  keyGenerator?: (req: Request) => string;
-}) {
-  return (req: Request, res: Response, next: NextFunction) => {
-    const key = options.keyGenerator
-      ? options.keyGenerator(req)
-      : req.ip || "unknown";
-    const now = Date.now();
-
-    if (!rateLimitStore[key]) {
-      rateLimitStore[key] = { count: 0, resetTime: now + options.windowMs };
-    }
-
-    // Reset if window expired
-    if (now > rateLimitStore[key].resetTime) {
-      rateLimitStore[key] = { count: 0, resetTime: now + options.windowMs };
-    }
-
-    rateLimitStore[key].count++;
-
-    res.setHeader("X-RateLimit-Limit", options.maxRequests);
-    res.setHeader(
-      "X-RateLimit-Remaining",
-      Math.max(0, options.maxRequests - rateLimitStore[key].count)
-    );
-    res.setHeader(
-      "X-RateLimit-Reset",
-      new Date(rateLimitStore[key].resetTime).toISOString()
-    );
-
-    if (rateLimitStore[key].count > options.maxRequests) {
-      return res.status(429).json({
-        error: "Too many requests",
-        message: `Rate limit exceeded. Please try again after ${Math.ceil(
-          (rateLimitStore[key].resetTime - now) / 1000
-        )} seconds.`,
-        retryAfter: Math.ceil((rateLimitStore[key].resetTime - now) / 1000),
-      });
-    }
-
-    next();
-  };
-}
-
 // RATE LIMIT POLICIES - Optimized per endpoint type
 // Strategy: "Fast first click, slow spam" - generous for normal users, strict for attackers
 
 // 1. Authentication endpoints - Very strict (prevent brute force)
-const strictAuthLimiter = createRateLimiter({
+const strictAuthLimiter = distributedRateLimit({
+  scope: "auth:strict",
   windowMs: 10 * 60 * 1000, // 10 minutes
-  maxRequests: 3, // 3 attempts max
-  keyGenerator: (req) => `${req.ip}:${req.path}`,
+  limit: 3, // 3 attempts max
+  key: (req) => `${req.ip || "unknown"}:${req.path}`,
 });
 
 // 2. General authentication (moderate)
-const authLimiter = createRateLimiter({
+const authLimiter = distributedRateLimit({
+  scope: "auth:moderate",
   windowMs: 15 * 60 * 1000, // 15 minutes
-  maxRequests: 5, // 5 attempts
-  keyGenerator: (req) => `${req.ip}:${req.path}`,
+  limit: 5, // 5 attempts
+  key: (req) => `${req.ip || "unknown"}:${req.path}`,
 });
 
 // 3. Search and discovery (generous for normal users)
-const searchLimiter = createRateLimiter({
+const searchLimiter = distributedRateLimit({
+  scope: "search:discovery",
   windowMs: 60 * 1000, // 1 minute
-  maxRequests: 50, // 50 searches per minute
-  keyGenerator: (req) => req.ip || "unknown",
+  limit: 50, // 50 searches per minute
+  key: (req) => req.ip || "unknown",
 });
 
 // 4. Deal views and engagement (very generous)
-const viewLimiter = createRateLimiter({
+const viewLimiter = distributedRateLimit({
+  scope: "deals:views",
   windowMs: 60 * 1000, // 1 minute
-  maxRequests: 120, // 120 views per minute
-  keyGenerator: (req) => req.ip || "unknown",
+  limit: 120, // 120 views per minute
+  key: (req) => req.ip || "unknown",
 });
 
 // 5. Content updates (strict for restaurant owners)
-const updateLimiter = createRateLimiter({
+const updateLimiter = distributedRateLimit({
+  scope: "content:updates",
   windowMs: 60 * 60 * 1000, // 1 hour
-  maxRequests: 10, // 10 edits per hour
-  keyGenerator: (req) =>
+  limit: 10, // 10 edits per hour
+  key: (req) =>
     req.user?.id ? `${req.user.id}:${req.path}` : `${req.ip}:${req.path}`, // Per-user limit with IP fallback for anonymous traffic
 });
 
@@ -551,11 +489,25 @@ function onlyMutations(limiter: any) {
   };
 }
 
+function excludePaths(limiter: any, patterns: RegExp[]) {
+  return (req: Request, res: Response, next: NextFunction) => {
+    if (patterns.some((pattern) => pattern.test(req.path))) {
+      return next();
+    }
+    return limiter(req, res, next);
+  };
+}
+
+const dealUpdateLimiter = excludePaths(onlyMutations(updateLimiter), [
+  /^\/[^/]+\/view\/?$/,
+]);
+
 // 6. General API (moderate baseline)
-const apiLimiter = createRateLimiter({
+const apiLimiter = distributedRateLimit({
+  scope: "api:general",
   windowMs: 60 * 1000, // 1 minute
-  maxRequests: 30, // 30 requests per window
-  keyGenerator: (req) => req.ip || "unknown",
+  limit: 30, // 30 requests per window
+  key: (req) => req.ip || "unknown",
 });
 
 // Body parsing with size limits (keep Stripe webhook raw for signature verification)
@@ -707,7 +659,7 @@ app.use((req, res, next) => {
   app.use("/api/restaurants/:restaurantId/locations", viewLimiter);
 
   // ✏️  STRICT - Content updates (prevent spam editing)
-  app.use("/api/deals", onlyMutations(updateLimiter));
+  app.use("/api/deals", dealUpdateLimiter);
   app.use("/api/restaurants/:restaurantId/location", updateLimiter);
   app.use("/api/restaurants/:restaurantId/operating-hours", updateLimiter);
   app.use("/api/restaurants/:restaurantId/mobile-settings", updateLimiter);
@@ -1462,3 +1414,4 @@ app.use((req, res, next) => {
     }
   );
 })();
+

@@ -98,10 +98,24 @@ export const ANOMALY_RULES = {
 };
 
 // Create cryptographic signature for incident record
+function getIncidentSignatureSecret(): string {
+  const configured = process.env.INCIDENT_SIGNATURE_SECRET;
+  if (configured && configured.trim().length > 0) {
+    return configured;
+  }
+
+  if (process.env.NODE_ENV === "production") {
+    throw new Error(
+      "INCIDENT_SIGNATURE_SECRET must be set in production for incident integrity signatures"
+    );
+  }
+
+  // Dev/test fallback only.
+  return "dev-incident-signature-secret";
+}
+
 function signIncident(incidentData: any): string {
-  const secret =
-    process.env.INCIDENT_SIGNATURE_SECRET ||
-    "default-secret-change-in-production";
+  const secret = getIncidentSignatureSecret();
   const dataString = JSON.stringify(incidentData);
   return createHmac("sha256", secret).update(dataString).digest("hex");
 }

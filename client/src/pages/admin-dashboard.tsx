@@ -216,6 +216,28 @@ interface HostPayoutRequestsResponse {
   };
 }
 
+interface LocationDemandFunnelSummary {
+  total_requests: number;
+  collecting_open: number;
+  threshold_met_open: number;
+  threshold_met_stuck_24h: number;
+  threshold_met_stuck_72h: number;
+  claimed_total: number;
+  claimed_within_24h: number;
+  claimed_with_published_slots: number;
+  claimed_with_confirmed_booking: number;
+  threshold_met_last_7d: number;
+  claimRateFromThresholdOpen: number;
+  publishRateFromClaimed: number;
+  bookingRateFromClaimed: number;
+}
+
+interface LocationDemandFunnelResponse {
+  ok: boolean;
+  generatedAt: string;
+  summary: LocationDemandFunnelSummary;
+}
+
 const FOOT_TRAFFIC_OPTIONS = [
   { value: "50", label: "Low (1-50/day)", min: 1, max: 50 },
   { value: "200", label: "Medium (51-200/day)", min: 51, max: 200 },
@@ -2224,6 +2246,13 @@ export default function AdminDashboard() {
       staleTime: 30 * 1000,
     });
 
+  const { data: locationDemandFunnel, isLoading: demandFunnelLoading } =
+    useQuery<LocationDemandFunnelResponse>({
+      queryKey: ["/api/admin/location-demand/funnel"],
+      enabled: !!adminUser && selectedTab === "overview",
+      staleTime: 30 * 1000,
+    });
+
   const { data: hostPayoutRequests, isLoading: payoutQueueLoading } =
     useQuery<HostPayoutRequestsResponse>({
       queryKey: [
@@ -2497,6 +2526,31 @@ export default function AdminDashboard() {
       toast({
         title: "Send failed",
         description: error?.message || "Unable to send host reminder.",
+        variant: "destructive",
+      });
+    },
+  });
+  const runLocationDemandActivation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest(
+        "POST",
+        "/api/admin/location-demand/activation/run",
+      );
+      return await res.json();
+    },
+    onSuccess: async (data: any) => {
+      await queryClient.invalidateQueries({
+        queryKey: ["/api/admin/location-demand/funnel"],
+      });
+      toast({
+        title: "Demand activation run completed",
+        description: `Sent ${Number(data?.stats?.sent ?? 0)} reminder(s).`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Demand activation run failed",
+        description: error?.message || "Unable to run demand activation.",
         variant: "destructive",
       });
     },
@@ -5628,6 +5682,121 @@ export default function AdminDashboard() {
                       No email attempts recorded yet.
                     </div>
                   )}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <CardTitle>Location Demand Funnel</CardTitle>
+                    <CardDescription>
+                      Track threshold to claimed to published to booked conversion.
+                    </CardDescription>
+                  </div>
+                  <Button
+                    variant="outline"
+                    disabled={runLocationDemandActivation.isPending}
+                    onClick={() => runLocationDemandActivation.mutate()}
+                  >
+                    {runLocationDemandActivation.isPending
+                      ? "Running..."
+                      : "Run Activation"}
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  <div className="rounded-md border p-3">
+                    <div className="text-xs text-muted-foreground">
+                      Threshold open
+                    </div>
+                    <div className="text-xl font-semibold">
+                      {Number(locationDemandFunnel?.summary?.threshold_met_open ?? 0)}
+                    </div>
+                  </div>
+                  <div className="rounded-md border p-3">
+                    <div className="text-xs text-muted-foreground">Claimed</div>
+                    <div className="text-xl font-semibold">
+                      {Number(locationDemandFunnel?.summary?.claimed_total ?? 0)}
+                    </div>
+                  </div>
+                  <div className="rounded-md border p-3">
+                    <div className="text-xs text-muted-foreground">Published</div>
+                    <div className="text-xl font-semibold">
+                      {Number(
+                        locationDemandFunnel?.summary
+                          ?.claimed_with_published_slots ?? 0,
+                      )}
+                    </div>
+                  </div>
+                  <div className="rounded-md border p-3">
+                    <div className="text-xs text-muted-foreground">
+                      Confirmed booking
+                    </div>
+                    <div className="text-xl font-semibold">
+                      {Number(
+                        locationDemandFunnel?.summary
+                          ?.claimed_with_confirmed_booking ?? 0,
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  <div className="rounded-md border p-3 text-sm">
+                    <div className="text-xs text-muted-foreground">
+                      Claim rate from threshold open
+                    </div>
+                    <div className="font-semibold">
+                      {Math.round(
+                        Number(
+                          locationDemandFunnel?.summary
+                            ?.claimRateFromThresholdOpen ?? 0,
+                        ) * 100,
+                      )}
+                      %
+                    </div>
+                  </div>
+                  <div className="rounded-md border p-3 text-sm">
+                    <div className="text-xs text-muted-foreground">
+                      Publish rate from claimed
+                    </div>
+                    <div className="font-semibold">
+                      {Math.round(
+                        Number(
+                          locationDemandFunnel?.summary?.publishRateFromClaimed ??
+                            0,
+                        ) * 100,
+                      )}
+                      %
+                    </div>
+                  </div>
+                  <div className="rounded-md border p-3 text-sm">
+                    <div className="text-xs text-muted-foreground">
+                      Booking rate from claimed
+                    </div>
+                    <div className="font-semibold">
+                      {Math.round(
+                        Number(
+                          locationDemandFunnel?.summary?.bookingRateFromClaimed ??
+                            0,
+                        ) * 100,
+                      )}
+                      %
+                    </div>
+                  </div>
+                </div>
+
+                <div className="text-xs text-muted-foreground">
+                  {demandFunnelLoading
+                    ? "Loading demand funnel..."
+                    : `Stuck: 24h=${Number(
+                        locationDemandFunnel?.summary?.threshold_met_stuck_24h ?? 0,
+                      )}, 72h=${Number(
+                        locationDemandFunnel?.summary?.threshold_met_stuck_72h ?? 0,
+                      )}`}
                 </div>
               </CardContent>
             </Card>

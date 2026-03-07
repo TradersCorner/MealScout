@@ -12,13 +12,13 @@
     "Segoe UI", sans-serif;
 
   /* Day Mode Palette */
-  --bg-app: #0b0a09;
+  --bg-app: #f7f5f1;
   --bg-texture: none;
   --bg-light: none;
   --bg-evening-glow: none;
   --bg-day-glow: none;
   --bg-ember: none;
-  --bg-layered: var(--bg-app);
+  --bg-layered: linear-gradient(180deg, #faf8f4 0%, #f5f2ec 100%);
   --bg-surface: rgba(255, 255, 255, 0.92);
   --bg-surface-muted: rgba(255, 255, 255, 0.82);
   --bg-card: rgba(255, 255, 255, 0.94);
@@ -28,7 +28,7 @@
   --text-secondary: #1f2937;
   --text-muted: #6b7280;
   --text-placeholder: #64748b;
-  --text-inverse: #0b0a09;
+  --text-inverse: #ffffff;
   --border-subtle: rgba(15, 23, 42, 0.12);
   --border-strong: rgba(15, 23, 42, 0.18);
   --action-primary: #ff4d2e;
@@ -43,9 +43,9 @@
   --accent-text: #ff4d2e;
   --accent-text-hover: #ff6b52;
 
-  --background: 28 25% 6%;
+  --background: 24 20% 98%;
   --background-gradient: none;
-  --foreground: 0 0% 98%;
+  --foreground: 220 15% 10%;
 
   --card: 0 0% 100%;
   --card-foreground: 220 15% 10%;
@@ -268,6 +268,11 @@
     mix-blend-mode: soft-light;
     opacity: 0.38;
   }/* Leaflet popup: default is white; in night mode it clashes with our light text overrides. */
+
+  .theme-day body::before {
+    mix-blend-mode: normal;
+    opacity: 0.12;
+  }
   .theme-night .leaflet-popup-content-wrapper,
   .theme-night .leaflet-popup-tip {
     background: rgba(16, 14, 12, 0.92) !important;
